@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, Receipt, TrendingDown, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -9,57 +9,49 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { mockExpenses } from '@/data/mockData';
-import { Expense, ExpenseCategory, EXPENSE_CATEGORY_LABELS } from '@/types/society';
+import { useExpenses } from '@/hooks/useSocietyData';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
-import { Receipt, TrendingDown, Calendar } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
+
+type ExpenseCategory = Database['public']['Enums']['expense_category'];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  repair: 'Repair', purchase: 'New Purchase', maintenance: 'General Maintenance',
+  staff_salary: 'Staff Salary', electricity: 'Electricity', water: 'Water Supply',
+  security: 'Security', gardening: 'Gardening', cleaning: 'Cleaning',
+  events: 'Events & Functions', legal: 'Legal', insurance: 'Insurance', other: 'Other',
+};
 
 const Expenses = () => {
-  const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
+  const { data: expenses = [], isLoading } = useExpenses();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({
-    category: 'maintenance' as ExpenseCategory,
-    description: '',
-    amount: '',
-    date: new Date().toISOString().split('T')[0],
-    vendor: '',
-    approvedBy: '',
-    notes: '',
-  });
+  const [form, setForm] = useState({ category: 'maintenance' as ExpenseCategory, description: '', amount: '', date: new Date().toISOString().split('T')[0], vendor: '', approved_by_name: '', notes: '' });
 
-  const filtered = useMemo(() => {
-    return expenses.filter((e) => {
-      const matchSearch = e.description.toLowerCase().includes(search.toLowerCase()) || (e.vendor?.toLowerCase().includes(search.toLowerCase()));
-      const matchCat = filterCategory === 'all' || e.category === filterCategory;
-      return matchSearch && matchCat;
+  const filtered = useMemo(() => expenses.filter((e) => {
+    const matchSearch = e.description.toLowerCase().includes(search.toLowerCase()) || (e.vendor?.toLowerCase().includes(search.toLowerCase()));
+    const matchCat = filterCategory === 'all' || e.category === filterCategory;
+    return matchSearch && matchCat;
+  }), [expenses, search, filterCategory]);
+
+  const totalExpenses = filtered.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+  const handleAdd = async () => {
+    if (!form.description || !form.amount) { toast.error('Please fill required fields'); return; }
+    const { error } = await supabase.from('expenses').insert({
+      category: form.category, description: form.description, amount: Number(form.amount),
+      date: form.date, vendor: form.vendor || null, approved_by_name: form.approved_by_name || null, notes: form.notes || null,
     });
-  }, [expenses, search, filterCategory]);
-
-  const totalExpenses = filtered.reduce((s, e) => s + e.amount, 0);
-  const thisMonth = filtered.filter((e) => e.date.startsWith(new Date().toISOString().slice(0, 7))).reduce((s, e) => s + e.amount, 0);
-
-  const handleAdd = () => {
-    if (!form.description || !form.amount) {
-      toast.error('Please fill required fields');
-      return;
-    }
-    const newExpense: Expense = {
-      id: String(Date.now()),
-      category: form.category,
-      description: form.description,
-      amount: Number(form.amount),
-      date: form.date,
-      vendor: form.vendor || undefined,
-      approvedBy: form.approvedBy || undefined,
-      notes: form.notes || undefined,
-    };
-    setExpenses((prev) => [...prev, newExpense]);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['expenses'] });
     setDialogOpen(false);
-    setForm({ category: 'maintenance', description: '', amount: '', date: new Date().toISOString().split('T')[0], vendor: '', approvedBy: '', notes: '' });
-    toast.success('Expense added successfully');
+    setForm({ category: 'maintenance', description: '', amount: '', date: new Date().toISOString().split('T')[0], vendor: '', approved_by_name: '', notes: '' });
+    toast.success('Expense added');
   };
 
   return (
@@ -70,67 +62,39 @@ const Expenses = () => {
           <p className="text-muted-foreground mt-1">Track all society expenditures</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" /> Add Expense</Button>
-          </DialogTrigger>
+          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Add Expense</Button></DialogTrigger>
           <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="font-display">Add New Expense</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle className="font-display">Add New Expense</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label>Category *</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v as ExpenseCategory })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent>{Object.entries(CATEGORY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label>Description *</Label>
-                <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What was the expense for?" />
+              <div className="grid gap-2"><Label>Description *</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>Amount (₹) *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+                <div className="grid gap-2"><Label>Date *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Amount (₹) *</Label>
-                  <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Date *</Label>
-                  <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-                </div>
+                <div className="grid gap-2"><Label>Vendor</Label><Input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} /></div>
+                <div className="grid gap-2"><Label>Approved By</Label><Input value={form.approved_by_name} onChange={(e) => setForm({ ...form, approved_by_name: e.target.value })} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Vendor</Label>
-                  <Input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} placeholder="Optional" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Approved By</Label>
-                  <Input value={form.approvedBy} onChange={(e) => setForm({ ...form, approvedBy: e.target.value })} placeholder="Optional" />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label>Notes</Label>
-                <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Additional notes..." rows={2} />
-              </div>
+              <div className="grid gap-2"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
               <Button onClick={handleAdd} className="w-full mt-2">Add Expense</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard title="Total Expenses" value={`₹${totalExpenses.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
-        <StatCard title="This Month" value={`₹${thisMonth.toLocaleString('en-IN')}`} icon={Calendar} variant="primary" />
+        <StatCard title="This Month" value={`₹${filtered.filter((e) => e.date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((s, e) => s + Number(e.amount), 0).toLocaleString('en-IN')}`} icon={Calendar} variant="primary" />
         <StatCard title="Total Entries" value={String(filtered.length)} icon={Receipt} variant="default" />
       </div>
 
-      {/* Filters */}
       <Card className="p-4">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[200px]">
@@ -141,15 +105,12 @@ const Expenses = () => {
             <SelectTrigger className="w-44"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
-              ))}
+              {Object.entries(CATEGORY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
       </Card>
 
-      {/* Table */}
       <Card>
         <Table>
           <TableHeader>
@@ -163,14 +124,18 @@ const Expenses = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((e) => (
+            {isLoading ? (
+              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No expenses found</TableCell></TableRow>
+            ) : filtered.map((e) => (
               <TableRow key={e.id} className="animate-fade-in">
                 <TableCell>{e.date}</TableCell>
-                <TableCell><Badge variant="secondary">{EXPENSE_CATEGORY_LABELS[e.category]}</Badge></TableCell>
+                <TableCell><Badge variant="secondary">{CATEGORY_LABELS[e.category] || e.category}</Badge></TableCell>
                 <TableCell className="font-medium">{e.description}</TableCell>
                 <TableCell>{e.vendor || '-'}</TableCell>
-                <TableCell>{e.approvedBy || '-'}</TableCell>
-                <TableCell className="text-right font-semibold text-destructive">₹{e.amount.toLocaleString('en-IN')}</TableCell>
+                <TableCell>{e.approved_by_name || '-'}</TableCell>
+                <TableCell className="text-right font-semibold text-destructive">₹{Number(e.amount).toLocaleString('en-IN')}</TableCell>
               </TableRow>
             ))}
           </TableBody>
