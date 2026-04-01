@@ -7,71 +7,59 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockResidents } from '@/data/mockData';
-import { Resident, ROLE_LABELS, UserRole } from '@/types/society';
+import { useResidents } from '@/hooks/useSocietyData';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-const roleBadgeVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  master_admin: 'destructive',
-  president: 'default',
-  vice_president: 'default',
-  supervisor: 'secondary',
-  coordinator: 'secondary',
-  resident: 'outline',
-};
-
 const Residents = () => {
-  const [residents, setResidents] = useState<Resident[]>(mockResidents);
+  const { data: residents = [], isLoading } = useResidents();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingResident, setEditingResident] = useState<Resident | null>(null);
-  const [form, setForm] = useState({
-    name: '', houseNo: '', laneNo: '', mobile: '', email: '', familyMembers: '1', role: 'resident' as UserRole,
-  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
 
   const filtered = residents.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.houseNo.toLowerCase().includes(search.toLowerCase()) ||
+    r.house_no.toLowerCase().includes(search.toLowerCase()) ||
     r.mobile.includes(search)
   );
 
   const openAdd = () => {
-    setEditingResident(null);
-    setForm({ name: '', houseNo: '', laneNo: '', mobile: '', email: '', familyMembers: '1', role: 'resident' });
+    setEditingId(null);
+    setForm({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
     setDialogOpen(true);
   };
 
-  const openEdit = (r: Resident) => {
-    setEditingResident(r);
-    setForm({ name: r.name, houseNo: r.houseNo, laneNo: r.laneNo, mobile: r.mobile, email: r.email || '', familyMembers: String(r.familyMembers || 1), role: r.role });
+  const openEdit = (r: typeof residents[0]) => {
+    setEditingId(r.id);
+    setForm({ name: r.name, house_no: r.house_no, lane_no: r.lane_no, mobile: r.mobile, email: r.email || '', family_members: String(r.family_members || 1) });
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (!form.name || !form.houseNo || !form.mobile) {
-      toast.error('Please fill required fields');
-      return;
-    }
-    if (editingResident) {
-      setResidents((prev) => prev.map((r) => r.id === editingResident.id ? { ...r, ...form, familyMembers: Number(form.familyMembers) } : r));
-      toast.success('Resident updated successfully');
+  const handleSave = async () => {
+    if (!form.name || !form.house_no || !form.mobile) { toast.error('Please fill required fields'); return; }
+    const payload = { name: form.name, house_no: form.house_no, lane_no: form.lane_no, mobile: form.mobile, email: form.email || null, family_members: Number(form.family_members) };
+
+    if (editingId) {
+      const { error } = await supabase.from('residents').update(payload).eq('id', editingId);
+      if (error) { toast.error(error.message); return; }
+      toast.success('Resident updated');
     } else {
-      const newResident: Resident = {
-        id: String(Date.now()),
-        ...form,
-        familyMembers: Number(form.familyMembers),
-        isActive: true,
-      };
-      setResidents((prev) => [...prev, newResident]);
-      toast.success('Resident added successfully');
+      const { error } = await supabase.from('residents').insert(payload);
+      if (error) { toast.error(error.message); return; }
+      toast.success('Resident added');
     }
+    queryClient.invalidateQueries({ queryKey: ['residents'] });
     setDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setResidents((prev) => prev.filter((r) => r.id !== id));
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('residents').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
     toast.success('Resident removed');
+    queryClient.invalidateQueries({ queryKey: ['residents'] });
   };
 
   return (
@@ -82,60 +70,24 @@ const Residents = () => {
           <p className="text-muted-foreground mt-1">{residents.length} total residents</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add Resident</Button>
-          </DialogTrigger>
+          <DialogTrigger asChild><Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add Resident</Button></DialogTrigger>
           <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="font-display">{editingResident ? 'Edit Resident' : 'Add New Resident'}</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle className="font-display">{editingId ? 'Edit Resident' : 'Add New Resident'}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Full Name *</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter full name" />
-              </div>
+              <div className="grid gap-2"><Label>Full Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>House No. *</Label>
-                  <Input value={form.houseNo} onChange={(e) => setForm({ ...form, houseNo: e.target.value })} placeholder="e.g. A-101" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Lane No. *</Label>
-                  <Input value={form.laneNo} onChange={(e) => setForm({ ...form, laneNo: e.target.value })} placeholder="e.g. 1" />
-                </div>
+                <div className="grid gap-2"><Label>House No. *</Label><Input value={form.house_no} onChange={(e) => setForm({ ...form, house_no: e.target.value })} placeholder="e.g. A-101" /></div>
+                <div className="grid gap-2"><Label>Lane No.</Label><Input value={form.lane_no} onChange={(e) => setForm({ ...form, lane_no: e.target.value })} /></div>
               </div>
-              <div className="grid gap-2">
-                <Label>Mobile Number *</Label>
-                <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="10-digit mobile" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Email</Label>
-                <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Optional" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Family Members</Label>
-                  <Input type="number" value={form.familyMembers} onChange={(e) => setForm({ ...form, familyMembers: e.target.value })} min="1" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Role</Label>
-                  <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as UserRole })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button onClick={handleSave} className="w-full mt-2">{editingResident ? 'Update Resident' : 'Add Resident'}</Button>
+              <div className="grid gap-2"><Label>Mobile *</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
+              <div className="grid gap-2"><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+              <div className="grid gap-2"><Label>Family Members</Label><Input type="number" value={form.family_members} onChange={(e) => setForm({ ...form, family_members: e.target.value })} min="1" /></div>
+              <Button onClick={handleSave} className="w-full mt-2">{editingId ? 'Update' : 'Add Resident'}</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Search */}
       <Card className="p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -143,7 +95,6 @@ const Residents = () => {
         </div>
       </Card>
 
-      {/* Table */}
       <Card>
         <Table>
           <TableHeader>
@@ -153,24 +104,28 @@ const Residents = () => {
               <TableHead>Lane</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Family</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((r) => (
+            {isLoading ? (
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No residents found. Add your first resident!</TableCell></TableRow>
+            ) : filtered.map((r) => (
               <TableRow key={r.id} className="animate-fade-in">
                 <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell><span className="flex items-center gap-1"><Home className="h-3.5 w-3.5 text-muted-foreground" />{r.houseNo}</span></TableCell>
-                <TableCell>{r.laneNo}</TableCell>
+                <TableCell><span className="flex items-center gap-1"><Home className="h-3.5 w-3.5 text-muted-foreground" />{r.house_no}</span></TableCell>
+                <TableCell>{r.lane_no}</TableCell>
                 <TableCell>
                   <div className="space-y-0.5">
                     <span className="flex items-center gap-1 text-sm"><Phone className="h-3 w-3" />{r.mobile}</span>
                     {r.email && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Mail className="h-3 w-3" />{r.email}</span>}
                   </div>
                 </TableCell>
-                <TableCell>{r.familyMembers}</TableCell>
-                <TableCell><Badge variant={roleBadgeVariant[r.role] || 'outline'}>{ROLE_LABELS[r.role]}</Badge></TableCell>
+                <TableCell>{r.family_members}</TableCell>
+                <TableCell><Badge variant={r.is_active ? 'default' : 'secondary'}>{r.is_active ? 'Active' : 'Inactive'}</Badge></TableCell>
                 <TableCell className="text-right space-x-1">
                   <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Edit2 className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
