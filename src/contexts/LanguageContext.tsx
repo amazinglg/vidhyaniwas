@@ -232,6 +232,22 @@ const translations: Record<string, Record<Lang, string>> = {
   'please_fill_required': { en: 'Please fill required fields', hi: 'कृपया आवश्यक फ़ील्ड भरें' },
   'confirm_delete': { en: 'Are you sure you want to delete this?', hi: 'क्या आप वाकई इसे हटाना चाहते हैं?' },
   'visibility_updated': { en: 'Visibility updated', hi: 'दृश्यता अपडेट की गई' },
+  'family_member_details': { en: 'Family Members', hi: 'परिवार के सदस्य' },
+  'manage_family_info': { en: 'Add and manage family member details', hi: 'परिवार के सदस्यों की जानकारी जोड़ें और प्रबंधित करें' },
+  'no_family_members_added': { en: 'No family members added yet', hi: 'अभी तक कोई परिवार का सदस्य नहीं जोड़ा गया' },
+  'relation': { en: 'Relation', hi: 'संबंध' },
+  'age': { en: 'Age', hi: 'उम्र' },
+  'occupation': { en: 'Occupation', hi: 'व्यवसाय' },
+  'vehicles': { en: 'Vehicles', hi: 'वाहन' },
+  'vehicle': { en: 'Vehicle', hi: 'वाहन' },
+  'manage_vehicle_info': { en: 'Add and manage vehicle details', hi: 'वाहन की जानकारी जोड़ें और प्रबंधित करें' },
+  'no_vehicles_added': { en: 'No vehicles added yet', hi: 'अभी तक कोई वाहन नहीं जोड़ा गया' },
+  'vehicle_type': { en: 'Vehicle Type', hi: 'वाहन प्रकार' },
+  'registration_no': { en: 'Registration No.', hi: 'पंजीकरण नं.' },
+  'make_model': { en: 'Make/Model', hi: 'बनावट/मॉडल' },
+  'color': { en: 'Color', hi: 'रंग' },
+  'role': { en: 'Role', hi: 'भूमिका' },
+  'complaints': { en: 'Complaints', hi: 'शिकायतें' },
 };
 
 interface LanguageContextType {

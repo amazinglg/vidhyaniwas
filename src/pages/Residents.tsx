@@ -13,10 +13,11 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import ResidentDetailModal from '@/components/ResidentDetailModal';
 
 const Residents = () => {
   const { data: residents = [], isLoading } = useResidents();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isResident, isCoordinator } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -24,6 +25,10 @@ const Residents = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
   const readOnly = !isAdmin;
+
+  // Resident detail modal
+  const [selectedResident, setSelectedResident] = useState<any>(null);
+  const canViewDetails = !isResident && !isCoordinator;
 
   const filtered = residents.filter((r: any) =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -123,7 +128,16 @@ const Residents = () => {
               <TableRow><TableCell colSpan={readOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">{t('no_residents_found')}</TableCell></TableRow>
             ) : filtered.map((r: any) => (
               <TableRow key={r.id} className="animate-fade-in">
-                <TableCell className="font-medium">{r.name}</TableCell>
+                <TableCell className="font-medium">
+                  {canViewDetails ? (
+                    <button
+                      className="text-primary hover:underline cursor-pointer font-medium text-left"
+                      onClick={() => setSelectedResident(r)}
+                    >
+                      {r.name}
+                    </button>
+                  ) : r.name}
+                </TableCell>
                 <TableCell><span className="flex items-center gap-1"><Home className="h-3.5 w-3.5 text-muted-foreground" />{r.house_no}</span></TableCell>
                 <TableCell>{r.lane_no}</TableCell>
                 <TableCell>
@@ -145,6 +159,13 @@ const Residents = () => {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Resident Detail Modal */}
+      <ResidentDetailModal
+        resident={selectedResident}
+        open={!!selectedResident}
+        onClose={() => setSelectedResident(null)}
+      />
     </div>
   );
 };
