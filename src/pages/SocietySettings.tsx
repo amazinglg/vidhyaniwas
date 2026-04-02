@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ROLE_LABELS } from '@/types/society';
-import { Building2, Shield, Users, KeyRound, Edit2, Trash2, Save } from 'lucide-react';
+import { Building2, Users, KeyRound, Edit2, Trash2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -29,10 +29,7 @@ const SocietySettings = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [editResident, setEditResident] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
-  const [roleDialog, setRoleDialog] = useState<{ userId: string; currentRole: string } | null>(null);
-  const [newRole, setNewRole] = useState<AppRole>('resident');
 
-  // Society info editing
   const [editingSociety, setEditingSociety] = useState(false);
   const [societyForm, setSocietyForm] = useState({
     name: 'Shri Vidhya Niwas',
@@ -42,9 +39,7 @@ const SocietySettings = () => {
     adminName: 'Labhansh Garg',
   });
 
-  useEffect(() => {
-    fetchUsersAndRoles();
-  }, []);
+  useEffect(() => { fetchUsersAndRoles(); }, []);
 
   const fetchUsersAndRoles = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*');
@@ -56,21 +51,6 @@ const SocietySettings = () => {
   const getUserRole = (userId: string) => {
     const r = roles.find((r: any) => r.user_id === userId);
     return r?.role || 'No role';
-  };
-
-  const handleChangeRole = async () => {
-    if (!roleDialog) return;
-    const existing = roles.find((r: any) => r.user_id === roleDialog.userId);
-    if (existing) {
-      const { error } = await supabase.from('user_roles').update({ role: newRole }).eq('user_id', roleDialog.userId);
-      if (error) { toast.error(error.message); return; }
-    } else {
-      const { error } = await supabase.from('user_roles').insert({ user_id: roleDialog.userId, role: newRole });
-      if (error) { toast.error(error.message); return; }
-    }
-    toast.success(t('role_updated'));
-    setRoleDialog(null);
-    fetchUsersAndRoles();
   };
 
   const handleForceResetPassword = async (userId: string) => {
@@ -107,18 +87,14 @@ const SocietySettings = () => {
   };
 
   const handleSaveSocietyInfo = () => {
-    // Save to localStorage for now (could be a DB table later)
     localStorage.setItem('society_info', JSON.stringify(societyForm));
     setEditingSociety(false);
     toast.success(t('society_info_updated'));
   };
 
-  // Load society info from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('society_info');
-    if (saved) {
-      try { setSocietyForm(JSON.parse(saved)); } catch {}
-    }
+    if (saved) { try { setSocietyForm(JSON.parse(saved)); } catch {} }
   }, []);
 
   return (
@@ -129,10 +105,9 @@ const SocietySettings = () => {
       </div>
 
       <Tabs defaultValue="society" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-2" />{t('society_info')}</TabsTrigger>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-2" />{t('manage_users')}</TabsTrigger>
-          <TabsTrigger value="roles"><Shield className="h-4 w-4 mr-2" />{t('manage_roles')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="society" className="mt-6">
@@ -153,11 +128,11 @@ const SocietySettings = () => {
             </div>
             {editingSociety ? (
               <div className="grid gap-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2"><Label>{t('society_name')}</Label><Input value={societyForm.name} onChange={(e) => setSocietyForm({ ...societyForm, name: e.target.value })} /></div>
                   <div className="grid gap-2"><Label>{t('master_admin')}</Label><Input value={societyForm.adminName} onChange={(e) => setSocietyForm({ ...societyForm, adminName: e.target.value })} /></div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="grid gap-2"><Label>{t('total_houses')}</Label><Input value={societyForm.totalHouses} onChange={(e) => setSocietyForm({ ...societyForm, totalHouses: e.target.value })} /></div>
                   <div className="grid gap-2"><Label>{t('lanes')}</Label><Input value={societyForm.lanes} onChange={(e) => setSocietyForm({ ...societyForm, lanes: e.target.value })} /></div>
                   <div className="grid gap-2"><Label>{t('monthly_maintenance')}</Label><Input value={societyForm.monthlyMaintenance} onChange={(e) => setSocietyForm({ ...societyForm, monthlyMaintenance: e.target.value })} /></div>
@@ -179,7 +154,7 @@ const SocietySettings = () => {
         </TabsContent>
 
         <TabsContent value="users" className="mt-6 space-y-4">
-          <Card>
+          <Card className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -188,7 +163,7 @@ const SocietySettings = () => {
                   <TableHead>{t('mobile')}</TableHead>
                   <TableHead>{t('lane')}</TableHead>
                   <TableHead>{t('status')}</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>{t('role')}</TableHead>
                   <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -206,10 +181,7 @@ const SocietySettings = () => {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Select value={currentRole} onValueChange={async (v) => {
-                            // Always save to residents.pending_role
                             await supabase.from('residents').update({ pending_role: v }).eq('id', r.id);
-                            
-                            // If user is registered, also update user_roles
                             if (matchedUser) {
                               const userId = matchedUser.user_id;
                               const existing = roles.find((ro: any) => ro.user_id === userId);
@@ -233,69 +205,22 @@ const SocietySettings = () => {
                           {!matchedUser && <Badge variant="outline" className="text-xs whitespace-nowrap">Not signed up</Badge>}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEditResident(r)}><Edit2 className="h-4 w-4" /></Button>
-                        {matchedUser && (
-                          <Button variant="outline" size="sm" onClick={() => handleForceResetPassword(matchedUser.user_id)} className="text-destructive border-destructive/30">
-                            <KeyRound className="h-3 w-3 mr-1" /> {t('reset_password')}
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteResident(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEditResident(r)}><Edit2 className="h-4 w-4" /></Button>
+                          {matchedUser && (
+                            <Button variant="outline" size="sm" onClick={() => handleForceResetPassword(matchedUser.user_id)} className="text-destructive border-destructive/30">
+                              <KeyRound className="h-3 w-3 mr-1" /> {t('reset_password')}
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteResident(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="roles" className="mt-6 space-y-4">
-          <Card className="p-4">
-            <h3 className="text-lg font-semibold font-display mb-4 flex items-center gap-2"><Shield className="h-5 w-5 text-primary" /> {t('user_roles_password')}</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('name')}</TableHead>
-                  <TableHead>{t('mobile')}</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">{t('actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((u: any) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.full_name || 'Unknown'}</TableCell>
-                    <TableCell>{u.mobile || '-'}</TableCell>
-                    <TableCell>
-                      <Badge className={getUserRole(u.user_id) === 'master_admin' ? 'gradient-warm text-primary-foreground' : 'bg-muted text-muted-foreground'}>
-                        {ROLE_LABELS[getUserRole(u.user_id) as keyof typeof ROLE_LABELS] || getUserRole(u.user_id)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button variant="outline" size="sm" onClick={() => { setRoleDialog({ userId: u.user_id, currentRole: getUserRole(u.user_id) }); setNewRole(getUserRole(u.user_id) as AppRole || 'resident'); }}>
-                        <Shield className="h-3 w-3 mr-1" /> {t('change_role')}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleForceResetPassword(u.user_id)} className="text-destructive border-destructive/30">
-                        <KeyRound className="h-3 w-3 mr-1" /> {t('reset_password')}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-
-          <Card className="p-4">
-            <h3 className="text-lg font-semibold font-display mb-3">{t('available_roles')}</h3>
-            <div className="space-y-2">
-              {Object.entries(ROLE_LABELS).map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <span className="font-medium">{label}</span>
-                  <Badge variant={key === 'master_admin' ? 'destructive' : 'secondary'}>{key.replace(/_/g, ' ')}</Badge>
-                </div>
-              ))}
-            </div>
           </Card>
         </TabsContent>
       </Tabs>
@@ -313,25 +238,6 @@ const SocietySettings = () => {
             <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
             <div className="grid gap-2"><Label>{t('email')}</Label><Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
             <Button onClick={handleSaveResident} className="w-full gradient-warm text-primary-foreground">{t('save_changes')}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Change Role Dialog */}
-      <Dialog open={!!roleDialog} onOpenChange={() => setRoleDialog(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-display">{t('change_role')}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>{t('select_role')}</Label>
-              <Select value={newRole} onValueChange={(v) => setNewRole(v as AppRole)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ROLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={handleChangeRole} className="w-full gradient-warm text-primary-foreground">{t('update_role')}</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +15,9 @@ import { toast } from 'sonner';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 const statusIcon: Record<string, any> = { paid: CheckCircle2, partial: Clock, pending: Clock, overdue: AlertTriangle };
+
+const RELATIONS = ['Self', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Other'];
+const VEHICLE_TYPES = ['Car', 'Bike', 'Scooter', 'Bicycle', 'Auto', 'Other'];
 
 const MyProfile = () => {
   const { user, residentId } = useAuth();
@@ -23,61 +28,108 @@ const MyProfile = () => {
   const [form, setForm] = useState({ full_name: '', mobile: '', email: '' });
   const [maintenance, setMaintenance] = useState<any[]>([]);
 
+  // Family members
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [familyDialog, setFamilyDialog] = useState(false);
+  const [editingFamilyId, setEditingFamilyId] = useState<string | null>(null);
+  const [familyForm, setFamilyForm] = useState({ name: '', relation: 'Other', age: '', occupation: '' });
+
+  // Vehicles
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [vehicleDialog, setVehicleDialog] = useState(false);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [vehicleForm, setVehicleForm] = useState({ vehicle_type: 'Car', registration_no: '', make_model: '', color: '' });
+
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*, residents(*)')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
+      const { data: profileData } = await supabase.from('profiles').select('*, residents(*)').eq('user_id', user.id).maybeSingle();
       if (profileData) {
         setProfile(profileData);
         setResident(profileData.residents);
-        setForm({
-          full_name: profileData.full_name || '',
-          mobile: profileData.mobile || '',
-          email: user.email || '',
-        });
+        setForm({ full_name: profileData.full_name || '', mobile: profileData.mobile || '', email: user.email || '' });
       }
     };
     fetchData();
   }, [user]);
 
-  // Fetch maintenance records for this resident
   useEffect(() => {
     if (!residentId) return;
     const fetchMaintenance = async () => {
-      const { data } = await supabase
-        .from('maintenance_collections')
-        .select('*')
-        .eq('resident_id', residentId)
-        .order('created_at', { ascending: false });
+      const { data } = await supabase.from('maintenance_collections').select('*').eq('resident_id', residentId).order('created_at', { ascending: false });
       setMaintenance(data || []);
     };
     fetchMaintenance();
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('my-maintenance')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_collections', filter: `resident_id=eq.${residentId}` }, () => {
-        fetchMaintenance();
-      })
-      .subscribe();
-
+    const channel = supabase.channel('my-maintenance').on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_collections', filter: `resident_id=eq.${residentId}` }, () => { fetchMaintenance(); }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [residentId]);
 
+  // Fetch family & vehicles
+  const fetchFamily = async () => {
+    if (!residentId) return;
+    const { data } = await supabase.from('family_member_details').select('*').eq('resident_id', residentId).order('created_at');
+    setFamilyMembers(data || []);
+  };
+  const fetchVehicles = async () => {
+    if (!residentId) return;
+    const { data } = await supabase.from('vehicles').select('*').eq('resident_id', residentId).order('created_at');
+    setVehicles(data || []);
+  };
+
+  useEffect(() => { fetchFamily(); fetchVehicles(); }, [residentId]);
+
   const handleSave = async () => {
     if (!user) return;
-    const { error } = await supabase
-      .from('profiles')
-      .update({ full_name: form.full_name, mobile: form.mobile })
-      .eq('user_id', user.id);
+    const { error } = await supabase.from('profiles').update({ full_name: form.full_name, mobile: form.mobile }).eq('user_id', user.id);
     if (error) { toast.error(error.message); return; }
     toast.success(t('profile_updated'));
     setEditing(false);
+  };
+
+  // Family CRUD
+  const openAddFamily = () => { setEditingFamilyId(null); setFamilyForm({ name: '', relation: 'Other', age: '', occupation: '' }); setFamilyDialog(true); };
+  const openEditFamily = (fm: any) => { setEditingFamilyId(fm.id); setFamilyForm({ name: fm.name, relation: fm.relation, age: fm.age?.toString() || '', occupation: fm.occupation || '' }); setFamilyDialog(true); };
+  const handleSaveFamily = async () => {
+    if (!familyForm.name || !residentId) { toast.error(t('please_fill_required')); return; }
+    const payload = { resident_id: residentId, name: familyForm.name, relation: familyForm.relation, age: familyForm.age ? Number(familyForm.age) : null, occupation: familyForm.occupation || null };
+    if (editingFamilyId) {
+      const { error } = await supabase.from('family_member_details').update(payload).eq('id', editingFamilyId);
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { error } = await supabase.from('family_member_details').insert(payload);
+      if (error) { toast.error(error.message); return; }
+    }
+    toast.success(editingFamilyId ? t('update') : t('add'));
+    setFamilyDialog(false);
+    fetchFamily();
+  };
+  const handleDeleteFamily = async (id: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    await supabase.from('family_member_details').delete().eq('id', id);
+    fetchFamily();
+  };
+
+  // Vehicle CRUD
+  const openAddVehicle = () => { setEditingVehicleId(null); setVehicleForm({ vehicle_type: 'Car', registration_no: '', make_model: '', color: '' }); setVehicleDialog(true); };
+  const openEditVehicle = (v: any) => { setEditingVehicleId(v.id); setVehicleForm({ vehicle_type: v.vehicle_type, registration_no: v.registration_no, make_model: v.make_model || '', color: v.color || '' }); setVehicleDialog(true); };
+  const handleSaveVehicle = async () => {
+    if (!vehicleForm.registration_no || !residentId) { toast.error(t('please_fill_required')); return; }
+    const payload = { resident_id: residentId, vehicle_type: vehicleForm.vehicle_type, registration_no: vehicleForm.registration_no, make_model: vehicleForm.make_model || null, color: vehicleForm.color || null };
+    if (editingVehicleId) {
+      const { error } = await supabase.from('vehicles').update(payload).eq('id', editingVehicleId);
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { error } = await supabase.from('vehicles').insert(payload);
+      if (error) { toast.error(error.message); return; }
+    }
+    toast.success(editingVehicleId ? t('update') : t('add'));
+    setVehicleDialog(false);
+    fetchVehicles();
+  };
+  const handleDeleteVehicle = async (id: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    await supabase.from('vehicles').delete().eq('id', id);
+    fetchVehicles();
   };
 
   const totalPaid = maintenance.reduce((s, m) => s + Number(m.amount || 0), 0);
@@ -90,6 +142,7 @@ const MyProfile = () => {
         <p className="text-muted-foreground mt-1">{t('view_update_info')}</p>
       </div>
 
+      {/* Profile Card */}
       <Card className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
         <div className="flex items-center gap-4 mb-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl gradient-warm shadow-lg">
@@ -100,17 +153,10 @@ const MyProfile = () => {
             {resident && <p className="text-muted-foreground">{t('house')} {resident.house_no} • {t('lane')} {resident.lane_no}</p>}
           </div>
         </div>
-
         {editing ? (
           <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label>{t('full_name')}</Label>
-              <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('mobile')}</Label>
-              <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
-            </div>
+            <div className="grid gap-2"><Label>{t('full_name')}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
             <div className="flex gap-2">
               <Button onClick={handleSave} className="gradient-warm text-primary-foreground"><Save className="h-4 w-4 mr-2" />{t('save')}</Button>
               <Button variant="outline" onClick={() => setEditing(false)}>{t('cancel')}</Button>
@@ -119,36 +165,12 @@ const MyProfile = () => {
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
-                <Phone className="h-4 w-4 text-primary" />
-                <div>
-                  <p className="text-xs text-muted-foreground">{t('mobile')}</p>
-                  <p className="font-medium">{form.mobile || t('not_set')}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
-                <Mail className="h-4 w-4 text-primary" />
-                <div>
-                  <p className="text-xs text-muted-foreground">{t('email')}</p>
-                  <p className="font-medium text-sm">{form.email || t('not_set')}</p>
-                </div>
-              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Phone className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('mobile')}</p><p className="font-medium">{form.mobile || t('not_set')}</p></div></div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Mail className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('email')}</p><p className="font-medium text-sm">{form.email || t('not_set')}</p></div></div>
               {resident && (
                 <>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
-                    <Home className="h-4 w-4 text-primary" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t('house_no')}</p>
-                      <p className="font-medium">{resident.house_no}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
-                    <Users className="h-4 w-4 text-primary" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t('family_members')}</p>
-                      <p className="font-medium">{resident.family_members || 1}</p>
-                    </div>
-                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Home className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{resident.house_no}</p></div></div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Users className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('family_members')}</p><p className="font-medium">{resident.family_members || 1}</p></div></div>
                 </>
               )}
             </div>
@@ -157,20 +179,79 @@ const MyProfile = () => {
         )}
       </Card>
 
+      {/* Family Members */}
+      {residentId && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><Users className="h-5 w-5 text-primary-foreground" /></div>
+              <div><h3 className="text-lg font-bold font-display">{t('family_member_details')}</h3><p className="text-sm text-muted-foreground">{t('manage_family_info')}</p></div>
+            </div>
+            <Button size="sm" onClick={openAddFamily}><Plus className="h-4 w-4 mr-1" />{t('add')}</Button>
+          </div>
+          {familyMembers.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">{t('no_family_members_added')}</p>
+          ) : (
+            <div className="space-y-2">
+              {familyMembers.map(fm => (
+                <div key={fm.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div>
+                    <span className="font-medium">{fm.name}</span>
+                    <Badge variant="outline" className="ml-2 text-xs">{fm.relation}</Badge>
+                    {fm.age && <span className="text-muted-foreground text-sm ml-2">{t('age')}: {fm.age}</span>}
+                    {fm.occupation && <span className="text-muted-foreground text-sm ml-2">• {fm.occupation}</span>}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => openEditFamily(fm)}><Edit2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteFamily(fm.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Vehicles */}
+      {residentId && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><Car className="h-5 w-5 text-primary-foreground" /></div>
+              <div><h3 className="text-lg font-bold font-display">{t('vehicles')}</h3><p className="text-sm text-muted-foreground">{t('manage_vehicle_info')}</p></div>
+            </div>
+            <Button size="sm" onClick={openAddVehicle}><Plus className="h-4 w-4 mr-1" />{t('add')}</Button>
+          </div>
+          {vehicles.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">{t('no_vehicles_added')}</p>
+          ) : (
+            <div className="space-y-2">
+              {vehicles.map(v => (
+                <div key={v.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div>
+                    <Badge variant="secondary" className="mr-2">{v.vehicle_type}</Badge>
+                    <span className="font-medium">{v.registration_no}</span>
+                    {v.make_model && <span className="text-muted-foreground text-sm ml-2">{v.make_model}</span>}
+                    {v.color && <span className="text-muted-foreground text-sm ml-2">• {v.color}</span>}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => openEditVehicle(v)}><Edit2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteVehicle(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* Maintenance Payment History */}
       {residentId && (
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm">
-              <IndianRupee className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold font-display">{t('maintenance_fund')}</h3>
-              <p className="text-sm text-muted-foreground">{t('your_payment_history')}</p>
-            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><IndianRupee className="h-5 w-5 text-primary-foreground" /></div>
+            <div><h3 className="text-lg font-bold font-display">{t('maintenance_fund')}</h3><p className="text-sm text-muted-foreground">{t('your_payment_history')}</p></div>
           </div>
-
-          {/* Summary cards */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
               <p className="text-xs text-green-600 dark:text-green-400 font-medium">{t('total_paid')}</p>
@@ -181,25 +262,15 @@ const MyProfile = () => {
               <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">₹{totalDue.toLocaleString()}</p>
             </div>
           </div>
-
           {maintenance.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">{t('no_records')}</p>
           ) : (
             <>
-              {/* Desktop table */}
               <div className="hidden md:block">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('month')}</TableHead>
-                      <TableHead>{t('total_maintenance')}</TableHead>
-                      <TableHead>{t('paid')}</TableHead>
-                      <TableHead>{t('due')}</TableHead>
-                      <TableHead>{t('date')}</TableHead>
-                      <TableHead>{t('status')}</TableHead>
-                      <TableHead>{t('payment_mode')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader><TableRow>
+                    <TableHead>{t('month')}</TableHead><TableHead>{t('total_maintenance')}</TableHead><TableHead>{t('paid')}</TableHead><TableHead>{t('due')}</TableHead><TableHead>{t('date')}</TableHead><TableHead>{t('status')}</TableHead><TableHead>{t('payment_mode')}</TableHead>
+                  </TableRow></TableHeader>
                   <TableBody>
                     {maintenance.map((m) => {
                       const StatusIcon = statusIcon[m.status] || Clock;
@@ -210,12 +281,7 @@ const MyProfile = () => {
                           <TableCell className="text-green-600 font-medium">₹{Number(m.amount || 0).toLocaleString()}</TableCell>
                           <TableCell className="text-orange-600 font-medium">₹{Number(m.due_amount || 0).toLocaleString()}</TableCell>
                           <TableCell>{m.paid_date || '-'}</TableCell>
-                          <TableCell>
-                            <Badge variant={statusBadge[m.status] || 'outline'} className="gap-1">
-                              <StatusIcon className="h-3 w-3" />
-                              {t(m.status)}
-                            </Badge>
-                          </TableCell>
+                          <TableCell><Badge variant={statusBadge[m.status] || 'outline'} className="gap-1"><StatusIcon className="h-3 w-3" />{t(m.status)}</Badge></TableCell>
                           <TableCell className="capitalize">{m.payment_mode || '-'}</TableCell>
                         </TableRow>
                       );
@@ -223,8 +289,6 @@ const MyProfile = () => {
                   </TableBody>
                 </Table>
               </div>
-
-              {/* Mobile cards */}
               <div className="md:hidden space-y-3">
                 {maintenance.map((m) => {
                   const StatusIcon = statusIcon[m.status] || Clock;
@@ -232,10 +296,7 @@ const MyProfile = () => {
                     <div key={m.id} className="p-4 rounded-lg border bg-card space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{m.month} {m.year}</span>
-                        <Badge variant={statusBadge[m.status] || 'outline'} className="gap-1">
-                          <StatusIcon className="h-3 w-3" />
-                          {t(m.status)}
-                        </Badge>
+                        <Badge variant={statusBadge[m.status] || 'outline'} className="gap-1"><StatusIcon className="h-3 w-3" />{t(m.status)}</Badge>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-sm">
                         <div><p className="text-muted-foreground text-xs">{t('total_maintenance')}</p><p className="font-medium">₹{Number(m.total_maintenance || 0).toLocaleString()}</p></div>
@@ -251,6 +312,50 @@ const MyProfile = () => {
           )}
         </Card>
       )}
+
+      {/* Family Member Dialog */}
+      <Dialog open={familyDialog} onOpenChange={setFamilyDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editingFamilyId ? t('edit') : t('add')} {t('family_member_details')}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2"><Label>{t('name')} *</Label><Input value={familyForm.name} onChange={(e) => setFamilyForm({ ...familyForm, name: e.target.value })} /></div>
+            <div className="grid gap-2">
+              <Label>{t('relation')}</Label>
+              <Select value={familyForm.relation} onValueChange={(v) => setFamilyForm({ ...familyForm, relation: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{RELATIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2"><Label>{t('age')}</Label><Input type="number" value={familyForm.age} onChange={(e) => setFamilyForm({ ...familyForm, age: e.target.value })} /></div>
+              <div className="grid gap-2"><Label>{t('occupation')}</Label><Input value={familyForm.occupation} onChange={(e) => setFamilyForm({ ...familyForm, occupation: e.target.value })} /></div>
+            </div>
+            <Button onClick={handleSaveFamily} className="w-full">{editingFamilyId ? t('update') : t('add')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Vehicle Dialog */}
+      <Dialog open={vehicleDialog} onOpenChange={setVehicleDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editingVehicleId ? t('edit') : t('add')} {t('vehicle')}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>{t('vehicle_type')}</Label>
+              <Select value={vehicleForm.vehicle_type} onValueChange={(v) => setVehicleForm({ ...vehicleForm, vehicle_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{VEHICLE_TYPES.map(vt => <SelectItem key={vt} value={vt}>{vt}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2"><Label>{t('registration_no')} *</Label><Input value={vehicleForm.registration_no} onChange={(e) => setVehicleForm({ ...vehicleForm, registration_no: e.target.value })} placeholder="e.g. UP14XX1234" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2"><Label>{t('make_model')}</Label><Input value={vehicleForm.make_model} onChange={(e) => setVehicleForm({ ...vehicleForm, make_model: e.target.value })} placeholder="e.g. Maruti Swift" /></div>
+              <div className="grid gap-2"><Label>{t('color')}</Label><Input value={vehicleForm.color} onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })} /></div>
+            </div>
+            <Button onClick={handleSaveVehicle} className="w-full">{editingVehicleId ? t('update') : t('add')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
