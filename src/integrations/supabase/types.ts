@@ -112,6 +112,47 @@ export type Database = {
         }
         Relationships: []
       }
+      family_member_details: {
+        Row: {
+          age: number | null
+          created_at: string
+          id: string
+          name: string
+          occupation: string | null
+          relation: string
+          resident_id: string
+          updated_at: string
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          occupation?: string | null
+          relation?: string
+          resident_id: string
+          updated_at?: string
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          occupation?: string | null
+          relation?: string
+          resident_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_member_details_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_collections: {
         Row: {
           amount: number
@@ -316,6 +357,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vehicles: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          make_model: string | null
+          registration_no: string
+          resident_id: string
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          make_model?: string | null
+          registration_no: string
+          resident_id: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          make_model?: string | null
+          registration_no?: string
+          resident_id?: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
