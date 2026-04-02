@@ -213,7 +213,7 @@ const SocietySettings = () => {
                             // Auto-save
                             const existing = roles.find((r: any) => r.user_id === userId);
                             if (existing) {
-                              supabase.from('user_roles').update({ role: v }).eq('user_id', userId).then(({ error }) => {
+                              supabase.from('user_roles').update({ role: v as any }).eq('user_id', userId).then(({ error }) => {
                                 if (error) toast.error(error.message);
                                 else { toast.success(t('role_updated')); fetchUsersAndRoles(); }
                               });
