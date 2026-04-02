@@ -96,6 +96,11 @@ const translations: Record<string, Record<Lang, string>> = {
   'payment_recorded': { en: 'Payment recorded', hi: 'भुगतान दर्ज किया गया' },
   'this_month': { en: 'This Month', hi: 'इस महीने' },
   'total_entries': { en: 'Total Entries', hi: 'कुल प्रविष्टियाँ' },
+  'your_payment_history': { en: 'Your payment history', hi: 'आपका भुगतान इतिहास' },
+  'total_paid': { en: 'Total Paid', hi: 'कुल भुगतान' },
+  'total_pending': { en: 'Total Pending', hi: 'कुल बकाया' },
+  'no_records': { en: 'No maintenance records found', hi: 'कोई रखरखाव रिकॉर्ड नहीं मिला' },
+  'total_maintenance': { en: 'Total Maintenance', hi: 'कुल रखरखाव' },
 
   // Expenses
   'track_expenses': { en: 'Track all society expenditures', hi: 'सभी सोसायटी खर्चों को ट्रैक करें' },
