@@ -227,7 +227,7 @@ const SocietySettings = () => {
                           }}>
                             <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {Object.entries(ROLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+{Object.entries(ROLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         ) : (
