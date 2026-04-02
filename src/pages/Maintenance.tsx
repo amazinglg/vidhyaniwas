@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,8 @@ import StatCard from '@/components/dashboard/StatCard';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 
+const DEFAULT_TOTAL_MAINTENANCE = 3000;
+
 const Maintenance = () => {
   const { data: collections = [], isLoading } = useMaintenanceCollections();
   const { data: residents = [] } = useResidents();
@@ -29,8 +31,13 @@ const Maintenance = () => {
   const [filterMonth, setFilterMonth] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ residentId: '', amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
+  const [form, setForm] = useState({ residentId: '', totalMaintenance: String(DEFAULT_TOTAL_MAINTENANCE), amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
+  const [defaultAmountDialog, setDefaultAmountDialog] = useState(false);
+  const [defaultAmount, setDefaultAmount] = useState(String(DEFAULT_TOTAL_MAINTENANCE));
   const readOnly = isResident || isCoordinator;
+
+  // Compute due from total_maintenance - amount
+  const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
 
   const filtered = useMemo(() => collections.filter((c: any) => {
     const name = (c.residents as any)?.name || '';
@@ -48,26 +55,34 @@ const Maintenance = () => {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ residentId: '', amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
+    setForm({ residentId: '', totalMaintenance: defaultAmount, amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
     setDialogOpen(true);
   };
 
   const openEdit = (c: any) => {
     setEditingId(c.id);
-    setForm({ residentId: c.resident_id, amount: String(c.amount), date: c.paid_date || new Date().toISOString().split('T')[0], paymentMode: c.payment_mode || 'upi', receiptNo: c.receipt_no || '' });
+    setForm({
+      residentId: c.resident_id,
+      totalMaintenance: String(c.total_maintenance || DEFAULT_TOTAL_MAINTENANCE),
+      amount: String(c.amount),
+      date: c.paid_date || new Date().toISOString().split('T')[0],
+      paymentMode: c.payment_mode || 'upi',
+      receiptNo: c.receipt_no || '',
+    });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.residentId || !form.amount) { toast.error(t('please_fill_required')); return; }
     const amt = Number(form.amount);
-    const dueAmount = Math.max(0, 3000 - amt);
-    // Derive month from the date
+    const totalMaint = Number(form.totalMaintenance) || DEFAULT_TOTAL_MAINTENANCE;
+    const dueAmount = computeDue(totalMaint, amt);
     const dateObj = new Date(form.date);
     const month = MONTHS[dateObj.getMonth()];
     const year = dateObj.getFullYear();
-    const payload = {
+    const payload: any = {
       resident_id: form.residentId, amount: amt, due_amount: dueAmount,
+      total_maintenance: totalMaint,
       paid_date: form.date, month, year,
       status: dueAmount <= 0 ? 'paid' : amt > 0 ? 'partial' : 'pending',
       payment_mode: form.paymentMode, receipt_no: form.receiptNo || null,
@@ -100,92 +115,194 @@ const Maintenance = () => {
     toast.success(t('visibility_updated'));
   };
 
+  // Bulk update default maintenance for all records
+  const handleUpdateDefaultAmount = async () => {
+    const newAmt = Number(defaultAmount);
+    if (!newAmt || newAmt <= 0) { toast.error(t('please_fill_required')); return; }
+    // Update all existing records
+    const { error } = await supabase.from('maintenance_collections')
+      .update({ total_maintenance: newAmt })
+      .gte('id', '00000000-0000-0000-0000-000000000000'); // update all
+    if (error) { toast.error(error.message); return; }
+    // Recalculate due amounts
+    for (const c of collections) {
+      const due = computeDue(newAmt, Number(c.amount || 0));
+      const status = due <= 0 ? 'paid' : Number(c.amount) > 0 ? 'partial' : 'pending';
+      await supabase.from('maintenance_collections').update({ due_amount: due, total_maintenance: newAmt, status }).eq('id', c.id);
+    }
+    queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
+    setDefaultAmountDialog(false);
+    toast.success(t('visibility_updated'));
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">{t('maintenance_fund')}</h1>
-          <p className="text-muted-foreground mt-1">{t('track_maintenance')}</p>
+          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('maintenance_fund')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('track_maintenance')}</p>
         </div>
         {!readOnly && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> {t('record_payment')}</Button></DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit') + ' ' + t('record_payment') : t('record_payment')}</DialogTitle></DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>{t('resident')} *</Label>
-                  <Select value={form.residentId} onValueChange={(v) => setForm({ ...form, residentId: v })}>
-                    <SelectTrigger><SelectValue placeholder={t('select_resident')} /></SelectTrigger>
-                    <SelectContent>{residents.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2"><Label>{t('amount')} (₹) *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
-                  <div className="grid gap-2"><Label>{t('date')} *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setDefaultAmount(String(DEFAULT_TOTAL_MAINTENANCE)); setDefaultAmountDialog(true); }}>
+              <Settings2 className="h-4 w-4 mr-1" /> {t('amount')}
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild><Button onClick={openAdd} size="sm" className="md:size-default"><Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">{t('record_payment')}</span><span className="sm:hidden">Add</span></Button></DialogTrigger>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit') + ' ' + t('record_payment') : t('record_payment')}</DialogTitle></DialogHeader>
+                <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label>{t('payment_mode')}</Label>
-                    <Select value={form.paymentMode} onValueChange={(v) => setForm({ ...form, paymentMode: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">{t('cash')}</SelectItem>
-                        <SelectItem value="upi">{t('upi')}</SelectItem>
-                        <SelectItem value="bank_transfer">{t('bank_transfer')}</SelectItem>
-                        <SelectItem value="cheque">{t('cheque')}</SelectItem>
-                      </SelectContent>
+                    <Label>{t('resident')} *</Label>
+                    <Select value={form.residentId} onValueChange={(v) => setForm({ ...form, residentId: v })}>
+                      <SelectTrigger><SelectValue placeholder={t('select_resident')} /></SelectTrigger>
+                      <SelectContent>{residents.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Total {t('amount')} (₹)</Label>
+                      <Input type="number" value={form.totalMaintenance} onChange={(e) => setForm({ ...form, totalMaintenance: e.target.value })} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>{t('paid')} (₹) *</Label>
+                      <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                    </div>
+                  </div>
+                  {form.totalMaintenance && form.amount && (
+                    <div className="p-3 rounded-lg bg-muted text-sm">
+                      <span className="text-muted-foreground">{t('due')}: </span>
+                      <span className={`font-bold ${computeDue(Number(form.totalMaintenance), Number(form.amount)) > 0 ? 'text-destructive' : 'text-success'}`}>
+                        ₹{computeDue(Number(form.totalMaintenance), Number(form.amount)).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2"><Label>{t('date')} *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                    <div className="grid gap-2">
+                      <Label>{t('payment_mode')}</Label>
+                      <Select value={form.paymentMode} onValueChange={(v) => setForm({ ...form, paymentMode: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">{t('cash')}</SelectItem>
+                          <SelectItem value="upi">{t('upi')}</SelectItem>
+                          <SelectItem value="bank_transfer">{t('bank_transfer')}</SelectItem>
+                          <SelectItem value="cheque">{t('cheque')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   <div className="grid gap-2"><Label>{t('receipt_no')}</Label><Input value={form.receiptNo} onChange={(e) => setForm({ ...form, receiptNo: e.target.value })} /></div>
+                  <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('record_payment')}</Button>
                 </div>
-                <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('record_payment')}</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Default amount dialog */}
+      <Dialog open={defaultAmountDialog} onOpenChange={setDefaultAmountDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-display">Set Default {t('amount')}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Total Maintenance {t('amount')} (₹)</Label>
+              <Input type="number" value={defaultAmount} onChange={(e) => setDefaultAmount(e.target.value)} />
+              <p className="text-xs text-muted-foreground">This will update the total maintenance for all existing records and recalculate dues.</p>
+            </div>
+            <Button onClick={handleUpdateDefaultAmount} className="w-full gradient-warm text-primary-foreground">{t('update')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <StatCard title={t('total_collected')} value={`₹${totalCollected.toLocaleString('en-IN')}`} icon={IndianRupee} variant="success" />
         <StatCard title={t('pending_dues')} value={`₹${totalPending.toLocaleString('en-IN')}`} icon={AlertTriangle} variant="warning" />
         <StatCard title={t('paid')} value={String(filtered.filter((c: any) => c.status === 'paid').length)} icon={CheckCircle2} variant="primary" />
         <StatCard title={t('overdue')} value={String(filtered.filter((c: any) => c.status === 'overdue' || c.status === 'pending').length)} icon={Clock} variant="destructive" />
       </div>
 
-      <Card className="p-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px]">
+      <Card className="p-3 md:p-4">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input className="pl-10" placeholder={t('search_residents')} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-36"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('all_status')}</SelectItem>
-              <SelectItem value="paid">{t('paid')}</SelectItem>
-              <SelectItem value="partial">{t('partial')}</SelectItem>
-              <SelectItem value="pending">{t('pending')}</SelectItem>
-              <SelectItem value="overdue">{t('overdue')}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterMonth} onValueChange={setFilterMonth}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('all_months')}</SelectItem>
-              {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-32"><Filter className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('all_status')}</SelectItem>
+                <SelectItem value="paid">{t('paid')}</SelectItem>
+                <SelectItem value="partial">{t('partial')}</SelectItem>
+                <SelectItem value="pending">{t('pending')}</SelectItem>
+                <SelectItem value="overdue">{t('overdue')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('all_months')}</SelectItem>
+                {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </Card>
 
-      <Card>
+      {/* Mobile card view */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
+        ) : filtered.length === 0 ? (
+          <Card className="p-8 text-center text-muted-foreground">{t('no_records_found')}</Card>
+        ) : filtered.map((c: any) => (
+          <Card key={c.id} className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-sm">{(c.residents as any)?.name}</p>
+                <p className="text-xs text-muted-foreground">{(c.residents as any)?.house_no} • {c.paid_date || '-'}</p>
+              </div>
+              <Badge variant={statusBadge[c.status] || 'outline'} className="text-xs">{c.status}</Badge>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="font-medium">₹{Number(c.total_maintenance || DEFAULT_TOTAL_MAINTENANCE).toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('paid')}</p>
+                <p className="font-medium text-success">₹{Number(c.amount).toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('due')}</p>
+                <p className={`font-medium ${Number(c.due_amount) > 0 ? 'text-destructive' : ''}`}>₹{Number(c.due_amount).toLocaleString('en-IN')}</p>
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground capitalize">{c.payment_mode?.replace('_', ' ') || '-'}</div>
+            {!readOnly && (
+              <div className="flex gap-1 pt-1 border-t">
+                <Button variant="ghost" size="sm" onClick={() => toggleVisibility(c.id, c.is_visible)}>
+                  {c.is_visible ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5" />}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => openEdit(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      {/* Desktop table view */}
+      <Card className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>{t('resident')}</TableHead>
               <TableHead>{t('house')}</TableHead>
               <TableHead>{t('date')}</TableHead>
+              <TableHead>Total</TableHead>
               <TableHead>{t('paid')}</TableHead>
               <TableHead>{t('due')}</TableHead>
               <TableHead>{t('mode')}</TableHead>
@@ -195,21 +312,22 @@ const Maintenance = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={readOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={readOnly ? 8 : 9} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={readOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">{t('no_records_found')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={readOnly ? 8 : 9} className="text-center py-8 text-muted-foreground">{t('no_records_found')}</TableCell></TableRow>
             ) : filtered.map((c: any) => (
               <TableRow key={c.id} className="animate-fade-in">
                 <TableCell className="font-medium">{(c.residents as any)?.name}</TableCell>
                 <TableCell>{(c.residents as any)?.house_no}</TableCell>
                 <TableCell>{c.paid_date || '-'}</TableCell>
+                <TableCell className="font-medium">₹{Number(c.total_maintenance || DEFAULT_TOTAL_MAINTENANCE).toLocaleString('en-IN')}</TableCell>
                 <TableCell className="text-success font-medium">₹{Number(c.amount).toLocaleString('en-IN')}</TableCell>
                 <TableCell className={Number(c.due_amount) > 0 ? 'text-destructive font-medium' : ''}>₹{Number(c.due_amount).toLocaleString('en-IN')}</TableCell>
                 <TableCell className="capitalize">{c.payment_mode?.replace('_', ' ') || '-'}</TableCell>
                 <TableCell><Badge variant={statusBadge[c.status] || 'outline'}>{c.status}</Badge></TableCell>
                 {!readOnly && (
                   <TableCell className="text-right space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => toggleVisibility(c.id, c.is_visible)} title={c.is_visible ? t('hidden') : t('visible')}>
+                    <Button variant="ghost" size="icon" onClick={() => toggleVisibility(c.id, c.is_visible)}>
                       {c.is_visible ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Edit2 className="h-4 w-4" /></Button>

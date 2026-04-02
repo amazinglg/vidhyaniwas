@@ -94,16 +94,16 @@ const Expenses = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">{t('expenses')}</h1>
-          <p className="text-muted-foreground mt-1">{t('track_expenses')}</p>
+          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('expenses')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('track_expenses')}</p>
         </div>
         {!readOnly && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> {t('add_expense')}</Button></DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogTrigger asChild><Button onClick={openAdd} size="sm" className="md:size-default"><Plus className="h-4 w-4 mr-1 md:mr-2" /> {t('add_expense')}</Button></DialogTrigger>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit_expense') : t('add_expense')}</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
@@ -130,20 +130,20 @@ const Expenses = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
         <StatCard title={t('total_expenses')} value={`₹${totalExpenses.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
         <StatCard title={t('this_month')} value={`₹${filtered.filter((e: any) => e.date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((s: number, e: any) => s + Number(e.amount), 0).toLocaleString('en-IN')}`} icon={Calendar} variant="primary" />
         <StatCard title={t('total_entries')} value={String(filtered.length)} icon={Receipt} variant="default" />
       </div>
 
-      <Card className="p-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px]">
+      <Card className="p-3 md:p-4">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input className="pl-10" placeholder={t('search_expenses')} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-44"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-44"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('all_categories')}</SelectItem>
               {Object.entries(CATEGORY_KEYS).map(([k, tKey]) => <SelectItem key={k} value={k}>{t(tKey)}</SelectItem>)}
@@ -152,7 +152,40 @@ const Expenses = () => {
         </div>
       </Card>
 
-      <Card>
+      {/* Mobile card view */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
+        ) : filtered.length === 0 ? (
+          <Card className="p-8 text-center text-muted-foreground">{t('no_expenses_found')}</Card>
+        ) : filtered.map((e: any) => (
+          <Card key={e.id} className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-sm">{e.description}</p>
+                <p className="text-xs text-muted-foreground">{e.date} • {e.vendor || '-'}</p>
+              </div>
+              <p className="font-bold text-destructive">₹{Number(e.amount).toLocaleString('en-IN')}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">{t(CATEGORY_KEYS[e.category] || 'cat_other')}</Badge>
+              {e.approved_by_name && <span className="text-xs text-muted-foreground">by {e.approved_by_name}</span>}
+            </div>
+            {!readOnly && (
+              <div className="flex gap-1 pt-1 border-t">
+                <Button variant="ghost" size="sm" onClick={() => toggleVisibility(e.id, e.is_visible)}>
+                  {e.is_visible ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5" />}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => openEdit(e)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(e.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      {/* Desktop table view */}
+      <Card className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -180,7 +213,7 @@ const Expenses = () => {
                 <TableCell className="text-right font-semibold text-destructive">₹{Number(e.amount).toLocaleString('en-IN')}</TableCell>
                 {!readOnly && (
                   <TableCell className="text-right space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => toggleVisibility(e.id, e.is_visible)} title={e.is_visible ? t('hidden') : t('visible')}>
+                    <Button variant="ghost" size="icon" onClick={() => toggleVisibility(e.id, e.is_visible)}>
                       {e.is_visible ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(e)}><Edit2 className="h-4 w-4" /></Button>
