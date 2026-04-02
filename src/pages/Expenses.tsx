@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, Receipt, TrendingDown, Calendar } from 'lucide-react';
+import { Plus, Search, Filter, Receipt, TrendingDown, Calendar, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useExpenses } from '@/hooks/useSocietyData';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -18,94 +20,133 @@ import type { Database } from '@/integrations/supabase/types';
 
 type ExpenseCategory = Database['public']['Enums']['expense_category'];
 
-const CATEGORY_LABELS: Record<string, string> = {
-  repair: 'Repair', purchase: 'New Purchase', maintenance: 'General Maintenance',
-  staff_salary: 'Staff Salary', electricity: 'Electricity', water: 'Water Supply',
-  security: 'Security', gardening: 'Gardening', cleaning: 'Cleaning',
-  events: 'Events & Functions', legal: 'Legal', insurance: 'Insurance', other: 'Other',
+const CATEGORY_KEYS: Record<string, string> = {
+  repair: 'cat_repair', purchase: 'cat_purchase', maintenance: 'cat_maintenance',
+  staff_salary: 'cat_staff_salary', electricity: 'cat_electricity', water: 'cat_water',
+  security: 'cat_security', gardening: 'cat_gardening', cleaning: 'cat_cleaning',
+  events: 'cat_events', legal: 'cat_legal', insurance: 'cat_insurance', other: 'cat_other',
 };
 
 const Expenses = () => {
   const { data: expenses = [], isLoading } = useExpenses();
+  const { isAdmin, isCoordinator, isResident } = useAuth();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ category: 'maintenance' as ExpenseCategory, description: '', amount: '', date: new Date().toISOString().split('T')[0], vendor: '', approved_by_name: '', notes: '' });
+  const readOnly = isResident || isCoordinator;
 
-  const filtered = useMemo(() => expenses.filter((e) => {
+  const filtered = useMemo(() => expenses.filter((e: any) => {
     const matchSearch = e.description.toLowerCase().includes(search.toLowerCase()) || (e.vendor?.toLowerCase().includes(search.toLowerCase()));
     const matchCat = filterCategory === 'all' || e.category === filterCategory;
     return matchSearch && matchCat;
   }), [expenses, search, filterCategory]);
 
-  const totalExpenses = filtered.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const totalExpenses = filtered.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
 
-  const handleAdd = async () => {
-    if (!form.description || !form.amount) { toast.error('Please fill required fields'); return; }
-    const { error } = await supabase.from('expenses').insert({
+  const openAdd = () => {
+    setEditingId(null);
+    setForm({ category: 'maintenance', description: '', amount: '', date: new Date().toISOString().split('T')[0], vendor: '', approved_by_name: '', notes: '' });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (e: any) => {
+    setEditingId(e.id);
+    setForm({ category: e.category, description: e.description, amount: String(e.amount), date: e.date, vendor: e.vendor || '', approved_by_name: e.approved_by_name || '', notes: e.notes || '' });
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.description || !form.amount) { toast.error(t('please_fill_required')); return; }
+    const payload = {
       category: form.category, description: form.description, amount: Number(form.amount),
       date: form.date, vendor: form.vendor || null, approved_by_name: form.approved_by_name || null, notes: form.notes || null,
-    });
-    if (error) { toast.error(error.message); return; }
+    };
+    if (editingId) {
+      const { error } = await supabase.from('expenses').update(payload).eq('id', editingId);
+      if (error) { toast.error(error.message); return; }
+      toast.success(t('expense_updated'));
+    } else {
+      const { error } = await supabase.from('expenses').insert(payload);
+      if (error) { toast.error(error.message); return; }
+      toast.success(t('expense_added'));
+    }
     queryClient.invalidateQueries({ queryKey: ['expenses'] });
     setDialogOpen(false);
-    setForm({ category: 'maintenance', description: '', amount: '', date: new Date().toISOString().split('T')[0], vendor: '', approved_by_name: '', notes: '' });
-    toast.success('Expense added');
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    toast.success(t('expense_deleted'));
+  };
+
+  const toggleVisibility = async (id: string, current: boolean) => {
+    const { error } = await supabase.from('expenses').update({ is_visible: !current }).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    toast.success(t('visibility_updated'));
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">Expenses</h1>
-          <p className="text-muted-foreground mt-1">Track all society expenditures</p>
+          <h1 className="text-3xl font-bold font-display text-foreground">{t('expenses')}</h1>
+          <p className="text-muted-foreground mt-1">{t('track_expenses')}</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Add Expense</Button></DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="font-display">Add New Expense</DialogTitle></DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Category *</Label>
-                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v as ExpenseCategory })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(CATEGORY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                </Select>
+        {!readOnly && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild><Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> {t('add_expense')}</Button></DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit_expense') : t('add_expense')}</DialogTitle></DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>{t('category')} *</Label>
+                  <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v as ExpenseCategory })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(CATEGORY_KEYS).map(([k, tKey]) => <SelectItem key={k} value={k}>{t(tKey)}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2"><Label>{t('description')} *</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2"><Label>{t('amount')} (₹) *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+                  <div className="grid gap-2"><Label>{t('date')} *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2"><Label>{t('vendor')}</Label><Input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} /></div>
+                  <div className="grid gap-2"><Label>{t('approved_by')}</Label><Input value={form.approved_by_name} onChange={(e) => setForm({ ...form, approved_by_name: e.target.value })} /></div>
+                </div>
+                <div className="grid gap-2"><Label>{t('notes')}</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
+                <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('add_expense')}</Button>
               </div>
-              <div className="grid gap-2"><Label>Description *</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2"><Label>Amount (₹) *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
-                <div className="grid gap-2"><Label>Date *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2"><Label>Vendor</Label><Input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} /></div>
-                <div className="grid gap-2"><Label>Approved By</Label><Input value={form.approved_by_name} onChange={(e) => setForm({ ...form, approved_by_name: e.target.value })} /></div>
-              </div>
-              <div className="grid gap-2"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
-              <Button onClick={handleAdd} className="w-full mt-2">Add Expense</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Total Expenses" value={`₹${totalExpenses.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
-        <StatCard title="This Month" value={`₹${filtered.filter((e) => e.date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((s, e) => s + Number(e.amount), 0).toLocaleString('en-IN')}`} icon={Calendar} variant="primary" />
-        <StatCard title="Total Entries" value={String(filtered.length)} icon={Receipt} variant="default" />
+        <StatCard title={t('total_expenses')} value={`₹${totalExpenses.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
+        <StatCard title={t('this_month')} value={`₹${filtered.filter((e: any) => e.date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((s: number, e: any) => s + Number(e.amount), 0).toLocaleString('en-IN')}`} icon={Calendar} variant="primary" />
+        <StatCard title={t('total_entries')} value={String(filtered.length)} icon={Receipt} variant="default" />
       </div>
 
       <Card className="p-4">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-10" placeholder="Search expenses..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input className="pl-10" placeholder={t('search_expenses')} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger className="w-44"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {Object.entries(CATEGORY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              <SelectItem value="all">{t('all_categories')}</SelectItem>
+              {Object.entries(CATEGORY_KEYS).map(([k, tKey]) => <SelectItem key={k} value={k}>{t(tKey)}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -115,27 +156,37 @@ const Expenses = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Approved By</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>{t('date')}</TableHead>
+              <TableHead>{t('category')}</TableHead>
+              <TableHead>{t('description')}</TableHead>
+              <TableHead>{t('vendor')}</TableHead>
+              <TableHead>{t('approved_by')}</TableHead>
+              <TableHead className="text-right">{t('amount')}</TableHead>
+              {!readOnly && <TableHead className="text-right">{t('actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={readOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No expenses found</TableCell></TableRow>
-            ) : filtered.map((e) => (
+              <TableRow><TableCell colSpan={readOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">{t('no_expenses_found')}</TableCell></TableRow>
+            ) : filtered.map((e: any) => (
               <TableRow key={e.id} className="animate-fade-in">
                 <TableCell>{e.date}</TableCell>
-                <TableCell><Badge variant="secondary">{CATEGORY_LABELS[e.category] || e.category}</Badge></TableCell>
+                <TableCell><Badge variant="secondary">{t(CATEGORY_KEYS[e.category] || 'cat_other')}</Badge></TableCell>
                 <TableCell className="font-medium">{e.description}</TableCell>
                 <TableCell>{e.vendor || '-'}</TableCell>
                 <TableCell>{e.approved_by_name || '-'}</TableCell>
                 <TableCell className="text-right font-semibold text-destructive">₹{Number(e.amount).toLocaleString('en-IN')}</TableCell>
+                {!readOnly && (
+                  <TableCell className="text-right space-x-1">
+                    <Button variant="ghost" size="icon" onClick={() => toggleVisibility(e.id, e.is_visible)} title={e.is_visible ? t('hidden') : t('visible')}>
+                      {e.is_visible ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(e)}><Edit2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

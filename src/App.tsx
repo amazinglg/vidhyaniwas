@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import Residents from "@/pages/Residents";
@@ -57,36 +58,38 @@ const DefaultRedirect = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-            <Route path="/*" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Routes>
-                    <Route path="/" element={<DefaultRedirect />} />
-                    <Route path="/residents" element={<AdminRoute><Residents /></AdminRoute>} />
-                    <Route path="/maintenance" element={<AdminRoute><Maintenance /></AdminRoute>} />
-                    <Route path="/expenses" element={<AdminRoute><Expenses /></AdminRoute>} />
-                    <Route path="/notices" element={<Notices />} />
-                    <Route path="/complaints" element={<AdminRoute><Complaints /></AdminRoute>} />
-                    <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
-                    <Route path="/my-profile" element={<MyProfile />} />
-                    <Route path="/my-complaints" element={<MyComplaints />} />
-                    <Route path="/change-password" element={<ChangePassword />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <LanguageProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Routes>
+                      <Route path="/" element={<DefaultRedirect />} />
+                      <Route path="/residents" element={<Residents />} />
+                      <Route path="/maintenance" element={<Maintenance />} />
+                      <Route path="/expenses" element={<Expenses />} />
+                      <Route path="/notices" element={<Notices />} />
+                      <Route path="/complaints" element={<Complaints />} />
+                      <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
+                      <Route path="/my-profile" element={<MyProfile />} />
+                      <Route path="/my-complaints" element={<MyComplaints />} />
+                      <Route path="/change-password" element={<ChangePassword />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </LanguageProvider>
   </QueryClientProvider>
 );
 

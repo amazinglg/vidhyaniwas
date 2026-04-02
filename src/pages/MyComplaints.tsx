@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -21,6 +22,7 @@ const statusColors: Record<string, string> = {
 
 const MyComplaints = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', category: 'General' });
@@ -50,7 +52,7 @@ const MyComplaints = () => {
 
   const handleAdd = async () => {
     if (!form.title || !residentId) {
-      toast.error(residentId ? 'Please fill the title' : 'Your profile is not linked to a resident record');
+      toast.error(residentId ? t('please_fill_required') : 'Your profile is not linked to a resident record');
       return;
     }
     const { error } = await supabase.from('complaints').insert({
@@ -64,36 +66,36 @@ const MyComplaints = () => {
     queryClient.invalidateQueries({ queryKey: ['my_complaints'] });
     setDialogOpen(false);
     setForm({ title: '', description: '', category: 'General' });
-    toast.success('Complaint submitted');
+    toast.success(t('complaint_submitted'));
   };
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">My Complaints</h1>
-          <p className="text-muted-foreground mt-1">Track your submitted complaints</p>
+          <h1 className="text-3xl font-bold font-display text-foreground">{t('my_complaints')}</h1>
+          <p className="text-muted-foreground mt-1">{t('track_complaints')}</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gradient-warm text-primary-foreground shadow-lg"><Plus className="h-4 w-4 mr-2" /> New Complaint</Button>
+            <Button className="gradient-warm text-primary-foreground shadow-lg"><Plus className="h-4 w-4 mr-2" /> {t('new_complaint')}</Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="font-display">Submit a Complaint</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="font-display">{t('submit_complaint')}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2"><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-              <div className="grid gap-2"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
-              <div className="grid gap-2"><Label>Category</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
-              <Button onClick={handleAdd} className="w-full mt-2 gradient-warm text-primary-foreground">Submit</Button>
+              <div className="grid gap-2"><Label>{t('title')} *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+              <div className="grid gap-2"><Label>{t('description')}</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
+              <div className="grid gap-2"><Label>{t('category')}</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
+              <Button onClick={handleAdd} className="w-full mt-2 gradient-warm text-primary-foreground">{t('submit')}</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       {isLoading ? (
-        <p className="text-center text-muted-foreground py-8">Loading...</p>
+        <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
       ) : complaints.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">No complaints submitted yet.</Card>
+        <Card className="p-8 text-center text-muted-foreground">{t('no_complaints_submitted')}</Card>
       ) : complaints.map((c: any) => (
         <Card key={c.id} className="p-5 hover:shadow-md transition-shadow">
           <div className="flex items-start gap-3">
@@ -109,7 +111,7 @@ const MyComplaints = () => {
               {c.description && <p className="text-sm text-muted-foreground">{c.description}</p>}
               {c.admin_comment && (
                 <div className="mt-3 p-3 rounded-lg bg-info/10 border border-info/20">
-                  <p className="text-xs font-medium text-info mb-1">Admin Response</p>
+                  <p className="text-xs font-medium text-info mb-1">{t('admin_response')}</p>
                   <p className="text-sm">{c.admin_comment}</p>
                 </div>
               )}
