@@ -5,12 +5,18 @@ import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
+const ADMIN_ROLES: AppRole[] = ['master_admin', 'president', 'vice_president', 'supervisor'];
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   userRole: AppRole | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  isMasterAdmin: boolean;
+  isAdmin: boolean;
+  isCoordinator: boolean;
+  isResident: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +25,10 @@ const AuthContext = createContext<AuthContextType>({
   userRole: null,
   loading: true,
   signOut: async () => {},
+  isMasterAdmin: false,
+  isAdmin: false,
+  isCoordinator: false,
+  isResident: false,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -73,8 +83,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserRole(null);
   };
 
+  const isMasterAdmin = userRole === 'master_admin';
+  const isAdmin = userRole ? ADMIN_ROLES.includes(userRole) : false;
+  const isCoordinator = userRole === 'coordinator';
+  const isResident = userRole === 'resident' || (!userRole && !!session);
+
   return (
-    <AuthContext.Provider value={{ session, user, userRole, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, userRole, loading, signOut, isMasterAdmin, isAdmin, isCoordinator, isResident }}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,46 +6,38 @@ interface StatCardProps {
   value: string;
   subtitle?: string;
   icon: LucideIcon;
-  trend?: { value: string; positive: boolean };
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'destructive';
+  variant?: 'primary' | 'success' | 'destructive' | 'warning' | 'default';
 }
 
 const variantStyles = {
-  default: 'bg-card border border-border',
-  primary: 'bg-primary/10 border border-primary/20',
-  success: 'bg-success/10 border border-success/20',
-  warning: 'bg-warning/10 border border-warning/20',
-  destructive: 'bg-destructive/10 border border-destructive/20',
+  primary: 'bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20',
+  success: 'bg-gradient-to-br from-success/10 to-success/5 border-success/20',
+  destructive: 'bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/20',
+  warning: 'bg-gradient-to-br from-warning/10 to-warning/5 border-warning/20',
+  default: 'bg-card border-border',
 };
 
 const iconStyles = {
-  default: 'bg-muted text-muted-foreground',
-  primary: 'bg-primary text-primary-foreground',
+  primary: 'gradient-warm text-primary-foreground',
   success: 'bg-success text-success-foreground',
-  warning: 'bg-warning text-warning-foreground',
   destructive: 'bg-destructive text-destructive-foreground',
+  warning: 'bg-warning text-warning-foreground',
+  default: 'bg-muted text-muted-foreground',
 };
 
-const StatCard = ({ title, value, subtitle, icon: Icon, trend, variant = 'default' }: StatCardProps) => {
-  return (
-    <div className={cn('rounded-xl p-5 animate-fade-in', variantStyles[variant])}>
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold font-display text-foreground">{value}</p>
-          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-          {trend && (
-            <p className={cn('text-xs font-medium', trend.positive ? 'text-success' : 'text-destructive')}>
-              {trend.positive ? '↑' : '↓'} {trend.value}
-            </p>
-          )}
-        </div>
-        <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl', iconStyles[variant])}>
-          <Icon className="h-5 w-5" />
-        </div>
+const StatCard = ({ title, value, subtitle, icon: Icon, variant = 'default' }: StatCardProps) => (
+  <div className={cn('rounded-xl border p-5 transition-all hover:shadow-lg hover:-translate-y-0.5', variantStyles[variant])}>
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <p className="text-2xl font-bold font-display mt-1 text-foreground">{value}</p>
+        {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+      </div>
+      <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl shadow-md', iconStyles[variant])}>
+        <Icon className="h-5 w-5" />
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default StatCard;

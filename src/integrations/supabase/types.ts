@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       complaints: {
         Row: {
+          admin_comment: string | null
           assigned_to: string | null
           category: string
           created_at: string
@@ -29,6 +30,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_comment?: string | null
           assigned_to?: string | null
           category?: string
           created_at?: string
@@ -42,6 +44,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_comment?: string | null
           assigned_to?: string | null
           category?: string
           created_at?: string
@@ -307,6 +310,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_email_by_mobile: { Args: { _mobile: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
