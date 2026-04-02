@@ -26,15 +26,15 @@ const iconStyles = {
 };
 
 const StatCard = ({ title, value, subtitle, icon: Icon, variant = 'default' }: StatCardProps) => (
-  <div className={cn('rounded-xl border p-5 transition-all hover:shadow-lg hover:-translate-y-0.5', variantStyles[variant])}>
+  <div className={cn('rounded-xl border p-3 md:p-5 transition-all hover:shadow-lg hover:-translate-y-0.5', variantStyles[variant])}>
     <div className="flex items-start justify-between">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <p className="text-2xl font-bold font-display mt-1 text-foreground">{value}</p>
-        {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">{title}</p>
+        <p className="text-lg md:text-2xl font-bold font-display mt-0.5 md:mt-1 text-foreground truncate">{value}</p>
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5 md:mt-1 truncate">{subtitle}</p>}
       </div>
-      <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl shadow-md', iconStyles[variant])}>
-        <Icon className="h-5 w-5" />
+      <div className={cn('flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl shadow-md shrink-0 ml-2', iconStyles[variant])}>
+        <Icon className="h-4 w-4 md:h-5 md:w-5" />
       </div>
     </div>
   </div>
