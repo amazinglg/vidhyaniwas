@@ -42,11 +42,11 @@ const Dashboard = () => {
   }, [yearExpenses]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">{t('dashboard')}</h1>
-          <p className="text-muted-foreground mt-1">{t('financial_overview')}</p>
+          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('dashboard')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('financial_overview')}</p>
         </div>
         <Select value={selectedYear} onValueChange={setSelectedYear}>
           <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
@@ -58,7 +58,7 @@ const Dashboard = () => {
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <StatCard title={t('total_residents')} value={String(residents.length)} subtitle={`${residents.filter((r: any) => r.is_active).length} ${t('active').toLowerCase()}`} icon={Users} variant="primary" />
         <StatCard title={t('total_collected')} value={`₹${totalCollected.toLocaleString('en-IN')}`} subtitle={`${paidCount} ${t('payments_received')}`} icon={TrendingUp} variant="success" />
         <StatCard title={t('total_expenses')} value={`₹${totalExpensesAmt.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />

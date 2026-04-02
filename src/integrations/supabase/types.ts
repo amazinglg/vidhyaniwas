@@ -126,6 +126,7 @@ export type Database = {
           receipt_no: string | null
           resident_id: string
           status: string
+          total_maintenance: number
           updated_at: string
           year: number
         }
@@ -142,6 +143,7 @@ export type Database = {
           receipt_no?: string | null
           resident_id: string
           status?: string
+          total_maintenance?: number
           updated_at?: string
           year: number
         }
@@ -158,6 +160,7 @@ export type Database = {
           receipt_no?: string | null
           resident_id?: string
           status?: string
+          total_maintenance?: number
           updated_at?: string
           year?: number
         }
