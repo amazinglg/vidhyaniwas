@@ -218,7 +218,7 @@ const SocietySettings = () => {
                                 else { toast.success(t('role_updated')); fetchUsersAndRoles(); }
                               });
                             } else {
-                              supabase.from('user_roles').insert({ user_id: userId, role: v as AppRole }).then(({ error }) => {
+                              supabase.from('user_roles').insert({ user_id: userId, role: v as any }).then(({ error }) => {
                                 if (error) toast.error(error.message);
                                 else { toast.success(t('role_updated')); fetchUsersAndRoles(); }
                               });
