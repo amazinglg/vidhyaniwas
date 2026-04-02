@@ -12,6 +12,9 @@ import Expenses from "@/pages/Expenses";
 import Notices from "@/pages/Notices";
 import Complaints from "@/pages/Complaints";
 import SocietySettings from "@/pages/SocietySettings";
+import MyProfile from "@/pages/MyProfile";
+import MyComplaints from "@/pages/MyComplaints";
+import ChangePassword from "@/pages/ChangePassword";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +34,27 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin, loading } = useAuth();
+  if (loading) return null;
+  if (!isAdmin) return <Navigate to="/my-profile" replace />;
+  return <>{children}</>;
+};
+
+const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isMasterAdmin, loading } = useAuth();
+  if (loading) return null;
+  if (!isMasterAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
+const DefaultRedirect = () => {
+  const { isAdmin, isCoordinator } = useAuth();
+  if (isAdmin) return <Dashboard />;
+  if (isCoordinator) return <Navigate to="/residents" replace />;
+  return <Navigate to="/my-profile" replace />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -44,13 +68,16 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/residents" element={<Residents />} />
-                    <Route path="/maintenance" element={<Maintenance />} />
-                    <Route path="/expenses" element={<Expenses />} />
+                    <Route path="/" element={<DefaultRedirect />} />
+                    <Route path="/residents" element={<AdminRoute><Residents /></AdminRoute>} />
+                    <Route path="/maintenance" element={<AdminRoute><Maintenance /></AdminRoute>} />
+                    <Route path="/expenses" element={<AdminRoute><Expenses /></AdminRoute>} />
                     <Route path="/notices" element={<Notices />} />
-                    <Route path="/complaints" element={<Complaints />} />
-                    <Route path="/settings" element={<SocietySettings />} />
+                    <Route path="/complaints" element={<AdminRoute><Complaints /></AdminRoute>} />
+                    <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
+                    <Route path="/my-profile" element={<MyProfile />} />
+                    <Route path="/my-complaints" element={<MyComplaints />} />
+                    <Route path="/change-password" element={<ChangePassword />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AppLayout>

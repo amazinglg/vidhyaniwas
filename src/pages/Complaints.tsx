@@ -1,38 +1,30 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { MessageSquareWarning, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useResidents, useComplaints } from '@/hooks/useSocietyData';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { useComplaints } from '@/hooks/useSocietyData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { open: 'destructive', in_progress: 'default', resolved: 'secondary', closed: 'outline' };
+const statusColors: Record<string, string> = {
+  open: 'bg-destructive text-destructive-foreground',
+  in_progress: 'gradient-warm text-primary-foreground',
+  resolved: 'bg-success text-success-foreground',
+  closed: 'bg-muted text-muted-foreground',
+};
 
 const Complaints = () => {
   const { data: complaints = [], isLoading } = useComplaints();
-  const { data: residents = [] } = useResidents();
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ residentId: '', title: '', description: '', category: 'General' });
-
-  const handleAdd = async () => {
-    if (!form.residentId || !form.title) { toast.error('Please fill required fields'); return; }
-    const { error } = await supabase.from('complaints').insert({
-      resident_id: form.residentId, title: form.title, description: form.description || null, category: form.category,
-    });
-    if (error) { toast.error(error.message); return; }
-    queryClient.invalidateQueries({ queryKey: ['complaints'] });
-    setDialogOpen(false);
-    toast.success('Complaint registered');
-  };
+  const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
+  const [comment, setComment] = useState('');
 
   const updateStatus = async (id: string, status: string) => {
     const update: Record<string, unknown> = { status };
@@ -43,32 +35,33 @@ const Complaints = () => {
     toast.success('Status updated');
   };
 
+  const addComment = async () => {
+    if (!selectedComplaint || !comment.trim()) return;
+    const { error } = await supabase.from('complaints').update({ admin_comment: comment }).eq('id', selectedComplaint.id);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['complaints'] });
+    setSelectedComplaint(null);
+    setComment('');
+    toast.success('Comment added');
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">Complaints & Requests</h1>
-          <p className="text-muted-foreground mt-1">Manage resident grievances</p>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> New Complaint</Button></DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="font-display">Register Complaint</DialogTitle></DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Resident *</Label>
-                <Select value={form.residentId} onValueChange={(v) => setForm({ ...form, residentId: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select resident" /></SelectTrigger>
-                  <SelectContent>{residents.map((r) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2"><Label>Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-              <div className="grid gap-2"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
-              <div className="grid gap-2"><Label>Category</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
-              <Button onClick={handleAdd} className="w-full mt-2">Register</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <div>
+        <h1 className="text-3xl font-bold font-display text-foreground">Manage Complaints</h1>
+        <p className="text-muted-foreground mt-1">Review, comment and resolve resident complaints</p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-4">
+        {['open', 'in_progress', 'resolved', 'closed'].map(status => {
+          const count = complaints.filter((c: any) => c.status === status).length;
+          return (
+            <Card key={status} className="p-4 text-center">
+              <p className="text-2xl font-bold font-display">{count}</p>
+              <p className="text-sm text-muted-foreground capitalize">{status.replace('_', ' ')}</p>
+            </Card>
+          );
+        })}
       </div>
 
       <Card>
@@ -88,31 +81,57 @@ const Complaints = () => {
             {isLoading ? (
               <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : complaints.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No complaints registered</TableCell></TableRow>
-            ) : complaints.map((c) => (
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No complaints</TableCell></TableRow>
+            ) : complaints.map((c: any) => (
               <TableRow key={c.id} className="animate-fade-in">
-                <TableCell className="font-medium">{(c.residents as any)?.name}</TableCell>
-                <TableCell>{(c.residents as any)?.house_no}</TableCell>
+                <TableCell className="font-medium">{c.residents?.name}</TableCell>
+                <TableCell>{c.residents?.house_no}</TableCell>
                 <TableCell>{c.title}</TableCell>
                 <TableCell>{c.category}</TableCell>
                 <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
-                <TableCell><Badge variant={statusBadge[c.status] || 'outline'}>{c.status.replace('_', ' ')}</Badge></TableCell>
+                <TableCell><Badge className={statusColors[c.status] || 'bg-muted'}>{c.status.replace('_', ' ')}</Badge></TableCell>
                 <TableCell>
-                  <Select value={c.status} onValueChange={(v) => updateStatus(c.id, v)}>
-                    <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-1">
+                    <Select value={c.status} onValueChange={(v) => updateStatus(c.id, v)}>
+                      <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="icon" onClick={() => { setSelectedComplaint(c); setComment(c.admin_comment || ''); }}>
+                      <MessageSquareWarning className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Card>
+
+      <Dialog open={!!selectedComplaint} onOpenChange={() => setSelectedComplaint(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="font-display">Respond to Complaint</DialogTitle></DialogHeader>
+          {selectedComplaint && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="font-semibold">{selectedComplaint.title}</p>
+                <p className="text-sm text-muted-foreground mt-1">{selectedComplaint.description}</p>
+              </div>
+              <div className="grid gap-2">
+                <Label>Admin Comment / Response</Label>
+                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="Write your response..." />
+              </div>
+              <Button onClick={addComment} className="w-full gradient-warm text-primary-foreground">
+                <Send className="h-4 w-4 mr-2" /> Send Response
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
