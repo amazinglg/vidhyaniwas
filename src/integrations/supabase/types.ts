@@ -261,6 +261,7 @@ export type Database = {
           mobile: string
           move_in_date: string | null
           name: string
+          pending_role: string | null
           updated_at: string
         }
         Insert: {
@@ -275,6 +276,7 @@ export type Database = {
           mobile: string
           move_in_date?: string | null
           name: string
+          pending_role?: string | null
           updated_at?: string
         }
         Update: {
@@ -289,6 +291,7 @@ export type Database = {
           mobile?: string
           move_in_date?: string | null
           name?: string
+          pending_role?: string | null
           updated_at?: string
         }
         Relationships: []
