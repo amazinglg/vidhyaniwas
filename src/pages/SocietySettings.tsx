@@ -194,9 +194,8 @@ const SocietySettings = () => {
               </TableHeader>
               <TableBody>
                 {residents.map((r: any) => {
-                  // Find user for this resident by mobile to show role
                   const matchedUser = users.find((u: any) => u.mobile === r.mobile);
-                  const role = matchedUser ? getUserRole(matchedUser.user_id) : 'No role';
+                  const currentRole = matchedUser ? getUserRole(matchedUser.user_id) : (r.pending_role || 'resident');
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">{r.name}</TableCell>
@@ -205,34 +204,34 @@ const SocietySettings = () => {
                       <TableCell>{r.lane_no}</TableCell>
                       <TableCell><Badge variant={r.is_active ? 'default' : 'secondary'}>{r.is_active ? t('active') : t('inactive')}</Badge></TableCell>
                       <TableCell>
-                        {matchedUser ? (
-                          <Select value={role} onValueChange={(v) => {
-                            const userId = matchedUser.user_id;
-                            setRoleDialog({ userId, currentRole: role });
-                            setNewRole(v as AppRole);
-                            // Auto-save
-                            const existing = roles.find((r: any) => r.user_id === userId);
-                            if (existing) {
-                              supabase.from('user_roles').update({ role: v as any }).eq('user_id', userId).then(({ error }) => {
-                                if (error) toast.error(error.message);
-                                else { toast.success(t('role_updated')); fetchUsersAndRoles(); }
-                              });
-                            } else {
-                              supabase.from('user_roles').insert({ user_id: userId, role: v as any }).then(({ error }) => {
-                                if (error) toast.error(error.message);
-                                else { toast.success(t('role_updated')); fetchUsersAndRoles(); }
-                              });
+                        <div className="flex items-center gap-2">
+                          <Select value={currentRole} onValueChange={async (v) => {
+                            // Always save to residents.pending_role
+                            await supabase.from('residents').update({ pending_role: v }).eq('id', r.id);
+                            
+                            // If user is registered, also update user_roles
+                            if (matchedUser) {
+                              const userId = matchedUser.user_id;
+                              const existing = roles.find((ro: any) => ro.user_id === userId);
+                              if (existing) {
+                                const { error } = await supabase.from('user_roles').update({ role: v as any }).eq('user_id', userId);
+                                if (error) { toast.error(error.message); return; }
+                              } else {
+                                const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: v as any });
+                                if (error) { toast.error(error.message); return; }
+                              }
                             }
-                            setRoleDialog(null);
+                            toast.success(t('role_updated'));
+                            fetchUsersAndRoles();
+                            queryClient.invalidateQueries({ queryKey: ['residents'] });
                           }}>
                             <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
-{Object.entries(ROLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                              {Object.entries(ROLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                             </SelectContent>
                           </Select>
-                        ) : (
-                          <Badge variant="outline">Not registered</Badge>
-                        )}
+                          {!matchedUser && <Badge variant="outline" className="text-xs whitespace-nowrap">Not signed up</Badge>}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button variant="ghost" size="icon" onClick={() => openEditResident(r)}><Edit2 className="h-4 w-4" /></Button>
