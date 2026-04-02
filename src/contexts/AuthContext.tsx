@@ -5,7 +5,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
-const ADMIN_ROLES: AppRole[] = ['master_admin', 'president', 'vice_president', 'supervisor'];
+const ADMIN_ROLES: string[] = ['master_admin', 'president', 'vice_president', 'supervisor', 'treasury_head', 'secretary'];
 
 interface AuthContextType {
   session: Session | null;
@@ -17,6 +17,8 @@ interface AuthContextType {
   isAdmin: boolean;
   isCoordinator: boolean;
   isResident: boolean;
+  profileId: string | null;
+  residentId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,6 +31,8 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   isCoordinator: false,
   isResident: false,
+  profileId: null,
+  residentId: null,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -38,6 +42,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [residentId, setResidentId] = useState<string | null>(null);
 
   const fetchUserRole = async (userId: string) => {
     const { data } = await supabase
@@ -50,15 +56,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserRole(data?.role as AppRole ?? null);
   };
 
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, resident_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (data) {
+      setProfileId(data.id);
+      setResidentId(data.resident_id);
+    }
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchUserRole(session.user.id), 0);
+          setTimeout(() => {
+            fetchUserRole(session.user.id);
+            fetchProfile(session.user.id);
+          }, 0);
         } else {
           setUserRole(null);
+          setProfileId(null);
+          setResidentId(null);
         }
         setLoading(false);
       }
@@ -69,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserRole(session.user.id);
+        fetchProfile(session.user.id);
       }
       setLoading(false);
     });
@@ -81,6 +105,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
     setUser(null);
     setUserRole(null);
+    setProfileId(null);
+    setResidentId(null);
   };
 
   const isMasterAdmin = userRole === 'master_admin';
@@ -89,7 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isResident = userRole === 'resident' || (!userRole && !!session);
 
   return (
-    <AuthContext.Provider value={{ session, user, userRole, loading, signOut, isMasterAdmin, isAdmin, isCoordinator, isResident }}>
+    <AuthContext.Provider value={{ session, user, userRole, loading, signOut, isMasterAdmin, isAdmin, isCoordinator, isResident, profileId, residentId }}>
       {children}
     </AuthContext.Provider>
   );

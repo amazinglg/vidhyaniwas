@@ -77,6 +77,7 @@ export type Database = {
           date: string
           description: string
           id: string
+          is_visible: boolean
           notes: string | null
           updated_at: string
           vendor: string | null
@@ -90,6 +91,7 @@ export type Database = {
           date?: string
           description: string
           id?: string
+          is_visible?: boolean
           notes?: string | null
           updated_at?: string
           vendor?: string | null
@@ -103,6 +105,7 @@ export type Database = {
           date?: string
           description?: string
           id?: string
+          is_visible?: boolean
           notes?: string | null
           updated_at?: string
           vendor?: string | null
@@ -116,6 +119,7 @@ export type Database = {
           created_by: string | null
           due_amount: number
           id: string
+          is_visible: boolean
           month: string
           paid_date: string | null
           payment_mode: string | null
@@ -131,6 +135,7 @@ export type Database = {
           created_by?: string | null
           due_amount?: number
           id?: string
+          is_visible?: boolean
           month: string
           paid_date?: string | null
           payment_mode?: string | null
@@ -146,6 +151,7 @@ export type Database = {
           created_by?: string | null
           due_amount?: number
           id?: string
+          is_visible?: boolean
           month?: string
           paid_date?: string | null
           payment_mode?: string | null

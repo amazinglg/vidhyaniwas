@@ -1,10 +1,12 @@
-export type UserRole = 'master_admin' | 'president' | 'vice_president' | 'supervisor' | 'coordinator' | 'resident';
+export type UserRole = 'master_admin' | 'president' | 'vice_president' | 'supervisor' | 'treasury_head' | 'secretary' | 'coordinator' | 'resident';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   master_admin: 'Master Administrator',
   president: 'Society President',
   vice_president: 'Society Vice President',
   supervisor: 'Society Supervisor',
+  treasury_head: 'Society Treasury Head',
+  secretary: 'Society Secretary',
   coordinator: 'Coordinator',
   resident: 'Resident',
 };
