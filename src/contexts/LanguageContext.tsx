@@ -247,6 +247,26 @@ const translations: Record<string, Record<Lang, string>> = {
   'color': { en: 'Color', hi: 'रंग' },
   'role': { en: 'Role', hi: 'भूमिका' },
   'complaints': { en: 'Complaints', hi: 'शिकायतें' },
+
+  // Approvals & Tenants
+  'pending_approvals': { en: 'Pending Approvals', hi: 'लंबित अनुमोदन' },
+  'no_pending_approvals': { en: 'No pending signups to approve', hi: 'अनुमोदन के लिए कोई लंबित साइनअप नहीं' },
+  'approve': { en: 'Approve', hi: 'अनुमोदित करें' },
+  'reject': { en: 'Reject', hi: 'अस्वीकार करें' },
+  'signup_approved': { en: 'Signup approved', hi: 'साइनअप अनुमोदित' },
+  'signup_rejected': { en: 'Signup rejected', hi: 'साइनअप अस्वीकृत' },
+  'confirm_reject_signup': { en: 'Are you sure you want to reject this signup?', hi: 'क्या आप वाकई इस साइनअप को अस्वीकार करना चाहते हैं?' },
+  'tenants': { en: 'Tenants', hi: 'किराएदार' },
+  'view_tenant': { en: 'View Tenant', hi: 'किराएदार देखें' },
+  'add_tenant': { en: 'Add Tenant', hi: 'किराएदार जोड़ें' },
+  'edit_tenant': { en: 'Edit Tenant', hi: 'किराएदार संपादित करें' },
+  'no_tenants': { en: 'No tenants added', hi: 'कोई किराएदार नहीं जोड़ा गया' },
+  'tenant_added': { en: 'Tenant added', hi: 'किराएदार जोड़ा गया' },
+  'tenant_removed': { en: 'Tenant removed', hi: 'किराएदार हटाया गया' },
+  'house_owner': { en: 'House Owner', hi: 'मकान मालिक' },
+  'family_member': { en: 'Family Member', hi: 'परिवार का सदस्य' },
+  'tenant': { en: 'Tenant', hi: 'किराएदार' },
+  'signup_pending_msg': { en: 'Your signup is pending approval from Society management.', hi: 'आपका साइनअप सोसायटी प्रबंधन से अनुमोदन की प्रतीक्षा में है।' },
 };
 
 interface LanguageContextType {
