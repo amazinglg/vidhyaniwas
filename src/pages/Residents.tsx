@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Search, Phone, Mail, Home, Edit2, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Phone, Mail, Home, Edit2, Trash2, Users as UsersIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useResidents } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -14,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ResidentDetailModal from '@/components/ResidentDetailModal';
+import TenantModal from '@/components/TenantModal';
 
 const Residents = () => {
   const { data: residents = [], isLoading } = useResidents();
@@ -26,9 +28,33 @@ const Residents = () => {
   const [form, setForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
   const readOnly = !isAdmin;
 
-  // Resident detail modal
   const [selectedResident, setSelectedResident] = useState<any>(null);
+  const [tenantResident, setTenantResident] = useState<any>(null);
+  const [tenants, setTenants] = useState<Record<string, any[]>>({});
   const canViewDetails = !isResident && !isCoordinator;
+
+  // Fetch tenants for all owners
+  useEffect(() => {
+    const fetchTenants = async () => {
+      const { data } = await supabase.from('residents').select('*').eq('resident_type', 'tenant');
+      if (data) {
+        const grouped: Record<string, any[]> = {};
+        data.forEach((t: any) => {
+          if (t.owner_id) {
+            if (!grouped[t.owner_id]) grouped[t.owner_id] = [];
+            grouped[t.owner_id].push(t);
+          }
+        });
+        setTenants(grouped);
+      }
+    };
+    fetchTenants();
+
+    const channel = supabase.channel('tenants-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, () => { fetchTenants(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const filtered = residents.filter((r: any) =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -50,7 +76,7 @@ const Residents = () => {
 
   const handleSave = async () => {
     if (!form.name || !form.house_no || !form.mobile) { toast.error(t('please_fill_required')); return; }
-    const payload = { name: form.name, house_no: form.house_no, lane_no: form.lane_no, mobile: form.mobile, email: form.email || null, family_members: Number(form.family_members) };
+    const payload = { name: form.name, house_no: form.house_no, lane_no: form.lane_no, mobile: form.mobile, email: form.email || null, family_members: Number(form.family_members), resident_type: 'owner' as const };
 
     if (editingId) {
       const { error } = await supabase.from('residents').update(payload).eq('id', editingId);
@@ -150,6 +176,16 @@ const Residents = () => {
                 <TableCell><Badge variant={r.is_active ? 'default' : 'secondary'}>{r.is_active ? t('active') : t('inactive')}</Badge></TableCell>
                 {!readOnly && (
                   <TableCell className="text-right space-x-1">
+                    {tenants[r.id] && tenants[r.id].length > 0 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => setTenantResident(r)}>
+                            <UsersIcon className="h-4 w-4 text-primary" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('view_tenant')}</TooltipContent>
+                      </Tooltip>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Edit2 className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </TableCell>
@@ -160,11 +196,16 @@ const Residents = () => {
         </Table>
       </Card>
 
-      {/* Resident Detail Modal */}
       <ResidentDetailModal
         resident={selectedResident}
         open={!!selectedResident}
         onClose={() => setSelectedResident(null)}
+      />
+
+      <TenantModal
+        owner={tenantResident}
+        open={!!tenantResident}
+        onClose={() => setTenantResident(null)}
       />
     </div>
   );

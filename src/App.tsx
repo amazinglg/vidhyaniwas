@@ -22,9 +22,21 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading } = useAuth();
+  const { session, loading, isApproved } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
   if (!session) return <Navigate to="/auth" replace />;
+  if (!isApproved) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-6xl">⏳</div>
+          <h1 className="text-2xl font-bold">Signup Pending Approval</h1>
+          <p className="text-muted-foreground">Your account is pending approval from Society management. You will be able to login once approved.</p>
+          <button onClick={async () => { const { supabase } = await import('@/integrations/supabase/client'); await supabase.auth.signOut(); window.location.href = '/auth'; }} className="text-primary underline">Sign out</button>
+        </div>
+      </div>
+    );
+  }
   return <>{children}</>;
 };
 
