@@ -197,7 +197,6 @@ const translations: Record<string, Record<Lang, string>> = {
   'role_master_admin': { en: 'Master Administrator', hi: 'मास्टर व्यवस्थापक' },
   'role_president': { en: 'Society President', hi: 'सोसायटी अध्यक्ष' },
   'role_vice_president': { en: 'Society Vice President', hi: 'सोसायटी उपाध्यक्ष' },
-  'role_supervisor': { en: 'Society Supervisor', hi: 'सोसायटी पर्यवेक्षक' },
   'role_treasury_head': { en: 'Society Treasury Head', hi: 'सोसायटी कोषाध्यक्ष' },
   'role_secretary': { en: 'Society Secretary', hi: 'सोसायटी सचिव' },
   'role_coordinator': { en: 'Coordinator', hi: 'समन्वयक' },
