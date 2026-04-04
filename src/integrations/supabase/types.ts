@@ -254,6 +254,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_approved: boolean
           mobile: string | null
           resident_id: string | null
           updated_at: string
@@ -264,6 +265,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_approved?: boolean
           mobile?: string | null
           resident_id?: string | null
           updated_at?: string
@@ -274,6 +276,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_approved?: boolean
           mobile?: string | null
           resident_id?: string | null
           updated_at?: string
@@ -302,7 +305,9 @@ export type Database = {
           mobile: string
           move_in_date: string | null
           name: string
+          owner_id: string | null
           pending_role: string | null
+          resident_type: string
           updated_at: string
         }
         Insert: {
@@ -317,7 +322,9 @@ export type Database = {
           mobile: string
           move_in_date?: string | null
           name: string
+          owner_id?: string | null
           pending_role?: string | null
+          resident_type?: string
           updated_at?: string
         }
         Update: {
@@ -332,10 +339,20 @@ export type Database = {
           mobile?: string
           move_in_date?: string | null
           name?: string
+          owner_id?: string | null
           pending_role?: string | null
+          resident_type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "residents_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -420,7 +437,8 @@ export type Database = {
         | "master_admin"
         | "president"
         | "vice_president"
-        | "supervisor"
+        | "treasury_head"
+        | "secretary"
         | "coordinator"
         | "resident"
       expense_category:
@@ -568,7 +586,8 @@ export const Constants = {
         "master_admin",
         "president",
         "vice_president",
-        "supervisor",
+        "treasury_head",
+        "secretary",
         "coordinator",
         "resident",
       ],
