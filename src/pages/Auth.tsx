@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Phone, Lock, User, Mail } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building2, Phone, Lock, User, Mail, Home, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import buildingBg from '@/assets/building-bg.jpg';
@@ -14,13 +15,16 @@ const Auth = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loginForm, setLoginForm] = useState({ mobile: '', password: '' });
-  const [signupForm, setSignupForm] = useState({ email: '', password: '', fullName: '', mobile: '' });
+  const [signupForm, setSignupForm] = useState({ 
+    email: '', password: '', fullName: '', mobile: '', 
+    house_no: '', lane_no: '', resident_type: 'owner' 
+  });
+  const [ownerError, setOwnerError] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // Look up email by mobile number
     const { data: email, error: lookupError } = await supabase.rpc('get_email_by_mobile', { _mobile: loginForm.mobile });
     
     if (lookupError || !email) {
@@ -36,19 +40,83 @@ const Auth = () => {
     if (error) {
       toast.error(error.message);
     } else {
+      // Check approval status
+      const { data: session } = await supabase.auth.getSession();
+      if (session?.session?.user) {
+        const { data: profile } = await supabase.from('profiles').select('is_approved').eq('user_id', session.session.user.id).maybeSingle();
+        if (profile && !profile.is_approved) {
+          await supabase.auth.signOut();
+          toast.error('Your signup is pending approval from Society management. Please wait for approval.');
+          setLoading(false);
+          return;
+        }
+      }
       toast.success('Welcome back!');
       navigate('/');
     }
     setLoading(false);
   };
 
+  const validateOwnerExists = async () => {
+    if (signupForm.resident_type === 'owner') {
+      setOwnerError('');
+      return true;
+    }
+    // For member/tenant, check that an owner exists for this house
+    const { data: owners } = await supabase.from('residents').select('id')
+      .eq('house_no', signupForm.house_no)
+      .eq('lane_no', signupForm.lane_no)
+      .eq('resident_type', 'owner')
+      .eq('is_active', true);
+    
+    if (!owners || owners.length === 0) {
+      setOwnerError('No house owner found for this house number and lane. House owner must be registered first.');
+      return false;
+    }
+    setOwnerError('');
+    return true;
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signupForm.mobile) {
-      toast.error('Mobile number is required');
+    if (!signupForm.mobile || !signupForm.house_no || !signupForm.lane_no) {
+      toast.error('Please fill all required fields');
       return;
     }
+
     setLoading(true);
+
+    // Validate owner exists for members/tenants
+    const ownerValid = await validateOwnerExists();
+    if (!ownerValid) {
+      setLoading(false);
+      return;
+    }
+
+    // For members/tenants, find the owner_id
+    let ownerId: string | null = null;
+    if (signupForm.resident_type !== 'owner') {
+      const { data: owners } = await supabase.from('residents').select('id')
+        .eq('house_no', signupForm.house_no)
+        .eq('lane_no', signupForm.lane_no)
+        .eq('resident_type', 'owner')
+        .limit(1);
+      ownerId = owners?.[0]?.id || null;
+    }
+
+    // Check if owner already exists for this house (if signing up as owner)
+    if (signupForm.resident_type === 'owner') {
+      const { data: existingOwners } = await supabase.from('residents').select('id')
+        .eq('house_no', signupForm.house_no)
+        .eq('lane_no', signupForm.lane_no)
+        .eq('resident_type', 'owner');
+      if (existingOwners && existingOwners.length > 0) {
+        toast.error('A house owner already exists for this house. Please sign up as a member or tenant.');
+        setLoading(false);
+        return;
+      }
+    }
+
     const { error } = await supabase.auth.signUp({
       email: signupForm.email,
       password: signupForm.password,
@@ -56,46 +124,55 @@ const Auth = () => {
         data: {
           full_name: signupForm.fullName,
           mobile: signupForm.mobile,
+          house_no: signupForm.house_no,
+          lane_no: signupForm.lane_no,
+          resident_type: signupForm.resident_type,
+          owner_id: ownerId,
         },
         emailRedirectTo: window.location.origin,
       },
     });
+
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Account created! You can now sign in.');
-      navigate('/');
+      // Create resident record if not owner (owners are pre-created by admin)
+      // For members/tenants, create a linked record
+      if (signupForm.resident_type !== 'owner') {
+        // Don't create a new row in residents - just link to owner
+        // The profile will be linked via the assign_default_role trigger
+      }
+      toast.success('Account created! Your signup is pending approval from Society management.');
+      await supabase.auth.signOut();
     }
     setLoading(false);
   };
 
   return (
     <div className="min-h-screen flex relative overflow-hidden">
-      {/* Background Image */}
       <div className="absolute inset-0">
         <img src={buildingBg} alt="" className="w-full h-full object-cover" width={1920} height={1080} />
         <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-black/70" />
       </div>
 
-      {/* Auth Card */}
       <div className="relative z-10 flex items-center justify-center w-full p-4">
-        <Card className="w-full max-w-md p-8 glass border-white/20 shadow-2xl">
-          <div className="flex flex-col items-center mb-8">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl gradient-warm shadow-lg mb-4">
-              <Building2 className="h-8 w-8 text-primary-foreground" />
+        <Card className="w-full max-w-md p-6 sm:p-8 glass border-white/20 shadow-2xl">
+          <div className="flex flex-col items-center mb-6">
+            <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl gradient-warm shadow-lg mb-3">
+              <Building2 className="h-7 w-7 sm:h-8 sm:w-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-bold font-display text-foreground">Shri Vidhya Niwas</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">Shri Vidhya Niwas</h1>
             <p className="text-sm text-muted-foreground mt-1">Society Management System</p>
           </div>
 
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="login" className="font-semibold">Sign In</TabsTrigger>
               <TabsTrigger value="signup" className="font-semibold">Sign Up</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="grid gap-2">
                   <Label className="font-medium">Mobile Number</Label>
                   <div className="relative">
@@ -117,14 +194,47 @@ const Auth = () => {
             </TabsContent>
 
             <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
+              <form onSubmit={handleSignup} className="space-y-3">
                 <div className="grid gap-2">
-                  <Label className="font-medium">Full Name</Label>
+                  <Label className="font-medium">I am a *</Label>
+                  <Select value={signupForm.resident_type} onValueChange={(v) => { setSignupForm({ ...signupForm, resident_type: v }); setOwnerError(''); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">House Owner</SelectItem>
+                      <SelectItem value="member">Family Member</SelectItem>
+                      <SelectItem value="tenant">Tenant</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label className="font-medium">Full Name *</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input className="pl-10" value={signupForm.fullName} onChange={(e) => setSignupForm({ ...signupForm, fullName: e.target.value })} placeholder="Your full name" required />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label className="font-medium">House No. *</Label>
+                    <div className="relative">
+                      <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input className="pl-10" value={signupForm.house_no} onChange={(e) => setSignupForm({ ...signupForm, house_no: e.target.value })} placeholder="e.g. A-101" required />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className="font-medium">Lane No. *</Label>
+                    <Input value={signupForm.lane_no} onChange={(e) => setSignupForm({ ...signupForm, lane_no: e.target.value })} placeholder="e.g. 1" required />
+                  </div>
+                </div>
+                {signupForm.resident_type !== 'owner' && (
+                  <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span className="text-amber-700 dark:text-amber-300">Enter the correct House No. & Lane No. — you cannot change these later. House owner must be registered first.</span>
+                  </div>
+                )}
+                {ownerError && (
+                  <p className="text-xs text-destructive font-medium">{ownerError}</p>
+                )}
                 <div className="grid gap-2">
                   <Label className="font-medium">Mobile Number *</Label>
                   <div className="relative">
@@ -133,14 +243,14 @@ const Auth = () => {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label className="font-medium">Email</Label>
+                  <Label className="font-medium">Email *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input className="pl-10" type="email" value={signupForm.email} onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })} placeholder="your@email.com" required />
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label className="font-medium">Password</Label>
+                  <Label className="font-medium">Password *</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input className="pl-10" type="password" value={signupForm.password} onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })} placeholder="Min 6 characters" required minLength={6} />
@@ -150,7 +260,7 @@ const Auth = () => {
                   {loading ? 'Creating account...' : 'Create Account'}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
-                  Use your registered mobile number to auto-link your resident profile.
+                  Your signup will be reviewed by Society management before you can log in.
                 </p>
               </form>
             </TabsContent>
