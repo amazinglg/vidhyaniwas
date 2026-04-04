@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ROLE_LABELS } from '@/types/society';
-import { Building2, Users, KeyRound, Edit2, Trash2, Save } from 'lucide-react';
+import { Building2, Users, KeyRound, Edit2, Trash2, Save, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -29,6 +29,7 @@ const SocietySettings = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [editResident, setEditResident] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
+  const [pendingSignups, setPendingSignups] = useState<any[]>([]);
 
   const [editingSociety, setEditingSociety] = useState(false);
   const [societyForm, setSocietyForm] = useState({
@@ -46,11 +47,30 @@ const SocietySettings = () => {
     const { data: userRoles } = await supabase.from('user_roles').select('*');
     setUsers(profiles || []);
     setRoles(userRoles || []);
+    // Get pending signups
+    const pending = (profiles || []).filter((p: any) => !p.is_approved);
+    setPendingSignups(pending);
   };
 
   const getUserRole = (userId: string) => {
     const r = roles.find((r: any) => r.user_id === userId);
     return r?.role || 'No role';
+  };
+
+  const handleApproveUser = async (profileUserId: string) => {
+    const { error } = await supabase.from('profiles').update({ is_approved: true }).eq('user_id', profileUserId);
+    if (error) { toast.error(error.message); return; }
+    toast.success(t('signup_approved'));
+    fetchUsersAndRoles();
+  };
+
+  const handleRejectUser = async (profileUserId: string) => {
+    if (!confirm(t('confirm_reject_signup'))) return;
+    // Delete the user's profile and role (they won't be able to login)
+    await supabase.from('user_roles').delete().eq('user_id', profileUserId);
+    await supabase.from('profiles').delete().eq('user_id', profileUserId);
+    toast.success(t('signup_rejected'));
+    fetchUsersAndRoles();
   };
 
   const handleForceResetPassword = async (userId: string) => {
@@ -105,9 +125,15 @@ const SocietySettings = () => {
       </div>
 
       <Tabs defaultValue="society" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-2" />{t('society_info')}</TabsTrigger>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-2" />{t('manage_users')}</TabsTrigger>
+          <TabsTrigger value="approvals" className="relative">
+            <CheckCircle className="h-4 w-4 mr-2" />{t('pending_approvals')}
+            {pendingSignups.length > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">{pendingSignups.length}</span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="society" className="mt-6">
@@ -221,6 +247,48 @@ const SocietySettings = () => {
                 })}
               </TableBody>
             </Table>
+          </Card>
+        </TabsContent>
+
+        {/* Pending Approvals Tab */}
+        <TabsContent value="approvals" className="mt-6 space-y-4">
+          <Card className="overflow-x-auto">
+            {pendingSignups.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">{t('no_pending_approvals')}</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('name')}</TableHead>
+                    <TableHead>{t('mobile')}</TableHead>
+                    <TableHead>{t('role')}</TableHead>
+                    <TableHead className="text-right">{t('actions')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingSignups.map((p: any) => {
+                    const role = getUserRole(p.user_id);
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.full_name || '-'}</TableCell>
+                        <TableCell>{p.mobile || '-'}</TableCell>
+                        <TableCell><Badge variant="outline">{role}</Badge></TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button size="sm" variant="default" onClick={() => handleApproveUser(p.user_id)}>
+                              <CheckCircle className="h-4 w-4 mr-1" />{t('approve')}
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleRejectUser(p.user_id)}>
+                              <XCircle className="h-4 w-4 mr-1" />{t('reject')}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </Card>
         </TabsContent>
       </Tabs>

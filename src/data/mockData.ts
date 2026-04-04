@@ -4,7 +4,7 @@ export const mockResidents: Resident[] = [
   { id: '1', name: 'Labhansh Garg', houseNo: 'A-101', laneNo: '1', mobile: '9826016419', email: 'labhanshgarg.3@gmail.com', familyMembers: 4, role: 'master_admin', moveInDate: '2020-01-15', isActive: true },
   { id: '2', name: 'Rajesh Sharma', houseNo: 'A-102', laneNo: '1', mobile: '9876543210', familyMembers: 3, role: 'president', moveInDate: '2019-06-01', isActive: true },
   { id: '3', name: 'Priya Patel', houseNo: 'A-103', laneNo: '1', mobile: '9876543211', familyMembers: 5, role: 'vice_president', moveInDate: '2018-03-20', isActive: true },
-  { id: '4', name: 'Amit Verma', houseNo: 'B-201', laneNo: '2', mobile: '9876543212', familyMembers: 2, role: 'supervisor', moveInDate: '2021-08-10', isActive: true },
+  { id: '4', name: 'Amit Verma', houseNo: 'B-201', laneNo: '2', mobile: '9876543212', familyMembers: 2, role: 'resident', moveInDate: '2021-08-10', isActive: true },
   { id: '5', name: 'Sunita Devi', houseNo: 'B-202', laneNo: '2', mobile: '9876543213', familyMembers: 4, role: 'resident', moveInDate: '2020-11-05', isActive: true },
   { id: '6', name: 'Vikram Singh', houseNo: 'B-203', laneNo: '2', mobile: '9876543214', familyMembers: 3, role: 'coordinator', moveInDate: '2019-01-15', isActive: true },
   { id: '7', name: 'Neha Gupta', houseNo: 'C-301', laneNo: '3', mobile: '9876543215', familyMembers: 2, role: 'resident', moveInDate: '2022-04-01', isActive: true },

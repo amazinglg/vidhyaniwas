@@ -5,7 +5,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
-const ADMIN_ROLES: string[] = ['master_admin', 'president', 'vice_president', 'supervisor', 'treasury_head', 'secretary'];
+const ADMIN_ROLES: string[] = ['master_admin', 'president', 'vice_president', 'treasury_head', 'secretary'];
 
 interface AuthContextType {
   session: Session | null;
@@ -19,6 +19,7 @@ interface AuthContextType {
   isResident: boolean;
   profileId: string | null;
   residentId: string | null;
+  isApproved: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   isResident: false,
   profileId: null,
   residentId: null,
+  isApproved: false,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -44,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [residentId, setResidentId] = useState<string | null>(null);
+  const [isApproved, setIsApproved] = useState(false);
 
   const fetchUserRole = async (userId: string) => {
     const { data } = await supabase
@@ -59,12 +62,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, resident_id')
+      .select('id, resident_id, is_approved')
       .eq('user_id', userId)
       .maybeSingle();
     if (data) {
       setProfileId(data.id);
       setResidentId(data.resident_id);
+      setIsApproved(data.is_approved ?? true);
     }
   };
 
@@ -82,6 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserRole(null);
           setProfileId(null);
           setResidentId(null);
+          setIsApproved(false);
         }
         setLoading(false);
       }
@@ -107,6 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserRole(null);
     setProfileId(null);
     setResidentId(null);
+    setIsApproved(false);
   };
 
   const isMasterAdmin = userRole === 'master_admin';
@@ -115,7 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isResident = userRole === 'resident' || (!userRole && !!session);
 
   return (
-    <AuthContext.Provider value={{ session, user, userRole, loading, signOut, isMasterAdmin, isAdmin, isCoordinator, isResident, profileId, residentId }}>
+    <AuthContext.Provider value={{ session, user, userRole, loading, signOut, isMasterAdmin, isAdmin, isCoordinator, isResident, profileId, residentId, isApproved }}>
       {children}
     </AuthContext.Provider>
   );
