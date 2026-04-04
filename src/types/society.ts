@@ -21,7 +21,7 @@ export interface Resident {
   role: UserRole;
   moveInDate?: string;
   isActive: boolean;
-  resident_type: 'owner' | 'member' | 'tenant';
+  resident_type?: 'owner' | 'member' | 'tenant';
   owner_id?: string;
 }
 
