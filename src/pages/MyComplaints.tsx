@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, MessageSquareWarning } from 'lucide-react';
+import { Plus, MessageSquareWarning, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ const statusColors: Record<string, string> = {
   in_progress: 'gradient-warm text-primary-foreground',
   resolved: 'bg-success text-success-foreground',
   closed: 'bg-muted text-muted-foreground',
+  withdrawn: 'bg-muted text-muted-foreground',
 };
 
 const MyComplaints = () => {
@@ -69,6 +70,14 @@ const MyComplaints = () => {
     toast.success(t('complaint_submitted'));
   };
 
+  const handleWithdraw = async (complaintId: string) => {
+    if (!confirm(t('confirm_withdraw_complaint'))) return;
+    const { error } = await supabase.from('complaints').update({ status: 'withdrawn' }).eq('id', complaintId);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['my_complaints'] });
+    toast.success(t('complaint_withdrawn'));
+  };
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
@@ -115,7 +124,14 @@ const MyComplaints = () => {
                   <p className="text-sm">{c.admin_comment}</p>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground mt-2">{new Date(c.created_at).toLocaleDateString()}</p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
+                {(c.status === 'open' || c.status === 'in_progress') && (
+                  <Button variant="outline" size="sm" onClick={() => handleWithdraw(c.id)} className="text-destructive border-destructive/30">
+                    <XCircle className="h-3 w-3 mr-1" />{t('withdraw')}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </Card>

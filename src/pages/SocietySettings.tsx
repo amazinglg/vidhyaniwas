@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ROLE_LABELS } from '@/types/society';
-import { Building2, Users, KeyRound, Edit2, Trash2, Save, CheckCircle, XCircle } from 'lucide-react';
+import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -29,7 +29,10 @@ const SocietySettings = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [editResident, setEditResident] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
-  const [pendingSignups, setPendingSignups] = useState<any[]>([]);
+
+  // Add user dialog
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [addUserForm, setAddUserForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', resident_type: 'owner' });
 
   const [editingSociety, setEditingSociety] = useState(false);
   const [societyForm, setSocietyForm] = useState({
@@ -47,30 +50,19 @@ const SocietySettings = () => {
     const { data: userRoles } = await supabase.from('user_roles').select('*');
     setUsers(profiles || []);
     setRoles(userRoles || []);
-    // Get pending signups
-    const pending = (profiles || []).filter((p: any) => !p.is_approved);
-    setPendingSignups(pending);
   };
+
+  // Realtime sync for profiles
+  useEffect(() => {
+    const channel = supabase.channel('settings-profiles-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { fetchUsersAndRoles(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const getUserRole = (userId: string) => {
     const r = roles.find((r: any) => r.user_id === userId);
     return r?.role || 'No role';
-  };
-
-  const handleApproveUser = async (profileUserId: string) => {
-    const { error } = await supabase.from('profiles').update({ is_approved: true }).eq('user_id', profileUserId);
-    if (error) { toast.error(error.message); return; }
-    toast.success(t('signup_approved'));
-    fetchUsersAndRoles();
-  };
-
-  const handleRejectUser = async (profileUserId: string) => {
-    if (!confirm(t('confirm_reject_signup'))) return;
-    // Delete the user's profile and role (they won't be able to login)
-    await supabase.from('user_roles').delete().eq('user_id', profileUserId);
-    await supabase.from('profiles').delete().eq('user_id', profileUserId);
-    toast.success(t('signup_rejected'));
-    fetchUsersAndRoles();
   };
 
   const handleForceResetPassword = async (userId: string) => {
@@ -106,6 +98,43 @@ const SocietySettings = () => {
     toast.success(t('resident_removed'));
   };
 
+  const handleAddUser = async () => {
+    if (!addUserForm.name || !addUserForm.mobile || !addUserForm.house_no) {
+      toast.error(t('please_fill_required'));
+      return;
+    }
+
+    let ownerId: string | null = null;
+    if (addUserForm.resident_type === 'member' || addUserForm.resident_type === 'tenant') {
+      const { data: owners } = await supabase.from('residents').select('id')
+        .eq('house_no', addUserForm.house_no)
+        .eq('lane_no', addUserForm.lane_no)
+        .eq('resident_type', 'owner')
+        .limit(1);
+      if (!owners || owners.length === 0) {
+        toast.error('No house owner found for this house. Register an owner first.');
+        return;
+      }
+      ownerId = owners[0].id;
+    }
+
+    const { error } = await supabase.from('residents').insert({
+      name: addUserForm.name,
+      house_no: addUserForm.house_no,
+      lane_no: addUserForm.lane_no,
+      mobile: addUserForm.mobile,
+      email: addUserForm.email || null,
+      resident_type: addUserForm.resident_type,
+      owner_id: ownerId,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success('User added');
+    queryClient.invalidateQueries({ queryKey: ['residents'] });
+    queryClient.invalidateQueries({ queryKey: ['all_residents'] });
+    setAddUserOpen(false);
+    setAddUserForm({ name: '', house_no: '', lane_no: '', mobile: '', email: '', resident_type: 'owner' });
+  };
+
   const handleSaveSocietyInfo = () => {
     localStorage.setItem('society_info', JSON.stringify(societyForm));
     setEditingSociety(false);
@@ -125,15 +154,9 @@ const SocietySettings = () => {
       </div>
 
       <Tabs defaultValue="society" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-2" />{t('society_info')}</TabsTrigger>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-2" />{t('manage_users')}</TabsTrigger>
-          <TabsTrigger value="approvals" className="relative">
-            <CheckCircle className="h-4 w-4 mr-2" />{t('pending_approvals')}
-            {pendingSignups.length > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">{pendingSignups.length}</span>
-            )}
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="society" className="mt-6">
@@ -180,6 +203,11 @@ const SocietySettings = () => {
         </TabsContent>
 
         <TabsContent value="users" className="mt-6 space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => setAddUserOpen(true)} className="gradient-warm text-primary-foreground">
+              <Plus className="h-4 w-4 mr-2" />{t('add_user')}
+            </Button>
+          </div>
           <Card className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -249,48 +277,6 @@ const SocietySettings = () => {
             </Table>
           </Card>
         </TabsContent>
-
-        {/* Pending Approvals Tab */}
-        <TabsContent value="approvals" className="mt-6 space-y-4">
-          <Card className="overflow-x-auto">
-            {pendingSignups.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">{t('no_pending_approvals')}</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('name')}</TableHead>
-                    <TableHead>{t('mobile')}</TableHead>
-                    <TableHead>{t('role')}</TableHead>
-                    <TableHead className="text-right">{t('actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingSignups.map((p: any) => {
-                    const role = getUserRole(p.user_id);
-                    return (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.full_name || '-'}</TableCell>
-                        <TableCell>{p.mobile || '-'}</TableCell>
-                        <TableCell><Badge variant="outline">{role}</Badge></TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button size="sm" variant="default" onClick={() => handleApproveUser(p.user_id)}>
-                              <CheckCircle className="h-4 w-4 mr-1" />{t('approve')}
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleRejectUser(p.user_id)}>
-                              <XCircle className="h-4 w-4 mr-1" />{t('reject')}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Edit Resident Dialog */}
@@ -306,6 +292,34 @@ const SocietySettings = () => {
             <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
             <div className="grid gap-2"><Label>{t('email')}</Label><Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
             <Button onClick={handleSaveResident} className="w-full gradient-warm text-primary-foreground">{t('save_changes')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="font-display">{t('add_user')}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>{t('resident_type')}</Label>
+              <Select value={addUserForm.resident_type} onValueChange={(v) => setAddUserForm({ ...addUserForm, resident_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="owner">{t('house_owner')}</SelectItem>
+                  <SelectItem value="member">{t('family_member')}</SelectItem>
+                  <SelectItem value="tenant">{t('tenant')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2"><Label>{t('full_name')} *</Label><Input value={addUserForm.name} onChange={(e) => setAddUserForm({ ...addUserForm, name: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2"><Label>{t('house_no')} *</Label><Input value={addUserForm.house_no} onChange={(e) => setAddUserForm({ ...addUserForm, house_no: e.target.value })} /></div>
+              <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={addUserForm.lane_no} onChange={(e) => setAddUserForm({ ...addUserForm, lane_no: e.target.value })} /></div>
+            </div>
+            <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={addUserForm.mobile} onChange={(e) => setAddUserForm({ ...addUserForm, mobile: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>{t('email')}</Label><Input value={addUserForm.email} onChange={(e) => setAddUserForm({ ...addUserForm, email: e.target.value })} /></div>
+            <Button onClick={handleAddUser} className="w-full gradient-warm text-primary-foreground">{t('add_user')}</Button>
           </div>
         </DialogContent>
       </Dialog>

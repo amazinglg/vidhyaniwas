@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2 } from 'lucide-react';
+import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 const statusIcon: Record<string, any> = { paid: CheckCircle2, partial: Clock, pending: Clock, overdue: AlertTriangle };
@@ -22,6 +23,7 @@ const VEHICLE_TYPES = ['Car', 'Bike', 'Scooter', 'Bicycle', 'Auto', 'Other'];
 const MyProfile = () => {
   const { user, residentId } = useAuth();
   const { t } = useLanguage();
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<any>(null);
   const [resident, setResident] = useState<any>(null);
   const [editing, setEditing] = useState(false);
@@ -40,6 +42,12 @@ const MyProfile = () => {
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [vehicleForm, setVehicleForm] = useState({ vehicle_type: 'Car', registration_no: '', make_model: '', color: '' });
 
+  // Tenants (for owners)
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [tenantDialog, setTenantDialog] = useState(false);
+  const [editingTenantId, setEditingTenantId] = useState<string | null>(null);
+  const [tenantForm, setTenantForm] = useState({ name: '', mobile: '', email: '' });
+
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
@@ -47,7 +55,7 @@ const MyProfile = () => {
       if (profileData) {
         setProfile(profileData);
         setResident(profileData.residents);
-        setForm({ full_name: profileData.full_name || '', mobile: profileData.mobile || '', email: user.email || '' });
+        setForm({ full_name: profileData.full_name || '', mobile: profileData.mobile || '', email: profileData.residents?.email || user.email || '' });
       }
     };
     fetchData();
@@ -64,7 +72,7 @@ const MyProfile = () => {
     return () => { supabase.removeChannel(channel); };
   }, [residentId]);
 
-  // Fetch family & vehicles
+  // Fetch family, vehicles & tenants
   const fetchFamily = async () => {
     if (!residentId) return;
     const { data } = await supabase.from('family_member_details').select('*').eq('resident_id', residentId).order('created_at');
@@ -75,13 +83,22 @@ const MyProfile = () => {
     const { data } = await supabase.from('vehicles').select('*').eq('resident_id', residentId).order('created_at');
     setVehicles(data || []);
   };
+  const fetchTenants = async () => {
+    if (!residentId) return;
+    const { data } = await supabase.from('residents').select('*').eq('owner_id', residentId).eq('resident_type', 'tenant');
+    setTenants(data || []);
+  };
 
-  useEffect(() => { fetchFamily(); fetchVehicles(); }, [residentId]);
+  useEffect(() => { fetchFamily(); fetchVehicles(); fetchTenants(); }, [residentId]);
 
   const handleSave = async () => {
     if (!user) return;
     const { error } = await supabase.from('profiles').update({ full_name: form.full_name, mobile: form.mobile }).eq('user_id', user.id);
     if (error) { toast.error(error.message); return; }
+    // Update email on resident record if exists
+    if (residentId && form.email) {
+      await supabase.from('residents').update({ email: form.email }).eq('id', residentId);
+    }
     toast.success(t('profile_updated'));
     setEditing(false);
   };
@@ -132,6 +149,39 @@ const MyProfile = () => {
     fetchVehicles();
   };
 
+  // Tenant CRUD (owner only)
+  const isOwner = resident?.resident_type === 'owner';
+  const openAddTenant = () => { setEditingTenantId(null); setTenantForm({ name: '', mobile: '', email: '' }); setTenantDialog(true); };
+  const openEditTenant = (t: any) => { setEditingTenantId(t.id); setTenantForm({ name: t.name, mobile: t.mobile, email: t.email || '' }); setTenantDialog(true); };
+  const handleSaveTenant = async () => {
+    if (!tenantForm.name || !tenantForm.mobile || !residentId || !resident) { toast.error(t('please_fill_required')); return; }
+    // Only allow one tenant
+    if (!editingTenantId && tenants.length >= 1) { toast.error('Only one tenant per house is allowed'); return; }
+    const payload = {
+      name: tenantForm.name, mobile: tenantForm.mobile, email: tenantForm.email || null,
+      house_no: resident.house_no, lane_no: resident.lane_no,
+      resident_type: 'tenant' as const, owner_id: residentId,
+    };
+    if (editingTenantId) {
+      const { error } = await supabase.from('residents').update(payload).eq('id', editingTenantId);
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { error } = await supabase.from('residents').insert(payload);
+      if (error) { toast.error(error.message); return; }
+    }
+    toast.success(editingTenantId ? t('update') : t('tenant_added'));
+    setTenantDialog(false);
+    fetchTenants();
+    queryClient.invalidateQueries({ queryKey: ['residents'] });
+  };
+  const handleDeleteTenant = async (id: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    await supabase.from('residents').delete().eq('id', id);
+    fetchTenants();
+    queryClient.invalidateQueries({ queryKey: ['residents'] });
+    toast.success(t('tenant_removed'));
+  };
+
   const totalPaid = maintenance.reduce((s, m) => s + Number(m.amount || 0), 0);
   const totalDue = maintenance.reduce((s, m) => s + Number(m.due_amount || 0), 0);
 
@@ -157,6 +207,7 @@ const MyProfile = () => {
           <div className="grid gap-4">
             <div className="grid gap-2"><Label>{t('full_name')}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
             <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>{t('email')}</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div className="flex gap-2">
               <Button onClick={handleSave} className="gradient-warm text-primary-foreground"><Save className="h-4 w-4 mr-2" />{t('save')}</Button>
               <Button variant="outline" onClick={() => setEditing(false)}>{t('cancel')}</Button>
@@ -178,6 +229,39 @@ const MyProfile = () => {
           </div>
         )}
       </Card>
+
+      {/* Tenant Management (owners only) */}
+      {residentId && isOwner && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><UsersRound className="h-5 w-5 text-primary-foreground" /></div>
+              <div><h3 className="text-lg font-bold font-display">{t('tenants')}</h3><p className="text-sm text-muted-foreground">{t('manage_tenant_info')}</p></div>
+            </div>
+            {tenants.length === 0 && <Button size="sm" onClick={openAddTenant}><Plus className="h-4 w-4 mr-1" />{t('add_tenant')}</Button>}
+          </div>
+          {tenants.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">{t('no_tenants')}</p>
+          ) : (
+            <div className="space-y-2">
+              {tenants.map(tn => (
+                <div key={tn.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div>
+                    <span className="font-medium">{tn.name}</span>
+                    <Badge variant="outline" className="ml-2 text-xs">{t('tenant')}</Badge>
+                    <span className="text-muted-foreground text-sm ml-2">{tn.mobile}</span>
+                    {tn.email && <span className="text-muted-foreground text-sm ml-2">• {tn.email}</span>}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => openEditTenant(tn)}><Edit2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteTenant(tn.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Family Members */}
       {residentId && (
@@ -353,6 +437,19 @@ const MyProfile = () => {
               <div className="grid gap-2"><Label>{t('color')}</Label><Input value={vehicleForm.color} onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })} /></div>
             </div>
             <Button onClick={handleSaveVehicle} className="w-full">{editingVehicleId ? t('update') : t('add')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tenant Dialog */}
+      <Dialog open={tenantDialog} onOpenChange={setTenantDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editingTenantId ? t('edit_tenant') : t('add_tenant')}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2"><Label>{t('name')} *</Label><Input value={tenantForm.name} onChange={(e) => setTenantForm({ ...tenantForm, name: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={tenantForm.mobile} onChange={(e) => setTenantForm({ ...tenantForm, mobile: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>{t('email')}</Label><Input type="email" value={tenantForm.email} onChange={(e) => setTenantForm({ ...tenantForm, email: e.target.value })} /></div>
+            <Button onClick={handleSaveTenant} className="w-full gradient-warm text-primary-foreground">{editingTenantId ? t('update') : t('add_tenant')}</Button>
           </div>
         </DialogContent>
       </Dialog>
