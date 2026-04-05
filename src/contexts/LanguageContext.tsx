@@ -267,6 +267,23 @@ const translations: Record<string, Record<Lang, string>> = {
   'family_member': { en: 'Family Member', hi: 'परिवार का सदस्य' },
   'tenant': { en: 'Tenant', hi: 'किराएदार' },
   'signup_pending_msg': { en: 'Your signup is pending approval from Society management.', hi: 'आपका साइनअप सोसायटी प्रबंधन से अनुमोदन की प्रतीक्षा में है।' },
+
+  // New keys
+  'pending_signups': { en: 'Pending Signups', hi: 'लंबित साइनअप' },
+  'review_pending_signups': { en: 'Review and approve new user signups', hi: 'नए उपयोगकर्ता साइनअप की समीक्षा और अनुमोदन करें' },
+  'withdraw': { en: 'Withdraw', hi: 'वापस लें' },
+  'confirm_withdraw_complaint': { en: 'Are you sure you want to withdraw this complaint?', hi: 'क्या आप वाकई इस शिकायत को वापस लेना चाहते हैं?' },
+  'complaint_withdrawn': { en: 'Complaint withdrawn', hi: 'शिकायत वापस ली गई' },
+  'withdrawn': { en: 'Withdrawn', hi: 'वापस लिया गया' },
+  'add_user': { en: 'Add User', hi: 'उपयोगकर्ता जोड़ें' },
+  'resident_type': { en: 'Resident Type', hi: 'निवासी प्रकार' },
+  'society_mgmt_desc': { en: 'View society management committee members', hi: 'सोसायटी प्रबंधन समिति के सदस्यों को देखें' },
+  'no_mgmt_members': { en: 'No management members added yet', hi: 'अभी तक कोई प्रबंधन सदस्य नहीं जोड़ा गया' },
+  'role_title': { en: 'Role / Title', hi: 'भूमिका / पद' },
+  'photo_url': { en: 'Photo URL', hi: 'फोटो URL' },
+  'display_order': { en: 'Display Order', hi: 'प्रदर्शन क्रम' },
+  'manage_tenant_info': { en: 'Add and manage tenant for your house', hi: 'अपने घर के लिए किराएदार जोड़ें और प्रबंधित करें' },
+  'month': { en: 'Month', hi: 'महीना' },
 };
 
 interface LanguageContextType {

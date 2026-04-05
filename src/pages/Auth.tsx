@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Phone, Lock, User, Mail, Home, AlertTriangle } from 'lucide-react';
+import { Building2, Phone, Lock, User, Home, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import buildingBg from '@/assets/building-bg.jpg';
@@ -16,7 +16,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [loginForm, setLoginForm] = useState({ mobile: '', password: '' });
   const [signupForm, setSignupForm] = useState({ 
-    email: '', password: '', fullName: '', mobile: '', 
+    password: '', fullName: '', mobile: '', 
     house_no: '', lane_no: '', resident_type: 'owner' 
   });
   const [ownerError, setOwnerError] = useState('');
@@ -40,7 +40,6 @@ const Auth = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      // Check approval status
       const { data: session } = await supabase.auth.getSession();
       if (session?.session?.user) {
         const { data: profile } = await supabase.from('profiles').select('is_approved').eq('user_id', session.session.user.id).maybeSingle();
@@ -62,7 +61,6 @@ const Auth = () => {
       setOwnerError('');
       return true;
     }
-    // For member/tenant, check that an owner exists for this house
     const { data: owners } = await supabase.from('residents').select('id')
       .eq('house_no', signupForm.house_no)
       .eq('lane_no', signupForm.lane_no)
@@ -86,14 +84,9 @@ const Auth = () => {
 
     setLoading(true);
 
-    // Validate owner exists for members/tenants
     const ownerValid = await validateOwnerExists();
-    if (!ownerValid) {
-      setLoading(false);
-      return;
-    }
+    if (!ownerValid) { setLoading(false); return; }
 
-    // For members/tenants, find the owner_id
     let ownerId: string | null = null;
     if (signupForm.resident_type !== 'owner') {
       const { data: owners } = await supabase.from('residents').select('id')
@@ -104,7 +97,6 @@ const Auth = () => {
       ownerId = owners?.[0]?.id || null;
     }
 
-    // Check if owner already exists for this house (if signing up as owner)
     if (signupForm.resident_type === 'owner') {
       const { data: existingOwners } = await supabase.from('residents').select('id')
         .eq('house_no', signupForm.house_no)
@@ -117,8 +109,11 @@ const Auth = () => {
       }
     }
 
+    // Auto-generate email from mobile
+    const autoEmail = `${signupForm.mobile}@society.local`;
+
     const { error } = await supabase.auth.signUp({
-      email: signupForm.email,
+      email: autoEmail,
       password: signupForm.password,
       options: {
         data: {
@@ -136,12 +131,6 @@ const Auth = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      // Create resident record if not owner (owners are pre-created by admin)
-      // For members/tenants, create a linked record
-      if (signupForm.resident_type !== 'owner') {
-        // Don't create a new row in residents - just link to owner
-        // The profile will be linked via the assign_default_role trigger
-      }
       toast.success('Account created! Your signup is pending approval from Society management.');
       await supabase.auth.signOut();
     }
@@ -240,13 +229,6 @@ const Auth = () => {
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input className="pl-10" value={signupForm.mobile} onChange={(e) => setSignupForm({ ...signupForm, mobile: e.target.value })} placeholder="10-digit mobile" required />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label className="font-medium">Email *</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input className="pl-10" type="email" value={signupForm.email} onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })} placeholder="your@email.com" required />
                   </div>
                 </div>
                 <div className="grid gap-2">

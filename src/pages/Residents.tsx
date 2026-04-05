@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useResidents } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +26,7 @@ const Residents = () => {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
+  const [form, setForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1', resident_type: 'owner' });
   const readOnly = !isAdmin;
 
   const [selectedResident, setSelectedResident] = useState<any>(null);
@@ -33,7 +34,6 @@ const Residents = () => {
   const [tenants, setTenants] = useState<Record<string, any[]>>({});
   const canViewDetails = !isResident && !isCoordinator;
 
-  // Fetch tenants for all owners
   useEffect(() => {
     const fetchTenants = async () => {
       const { data } = await supabase.from('residents').select('*').eq('resident_type', 'tenant');
@@ -49,7 +49,6 @@ const Residents = () => {
       }
     };
     fetchTenants();
-
     const channel = supabase.channel('tenants-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, () => { fetchTenants(); })
       .subscribe();
@@ -64,19 +63,37 @@ const Residents = () => {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
+    setForm({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1', resident_type: 'owner' });
     setDialogOpen(true);
   };
 
   const openEdit = (r: any) => {
     setEditingId(r.id);
-    setForm({ name: r.name, house_no: r.house_no, lane_no: r.lane_no, mobile: r.mobile, email: r.email || '', family_members: String(r.family_members || 1) });
+    setForm({ name: r.name, house_no: r.house_no, lane_no: r.lane_no, mobile: r.mobile, email: r.email || '', family_members: String(r.family_members || 1), resident_type: r.resident_type || 'owner' });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.name || !form.house_no || !form.mobile) { toast.error(t('please_fill_required')); return; }
-    const payload = { name: form.name, house_no: form.house_no, lane_no: form.lane_no, mobile: form.mobile, email: form.email || null, family_members: Number(form.family_members), resident_type: 'owner' as const };
+
+    let ownerId: string | null = null;
+    if (form.resident_type === 'member' || form.resident_type === 'tenant') {
+      const { data: owners } = await supabase.from('residents').select('id')
+        .eq('house_no', form.house_no).eq('lane_no', form.lane_no).eq('resident_type', 'owner').limit(1);
+      if (!owners || owners.length === 0) {
+        toast.error('No house owner found for this house. Register an owner first.');
+        return;
+      }
+      ownerId = owners[0].id;
+    }
+
+    const payload = {
+      name: form.name, house_no: form.house_no, lane_no: form.lane_no,
+      mobile: form.mobile, email: form.email || null,
+      family_members: Number(form.family_members),
+      resident_type: form.resident_type,
+      owner_id: ownerId,
+    };
 
     if (editingId) {
       const { error } = await supabase.from('residents').update(payload).eq('id', editingId);
@@ -88,6 +105,7 @@ const Residents = () => {
       toast.success('Resident added');
     }
     queryClient.invalidateQueries({ queryKey: ['residents'] });
+    queryClient.invalidateQueries({ queryKey: ['all_residents'] });
     setDialogOpen(false);
   };
 
@@ -112,6 +130,17 @@ const Residents = () => {
             <DialogContent className="max-w-md">
               <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit_resident') : t('add_resident')}</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>{t('resident_type')}</Label>
+                  <Select value={form.resident_type} onValueChange={(v) => setForm({ ...form, resident_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">{t('house_owner')}</SelectItem>
+                      <SelectItem value="member">{t('family_member')}</SelectItem>
+                      <SelectItem value="tenant">{t('tenant')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid gap-2"><Label>{t('full_name')} *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2"><Label>{t('house_no')} *</Label><Input value={form.house_no} onChange={(e) => setForm({ ...form, house_no: e.target.value })} placeholder="e.g. A-101" /></div>

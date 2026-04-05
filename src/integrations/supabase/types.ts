@@ -354,6 +354,36 @@ export type Database = {
           },
         ]
       }
+      society_management: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+          photo_url: string | null
+          role_title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          name: string
+          photo_url?: string | null
+          role_title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          photo_url?: string | null
+          role_title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
