@@ -14,6 +14,8 @@ import {
   UserCircle,
   Menu,
   X,
+  Clock,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +38,8 @@ const AppSidebar = () => {
       { label: t('expenses'), icon: Receipt, path: '/expenses' },
       { label: t('notices_short'), icon: Megaphone, path: '/notices' },
       { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
+      { label: t('society_management'), icon: Shield, path: '/society-management' },
+      { label: t('pending_signups'), icon: Clock, path: '/pending-signups' },
     );
     if (isMasterAdmin) {
       navItems.push({ label: t('settings'), icon: Settings, path: '/settings' });
@@ -47,6 +51,7 @@ const AppSidebar = () => {
       { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
       { label: t('expenses'), icon: Receipt, path: '/expenses' },
       { label: t('notices_short'), icon: Megaphone, path: '/notices' },
+      { label: t('society_management'), icon: Shield, path: '/society-management' },
       { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
       { label: t('my_complaints'), icon: MessageSquareWarning, path: '/my-complaints' },
     );
@@ -66,7 +71,6 @@ const AppSidebar = () => {
             <p className="text-xs text-sidebar-muted truncate">{t('society_management')}</p>
           </div>
         )}
-        {/* Close button for mobile */}
         <button onClick={() => setMobileOpen(false)} className="md:hidden text-sidebar-foreground/50 hover:text-sidebar-foreground ml-auto">
           <X className="h-5 w-5" />
         </button>
@@ -106,7 +110,6 @@ const AppSidebar = () => {
 
   return (
     <>
-      {/* Mobile hamburger button */}
       <button
         onClick={() => setMobileOpen(true)}
         className="fixed top-4 left-4 z-50 md:hidden flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar text-sidebar-foreground shadow-lg"
@@ -114,12 +117,10 @@ const AppSidebar = () => {
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Mobile sidebar */}
       <aside
         className={cn(
           'fixed left-0 top-0 z-50 h-screen bg-sidebar text-sidebar-foreground transition-transform duration-300 flex flex-col w-64 md:hidden',
@@ -129,7 +130,6 @@ const AppSidebar = () => {
         {sidebarContent}
       </aside>
 
-      {/* Desktop sidebar */}
       <aside
         className={cn(
           'fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 flex-col hidden md:flex',

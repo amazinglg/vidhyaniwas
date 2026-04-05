@@ -16,6 +16,8 @@ import SocietySettings from "@/pages/SocietySettings";
 import MyProfile from "@/pages/MyProfile";
 import MyComplaints from "@/pages/MyComplaints";
 import ChangePassword from "@/pages/ChangePassword";
+import PendingSignups from "@/pages/PendingSignups";
+import SocietyManagement from "@/pages/SocietyManagement";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -92,6 +94,8 @@ const App = () => (
                       <Route path="/my-profile" element={<MyProfile />} />
                       <Route path="/my-complaints" element={<MyComplaints />} />
                       <Route path="/change-password" element={<ChangePassword />} />
+                      <Route path="/pending-signups" element={<AdminRoute><PendingSignups /></AdminRoute>} />
+                      <Route path="/society-management" element={<SocietyManagement />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>
