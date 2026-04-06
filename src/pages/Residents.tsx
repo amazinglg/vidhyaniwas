@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Home, Edit2, Trash2, Users as UsersIcon } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Home, Edit2, Trash2, Users as UsersIcon, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useResidents } from '@/hooks/useSocietyData';
+import { useAllResidents } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +19,7 @@ import ResidentDetailModal from '@/components/ResidentDetailModal';
 import TenantModal from '@/components/TenantModal';
 
 const Residents = () => {
-  const { data: residents = [], isLoading } = useResidents();
+  const { data: allResidents = [], isLoading } = useAllResidents();
   const { isAdmin, isResident, isCoordinator } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
@@ -31,31 +31,30 @@ const Residents = () => {
 
   const [selectedResident, setSelectedResident] = useState<any>(null);
   const [tenantResident, setTenantResident] = useState<any>(null);
-  const [tenants, setTenants] = useState<Record<string, any[]>>({});
-  const canViewDetails = !isResident && !isCoordinator;
+  const canViewDetails = isAdmin || isCoordinator;
 
+  // Filter to show owners only in main list
+  const owners = allResidents.filter((r: any) => r.resident_type === 'owner');
+  // Build tenant map
+  const tenants: Record<string, any[]> = {};
+  allResidents.filter((r: any) => r.resident_type === 'tenant').forEach((t: any) => {
+    if (t.owner_id) {
+      if (!tenants[t.owner_id]) tenants[t.owner_id] = [];
+      tenants[t.owner_id].push(t);
+    }
+  });
+
+  // Realtime sync
   useEffect(() => {
-    const fetchTenants = async () => {
-      const { data } = await supabase.from('residents').select('*').eq('resident_type', 'tenant');
-      if (data) {
-        const grouped: Record<string, any[]> = {};
-        data.forEach((t: any) => {
-          if (t.owner_id) {
-            if (!grouped[t.owner_id]) grouped[t.owner_id] = [];
-            grouped[t.owner_id].push(t);
-          }
-        });
-        setTenants(grouped);
-      }
-    };
-    fetchTenants();
-    const channel = supabase.channel('tenants-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, () => { fetchTenants(); })
+    const channel = supabase.channel('residents-page-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['all_residents'] });
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [queryClient]);
 
-  const filtered = residents.filter((r: any) =>
+  const filtered = owners.filter((r: any) =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
     r.house_no.toLowerCase().includes(search.toLowerCase()) ||
     r.mobile.includes(search)
@@ -78,13 +77,13 @@ const Residents = () => {
 
     let ownerId: string | null = null;
     if (form.resident_type === 'member' || form.resident_type === 'tenant') {
-      const { data: owners } = await supabase.from('residents').select('id')
+      const { data: ownersList } = await supabase.from('residents').select('id')
         .eq('house_no', form.house_no).eq('lane_no', form.lane_no).eq('resident_type', 'owner').limit(1);
-      if (!owners || owners.length === 0) {
+      if (!ownersList || ownersList.length === 0) {
         toast.error('No house owner found for this house. Register an owner first.');
         return;
       }
-      ownerId = owners[0].id;
+      ownerId = ownersList[0].id;
     }
 
     const payload = {
@@ -115,6 +114,17 @@ const Residents = () => {
     if (error) { toast.error(error.message); return; }
     toast.success(t('resident_removed'));
     queryClient.invalidateQueries({ queryKey: ['residents'] });
+    queryClient.invalidateQueries({ queryKey: ['all_residents'] });
+  };
+
+  const downloadCSV = () => {
+    const headers = [t('name'), t('house'), t('lane'), t('mobile'), t('email'), t('family_members'), t('status')];
+    const rows = filtered.map((r: any) => [r.name, r.house_no, r.lane_no, r.mobile, r.email || '', r.family_members || 1, r.is_active ? 'Active' : 'Inactive']);
+    const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'residents.csv'; a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -122,38 +132,45 @@ const Residents = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">{t('residents')}</h1>
-          <p className="text-muted-foreground mt-1">{residents.length} {t('total_residents_count')}</p>
+          <p className="text-muted-foreground mt-1">{owners.length} {t('total_residents_count')}</p>
         </div>
-        {!readOnly && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> {t('add_resident')}</Button></DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit_resident') : t('add_resident')}</DialogTitle></DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>{t('resident_type')}</Label>
-                  <Select value={form.resident_type} onValueChange={(v) => setForm({ ...form, resident_type: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="owner">{t('house_owner')}</SelectItem>
-                      <SelectItem value="member">{t('family_member')}</SelectItem>
-                      <SelectItem value="tenant">{t('tenant')}</SelectItem>
-                    </SelectContent>
-                  </Select>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={downloadCSV}>
+              <Download className="h-4 w-4 mr-1" /> CSV
+            </Button>
+          )}
+          {!readOnly && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild><Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> {t('add_resident')}</Button></DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit_resident') : t('add_resident')}</DialogTitle></DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label>{t('resident_type')}</Label>
+                    <Select value={form.resident_type} onValueChange={(v) => setForm({ ...form, resident_type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owner">{t('house_owner')}</SelectItem>
+                        <SelectItem value="member">{t('family_member')}</SelectItem>
+                        <SelectItem value="tenant">{t('tenant')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2"><Label>{t('full_name')} *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2"><Label>{t('house_no')} *</Label><Input value={form.house_no} onChange={(e) => setForm({ ...form, house_no: e.target.value })} placeholder="e.g. A-101" /></div>
+                    <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={form.lane_no} onChange={(e) => setForm({ ...form, lane_no: e.target.value })} /></div>
+                  </div>
+                  <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
+                  <div className="grid gap-2"><Label>{t('email')}</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+                  <div className="grid gap-2"><Label>{t('family_members')}</Label><Input type="number" value={form.family_members} onChange={(e) => setForm({ ...form, family_members: e.target.value })} min="1" /></div>
+                  <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('add_resident')}</Button>
                 </div>
-                <div className="grid gap-2"><Label>{t('full_name')} *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2"><Label>{t('house_no')} *</Label><Input value={form.house_no} onChange={(e) => setForm({ ...form, house_no: e.target.value })} placeholder="e.g. A-101" /></div>
-                  <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={form.lane_no} onChange={(e) => setForm({ ...form, lane_no: e.target.value })} /></div>
-                </div>
-                <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
-                <div className="grid gap-2"><Label>{t('email')}</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-                <div className="grid gap-2"><Label>{t('family_members')}</Label><Input type="number" value={form.family_members} onChange={(e) => setForm({ ...form, family_members: e.target.value })} min="1" /></div>
-                <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('add_resident')}</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       <Card className="p-4">

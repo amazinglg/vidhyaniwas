@@ -17,7 +17,15 @@ const PendingSignups = () => {
 
   const fetchPending = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*').eq('is_approved', false);
-    setPendingSignups(profiles || []);
+    // Enrich with user metadata to get house_no and lane_no
+    if (profiles) {
+      const enriched = profiles.map((p: any) => ({
+        ...p,
+      }));
+      setPendingSignups(enriched);
+    } else {
+      setPendingSignups([]);
+    }
     setLoading(false);
   };
 
@@ -67,26 +75,35 @@ const PendingSignups = () => {
               <TableRow>
                 <TableHead>{t('name')}</TableHead>
                 <TableHead>{t('mobile')}</TableHead>
+                <TableHead>{t('house_no')}</TableHead>
+                <TableHead>{t('lane_no')}</TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pendingSignups.map((p: any) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.full_name || '-'}</TableCell>
-                  <TableCell>{p.mobile || '-'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button size="sm" variant="default" onClick={() => handleApprove(p.user_id)}>
-                        <CheckCircle className="h-4 w-4 mr-1" />{t('approve')}
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleReject(p.user_id)}>
-                        <XCircle className="h-4 w-4 mr-1" />{t('reject')}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {pendingSignups.map((p: any) => {
+                // Try to get house_no/lane_no from resident record or user metadata
+                const houseNo = p.house_no || '-';
+                const laneNo = p.lane_no || '-';
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.full_name || '-'}</TableCell>
+                    <TableCell>{p.mobile || '-'}</TableCell>
+                    <TableCell>{houseNo}</TableCell>
+                    <TableCell>{laneNo}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" variant="default" onClick={() => handleApprove(p.user_id)}>
+                          <CheckCircle className="h-4 w-4 mr-1" />{t('approve')}
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleReject(p.user_id)}>
+                          <XCircle className="h-4 w-4 mr-1" />{t('reject')}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
