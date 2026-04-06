@@ -64,9 +64,8 @@ const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const DefaultRedirect = () => {
-  const { isAdmin, isCoordinator } = useAuth();
+  const { isAdmin } = useAuth();
   if (isAdmin) return <Dashboard />;
-  if (isCoordinator) return <Navigate to="/residents" replace />;
   return <Navigate to="/my-profile" replace />;
 };
 

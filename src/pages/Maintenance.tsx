@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2 } from 'lucide-react';
+import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +36,6 @@ const Maintenance = () => {
   const [defaultAmount, setDefaultAmount] = useState(String(DEFAULT_TOTAL_MAINTENANCE));
   const readOnly = isResident || isCoordinator;
 
-  // Compute due from total_maintenance - amount
   const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
 
   const filtered = useMemo(() => collections.filter((c: any) => {
@@ -115,16 +114,13 @@ const Maintenance = () => {
     toast.success(t('visibility_updated'));
   };
 
-  // Bulk update default maintenance for all records
   const handleUpdateDefaultAmount = async () => {
     const newAmt = Number(defaultAmount);
     if (!newAmt || newAmt <= 0) { toast.error(t('please_fill_required')); return; }
-    // Update all existing records
     const { error } = await supabase.from('maintenance_collections')
       .update({ total_maintenance: newAmt })
-      .gte('id', '00000000-0000-0000-0000-000000000000'); // update all
+      .gte('id', '00000000-0000-0000-0000-000000000000');
     if (error) { toast.error(error.message); return; }
-    // Recalculate due amounts
     for (const c of collections) {
       const due = computeDue(newAmt, Number(c.amount || 0));
       const status = due <= 0 ? 'paid' : Number(c.amount) > 0 ? 'partial' : 'pending';
@@ -135,6 +131,16 @@ const Maintenance = () => {
     toast.success(t('visibility_updated'));
   };
 
+  const downloadCSV = () => {
+    const headers = [t('resident'), t('house'), t('date'), 'Total', t('paid'), t('due'), t('mode'), t('status')];
+    const rows = filtered.map((c: any) => [(c.residents as any)?.name || '', (c.residents as any)?.house_no || '', c.paid_date || '', c.total_maintenance, c.amount, c.due_amount, c.payment_mode || '', c.status]);
+    const csv = [headers, ...rows].map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'maintenance_funds.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -142,66 +148,72 @@ const Maintenance = () => {
           <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('maintenance_fund')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('track_maintenance')}</p>
         </div>
-        {!readOnly && (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setDefaultAmount(String(DEFAULT_TOTAL_MAINTENANCE)); setDefaultAmountDialog(true); }}>
-              <Settings2 className="h-4 w-4 mr-1" /> {t('amount')}
+        <div className="flex gap-2 flex-wrap">
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={downloadCSV}>
+              <Download className="h-4 w-4 mr-1" /> CSV
             </Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild><Button onClick={openAdd} size="sm" className="md:size-default"><Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">{t('record_payment')}</span><span className="sm:hidden">Add</span></Button></DialogTrigger>
-              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit') + ' ' + t('record_payment') : t('record_payment')}</DialogTitle></DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label>{t('resident')} *</Label>
-                    <Select value={form.residentId} onValueChange={(v) => setForm({ ...form, residentId: v })}>
-                      <SelectTrigger><SelectValue placeholder={t('select_resident')} /></SelectTrigger>
-                      <SelectContent>{residents.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+          )}
+          {!readOnly && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => { setDefaultAmount(String(DEFAULT_TOTAL_MAINTENANCE)); setDefaultAmountDialog(true); }}>
+                <Settings2 className="h-4 w-4 mr-1" /> {t('amount')}
+              </Button>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild><Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">{t('record_payment')}</span><span className="sm:hidden">Add</span></Button></DialogTrigger>
+                <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                  <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit') + ' ' + t('record_payment') : t('record_payment')}</DialogTitle></DialogHeader>
+                  <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                      <Label>Total {t('amount')} (₹)</Label>
-                      <Input type="number" value={form.totalMaintenance} onChange={(e) => setForm({ ...form, totalMaintenance: e.target.value })} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>{t('paid')} (₹) *</Label>
-                      <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-                    </div>
-                  </div>
-                  {form.totalMaintenance && form.amount && (
-                    <div className="p-3 rounded-lg bg-muted text-sm">
-                      <span className="text-muted-foreground">{t('due')}: </span>
-                      <span className={`font-bold ${computeDue(Number(form.totalMaintenance), Number(form.amount)) > 0 ? 'text-destructive' : 'text-success'}`}>
-                        ₹{computeDue(Number(form.totalMaintenance), Number(form.amount)).toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2"><Label>{t('date')} *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-                    <div className="grid gap-2">
-                      <Label>{t('payment_mode')}</Label>
-                      <Select value={form.paymentMode} onValueChange={(v) => setForm({ ...form, paymentMode: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cash">{t('cash')}</SelectItem>
-                          <SelectItem value="upi">{t('upi')}</SelectItem>
-                          <SelectItem value="bank_transfer">{t('bank_transfer')}</SelectItem>
-                          <SelectItem value="cheque">{t('cheque')}</SelectItem>
-                        </SelectContent>
+                      <Label>{t('resident')} *</Label>
+                      <Select value={form.residentId} onValueChange={(v) => setForm({ ...form, residentId: v })}>
+                        <SelectTrigger><SelectValue placeholder={t('select_resident')} /></SelectTrigger>
+                        <SelectContent>{residents.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Total {t('amount')} (₹)</Label>
+                        <Input type="number" value={form.totalMaintenance} onChange={(e) => setForm({ ...form, totalMaintenance: e.target.value })} />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>{t('paid')} (₹) *</Label>
+                        <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                      </div>
+                    </div>
+                    {form.totalMaintenance && form.amount && (
+                      <div className="p-3 rounded-lg bg-muted text-sm">
+                        <span className="text-muted-foreground">{t('due')}: </span>
+                        <span className={`font-bold ${computeDue(Number(form.totalMaintenance), Number(form.amount)) > 0 ? 'text-destructive' : 'text-success'}`}>
+                          ₹{computeDue(Number(form.totalMaintenance), Number(form.amount)).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2"><Label>{t('date')} *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                      <div className="grid gap-2">
+                        <Label>{t('payment_mode')}</Label>
+                        <Select value={form.paymentMode} onValueChange={(v) => setForm({ ...form, paymentMode: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cash">{t('cash')}</SelectItem>
+                            <SelectItem value="upi">{t('upi')}</SelectItem>
+                            <SelectItem value="bank_transfer">{t('bank_transfer')}</SelectItem>
+                            <SelectItem value="cheque">{t('cheque')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid gap-2"><Label>{t('receipt_no')}</Label><Input value={form.receiptNo} onChange={(e) => setForm({ ...form, receiptNo: e.target.value })} /></div>
+                    <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('record_payment')}</Button>
                   </div>
-                  <div className="grid gap-2"><Label>{t('receipt_no')}</Label><Input value={form.receiptNo} onChange={(e) => setForm({ ...form, receiptNo: e.target.value })} /></div>
-                  <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('record_payment')}</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        )}
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Default amount dialog */}
       <Dialog open={defaultAmountDialog} onOpenChange={setDefaultAmountDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle className="font-display">Set Default {t('amount')}</DialogTitle></DialogHeader>
@@ -264,7 +276,7 @@ const Maintenance = () => {
                 <p className="font-semibold text-sm">{(c.residents as any)?.name}</p>
                 <p className="text-xs text-muted-foreground">{(c.residents as any)?.house_no} • {c.paid_date || '-'}</p>
               </div>
-              <Badge variant={statusBadge[c.status] || 'outline'} className="text-xs">{c.status}</Badge>
+              <Badge variant={statusBadge[c.status] || 'outline'} className="text-xs">{t(c.status)}</Badge>
             </div>
             <div className="grid grid-cols-3 gap-2 text-sm">
               <div>
@@ -324,7 +336,7 @@ const Maintenance = () => {
                 <TableCell className="text-success font-medium">₹{Number(c.amount).toLocaleString('en-IN')}</TableCell>
                 <TableCell className={Number(c.due_amount) > 0 ? 'text-destructive font-medium' : ''}>₹{Number(c.due_amount).toLocaleString('en-IN')}</TableCell>
                 <TableCell className="capitalize">{c.payment_mode?.replace('_', ' ') || '-'}</TableCell>
-                <TableCell><Badge variant={statusBadge[c.status] || 'outline'}>{c.status}</Badge></TableCell>
+                <TableCell><Badge variant={statusBadge[c.status] || 'outline'}>{t(c.status)}</Badge></TableCell>
                 {!readOnly && (
                   <TableCell className="text-right space-x-1">
                     <Button variant="ghost" size="icon" onClick={() => toggleVisibility(c.id, c.is_visible)}>
