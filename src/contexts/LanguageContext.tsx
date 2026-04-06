@@ -281,9 +281,13 @@ const translations: Record<string, Record<Lang, string>> = {
   'no_mgmt_members': { en: 'No management members added yet', hi: 'अभी तक कोई प्रबंधन सदस्य नहीं जोड़ा गया' },
   'role_title': { en: 'Role / Title', hi: 'भूमिका / पद' },
   'photo_url': { en: 'Photo URL', hi: 'फोटो URL' },
+  'photo': { en: 'Photo', hi: 'फोटो' },
+  'upload_photo': { en: 'Upload Photo', hi: 'फोटो अपलोड करें' },
   'display_order': { en: 'Display Order', hi: 'प्रदर्शन क्रम' },
   'manage_tenant_info': { en: 'Add and manage tenant for your house', hi: 'अपने घर के लिए किराएदार जोड़ें और प्रबंधित करें' },
   'month': { en: 'Month', hi: 'महीना' },
+  'notice_deleted': { en: 'Notice deleted', hi: 'सूचना हटाई गई' },
+  'select': { en: 'Select', hi: 'चुनें' },
 };
 
 interface LanguageContextType {
