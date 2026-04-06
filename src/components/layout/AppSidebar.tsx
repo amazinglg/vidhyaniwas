@@ -46,13 +46,12 @@ const AppSidebar = () => {
     }
   } else if (isCoordinator || isResident) {
     navItems.push(
-      { label: t('dashboard'), icon: LayoutDashboard, path: '/' },
+      { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
       { label: t('residents'), icon: Users, path: '/residents' },
       { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
       { label: t('expenses'), icon: Receipt, path: '/expenses' },
       { label: t('notices_short'), icon: Megaphone, path: '/notices' },
       { label: t('society_management'), icon: Shield, path: '/society-management' },
-      { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
       { label: t('my_complaints'), icon: MessageSquareWarning, path: '/my-complaints' },
     );
   }

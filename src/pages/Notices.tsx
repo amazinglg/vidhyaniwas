@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Megaphone } from 'lucide-react';
+import { Plus, Megaphone, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -38,6 +38,14 @@ const Notices = () => {
     setDialogOpen(false);
     setForm({ title: '', content: '', priority: 'medium' });
     toast.success(t('notice_published'));
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    const { error } = await supabase.from('notices').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['notices'] });
+    toast.success(t('notice_deleted'));
   };
 
   return (
@@ -88,10 +96,17 @@ const Notices = () => {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h3 className="font-semibold font-display text-foreground">{n.title}</h3>
-                  <Badge className={priorityStyles[n.priority] || 'bg-muted'}>{n.priority}</Badge>
+                  <Badge className={priorityStyles[n.priority] || 'bg-muted'}>{t(n.priority)}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">{n.content}</p>
-                <p className="text-xs text-muted-foreground mt-3">{new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <div className="flex items-center justify-between mt-3">
+                  <p className="text-xs text-muted-foreground">{new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  {isAdmin && (
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(n.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </Card>

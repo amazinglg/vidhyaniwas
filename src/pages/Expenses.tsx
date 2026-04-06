@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, Receipt, TrendingDown, Calendar, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Search, Filter, Receipt, TrendingDown, Calendar, Edit2, Trash2, Eye, EyeOff, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import { useExpenses } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
 import type { Database } from '@/integrations/supabase/types';
@@ -36,11 +36,24 @@ const Expenses = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ category: 'maintenance' as ExpenseCategory, description: '', amount: '', date: new Date().toISOString().split('T')[0], vendor: '', approved_by_name: '', notes: '' });
+  const [form, setForm] = useState({ category: 'maintenance' as ExpenseCategory, description: '', amount: '', date: new Date().toISOString().split('T')[0], approved_by_name: '', notes: '' });
   const readOnly = isResident || isCoordinator;
 
+  // Fetch admin names for approved_by dropdown
+  const { data: adminUsers = [] } = useQuery({
+    queryKey: ['admin_users_for_dropdown'],
+    queryFn: async () => {
+      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').in('role', ['master_admin', 'president', 'vice_president', 'treasury_head', 'secretary']);
+      if (!adminRoles || adminRoles.length === 0) return [];
+      const userIds = adminRoles.map((r: any) => r.user_id);
+      const { data: profiles } = await supabase.from('profiles').select('full_name, user_id').in('user_id', userIds);
+      return (profiles || []).filter((p: any) => p.full_name).map((p: any) => p.full_name);
+    },
+    enabled: isAdmin,
+  });
+
   const filtered = useMemo(() => expenses.filter((e: any) => {
-    const matchSearch = e.description.toLowerCase().includes(search.toLowerCase()) || (e.vendor?.toLowerCase().includes(search.toLowerCase()));
+    const matchSearch = e.description.toLowerCase().includes(search.toLowerCase());
     const matchCat = filterCategory === 'all' || e.category === filterCategory;
     return matchSearch && matchCat;
   }), [expenses, search, filterCategory]);
@@ -49,13 +62,13 @@ const Expenses = () => {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ category: 'maintenance', description: '', amount: '', date: new Date().toISOString().split('T')[0], vendor: '', approved_by_name: '', notes: '' });
+    setForm({ category: 'maintenance', description: '', amount: '', date: new Date().toISOString().split('T')[0], approved_by_name: '', notes: '' });
     setDialogOpen(true);
   };
 
   const openEdit = (e: any) => {
     setEditingId(e.id);
-    setForm({ category: e.category, description: e.description, amount: String(e.amount), date: e.date, vendor: e.vendor || '', approved_by_name: e.approved_by_name || '', notes: e.notes || '' });
+    setForm({ category: e.category, description: e.description, amount: String(e.amount), date: e.date, approved_by_name: e.approved_by_name || '', notes: e.notes || '' });
     setDialogOpen(true);
   };
 
@@ -63,7 +76,7 @@ const Expenses = () => {
     if (!form.description || !form.amount) { toast.error(t('please_fill_required')); return; }
     const payload = {
       category: form.category, description: form.description, amount: Number(form.amount),
-      date: form.date, vendor: form.vendor || null, approved_by_name: form.approved_by_name || null, notes: form.notes || null,
+      date: form.date, vendor: null, approved_by_name: form.approved_by_name || null, notes: form.notes || null,
     };
     if (editingId) {
       const { error } = await supabase.from('expenses').update(payload).eq('id', editingId);
@@ -93,6 +106,16 @@ const Expenses = () => {
     toast.success(t('visibility_updated'));
   };
 
+  const downloadCSV = () => {
+    const headers = [t('date'), t('category'), t('description'), t('amount'), t('approved_by'), t('notes')];
+    const rows = filtered.map((e: any) => [e.date, t(CATEGORY_KEYS[e.category] || 'cat_other'), e.description, e.amount, e.approved_by_name || '', e.notes || '']);
+    const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'expenses.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -100,34 +123,46 @@ const Expenses = () => {
           <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('expenses')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('track_expenses')}</p>
         </div>
-        {!readOnly && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button onClick={openAdd} size="sm" className="md:size-default"><Plus className="h-4 w-4 mr-1 md:mr-2" /> {t('add_expense')}</Button></DialogTrigger>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit_expense') : t('add_expense')}</DialogTitle></DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>{t('category')} *</Label>
-                  <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v as ExpenseCategory })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(CATEGORY_KEYS).map(([k, tKey]) => <SelectItem key={k} value={k}>{t(tKey)}</SelectItem>)}</SelectContent>
-                  </Select>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={downloadCSV}>
+              <Download className="h-4 w-4 mr-1" /> CSV
+            </Button>
+          )}
+          {!readOnly && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild><Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1 md:mr-2" /> {t('add_expense')}</Button></DialogTrigger>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit_expense') : t('add_expense')}</DialogTitle></DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label>{t('category')} *</Label>
+                    <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v as ExpenseCategory })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(CATEGORY_KEYS).map(([k, tKey]) => <SelectItem key={k} value={k}>{t(tKey)}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2"><Label>{t('description')} *</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2"><Label>{t('amount')} (₹) *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+                    <div className="grid gap-2"><Label>{t('date')} *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>{t('approved_by')}</Label>
+                    <Select value={form.approved_by_name} onValueChange={(v) => setForm({ ...form, approved_by_name: v })}>
+                      <SelectTrigger><SelectValue placeholder={t('select')} /></SelectTrigger>
+                      <SelectContent>
+                        {adminUsers.map((name: string) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2"><Label>{t('notes')}</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
+                  <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('add_expense')}</Button>
                 </div>
-                <div className="grid gap-2"><Label>{t('description')} *</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2"><Label>{t('amount')} (₹) *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
-                  <div className="grid gap-2"><Label>{t('date')} *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2"><Label>{t('vendor')}</Label><Input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} /></div>
-                  <div className="grid gap-2"><Label>{t('approved_by')}</Label><Input value={form.approved_by_name} onChange={(e) => setForm({ ...form, approved_by_name: e.target.value })} /></div>
-                </div>
-                <div className="grid gap-2"><Label>{t('notes')}</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
-                <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('add_expense')}</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
@@ -163,7 +198,7 @@ const Expenses = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-sm">{e.description}</p>
-                <p className="text-xs text-muted-foreground">{e.date} • {e.vendor || '-'}</p>
+                <p className="text-xs text-muted-foreground">{e.date}</p>
               </div>
               <p className="font-bold text-destructive">₹{Number(e.amount).toLocaleString('en-IN')}</p>
             </div>
@@ -192,7 +227,6 @@ const Expenses = () => {
               <TableHead>{t('date')}</TableHead>
               <TableHead>{t('category')}</TableHead>
               <TableHead>{t('description')}</TableHead>
-              <TableHead>{t('vendor')}</TableHead>
               <TableHead>{t('approved_by')}</TableHead>
               <TableHead className="text-right">{t('amount')}</TableHead>
               {!readOnly && <TableHead className="text-right">{t('actions')}</TableHead>}
@@ -200,15 +234,14 @@ const Expenses = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={readOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={readOnly ? 5 : 6} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={readOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">{t('no_expenses_found')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={readOnly ? 5 : 6} className="text-center py-8 text-muted-foreground">{t('no_expenses_found')}</TableCell></TableRow>
             ) : filtered.map((e: any) => (
               <TableRow key={e.id} className="animate-fade-in">
                 <TableCell>{e.date}</TableCell>
                 <TableCell><Badge variant="secondary">{t(CATEGORY_KEYS[e.category] || 'cat_other')}</Badge></TableCell>
                 <TableCell className="font-medium">{e.description}</TableCell>
-                <TableCell>{e.vendor || '-'}</TableCell>
                 <TableCell>{e.approved_by_name || '-'}</TableCell>
                 <TableCell className="text-right font-semibold text-destructive">₹{Number(e.amount).toLocaleString('en-IN')}</TableCell>
                 {!readOnly && (

@@ -28,6 +28,7 @@ export const useResidents = () => {
 };
 
 export const useAllResidents = () => {
+  useRealtimeSync('residents', 'all_residents');
   return useQuery({
     queryKey: ['all_residents'],
     queryFn: async () => {
