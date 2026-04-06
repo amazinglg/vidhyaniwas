@@ -13,7 +13,7 @@ import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus } from 'lucide-re
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useResidents } from '@/hooks/useSocietyData';
+import { useAllResidents } from '@/hooks/useSocietyData';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
@@ -23,7 +23,7 @@ type AppRole = Database['public']['Enums']['app_role'];
 const SocietySettings = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const { data: residents = [] } = useResidents();
+  const { data: residents = [] } = useAllResidents();
   const queryClient = useQueryClient();
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
