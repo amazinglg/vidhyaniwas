@@ -288,6 +288,18 @@ const translations: Record<string, Record<Lang, string>> = {
   'month': { en: 'Month', hi: 'महीना' },
   'notice_deleted': { en: 'Notice deleted', hi: 'सूचना हटाई गई' },
   'select': { en: 'Select', hi: 'चुनें' },
+  'due_date': { en: 'Due Date', hi: 'देय तिथि' },
+  'due_payment': { en: 'Due Payment', hi: 'बकाया भुगतान' },
+  'pay_due': { en: 'Pay Due', hi: 'बकाया भुगतान करें' },
+  'due_payment_recorded': { en: 'Due payment recorded', hi: 'बकाया भुगतान दर्ज किया गया' },
+  'approved_at': { en: 'Approved At', hi: 'अनुमोदन तिथि' },
+  'approval_history': { en: 'Approval History', hi: 'अनुमोदन इतिहास' },
+  'send_to': { en: 'Send To', hi: 'भेजें' },
+  'all_users': { en: 'All Users', hi: 'सभी उपयोगकर्ता' },
+  'admins_only': { en: 'Admins Only', hi: 'केवल व्यवस्थापक' },
+  'specific_users': { en: 'Specific Users', hi: 'विशिष्ट उपयोगकर्ता' },
+  'select_users': { en: 'Select Users', hi: 'उपयोगकर्ता चुनें' },
+  'notification_sent': { en: 'Notification sent', hi: 'सूचना भेजी गई' },
 };
 
 interface LanguageContextType {

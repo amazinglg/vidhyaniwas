@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Megaphone, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Megaphone, Trash2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useNotices } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -29,14 +30,42 @@ const Notices = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ title: '', content: '', priority: 'medium' });
+  const [sendTo, setSendTo] = useState('all');
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchUsers = async () => {
+      const { data } = await supabase.from('profiles').select('user_id, full_name, mobile').eq('is_approved', true);
+      setAllUsers(data || []);
+    };
+    fetchUsers();
+  }, [isAdmin]);
+
+  const toggleUser = (userId: string) => {
+    setSelectedUserIds(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
+  };
 
   const handleAdd = async () => {
     if (!form.title || !form.content) { toast.error(t('please_fill_required')); return; }
-    const { error } = await supabase.from('notices').insert({ title: form.title, content: form.content, priority: form.priority });
+    const { data: noticeData, error } = await supabase.from('notices').insert({ title: form.title, content: form.content, priority: form.priority }).select().single();
     if (error) { toast.error(error.message); return; }
+
+    // Create notification record
+    if (noticeData) {
+      await supabase.from('notifications').insert({
+        notice_id: noticeData.id,
+        target_type: sendTo,
+        target_user_ids: sendTo === 'specific' ? selectedUserIds : [],
+      });
+    }
+
     queryClient.invalidateQueries({ queryKey: ['notices'] });
     setDialogOpen(false);
     setForm({ title: '', content: '', priority: 'medium' });
+    setSendTo('all');
+    setSelectedUserIds([]);
     toast.success(t('notice_published'));
   };
 
@@ -58,7 +87,7 @@ const Notices = () => {
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild><Button className="gradient-warm text-primary-foreground shadow-lg"><Plus className="h-4 w-4 mr-2" /> {t('new_notice')}</Button></DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-display">{t('create_notice')}</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2"><Label>{t('title')} *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
@@ -75,6 +104,30 @@ const Notices = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid gap-2">
+                  <Label className="flex items-center gap-1"><Bell className="h-4 w-4" /> {t('send_to')}</Label>
+                  <Select value={sendTo} onValueChange={setSendTo}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('all_users')}</SelectItem>
+                      <SelectItem value="admins">{t('admins_only')}</SelectItem>
+                      <SelectItem value="specific">{t('specific_users')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {sendTo === 'specific' && (
+                  <div className="grid gap-2">
+                    <Label>{t('select_users')}</Label>
+                    <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                      {allUsers.map(u => (
+                        <label key={u.user_id} className="flex items-center gap-2 p-1 hover:bg-muted rounded cursor-pointer text-sm">
+                          <Checkbox checked={selectedUserIds.includes(u.user_id)} onCheckedChange={() => toggleUser(u.user_id)} />
+                          <span>{u.full_name || u.mobile}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <Button onClick={handleAdd} className="w-full mt-2 gradient-warm text-primary-foreground">{t('publish_notice')}</Button>
               </div>
             </DialogContent>
