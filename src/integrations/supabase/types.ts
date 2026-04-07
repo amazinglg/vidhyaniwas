@@ -159,6 +159,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           due_amount: number
+          due_date: string | null
           id: string
           is_visible: boolean
           month: string
@@ -176,6 +177,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           due_amount?: number
+          due_date?: string | null
           id?: string
           is_visible?: boolean
           month: string
@@ -193,6 +195,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           due_amount?: number
+          due_date?: string | null
           id?: string
           is_visible?: boolean
           month?: string
@@ -248,8 +251,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          notice_id: string
+          target_type: string
+          target_user_ids: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notice_id: string
+          target_type?: string
+          target_user_ids?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notice_id?: string
+          target_type?: string
+          target_user_ids?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "notices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           avatar_url: string | null
           created_at: string
           full_name: string | null
@@ -261,6 +298,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
@@ -272,6 +311,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
@@ -359,6 +400,7 @@ export type Database = {
           created_at: string
           display_order: number
           id: string
+          mobile: string | null
           name: string
           photo_url: string | null
           role_title: string
@@ -368,6 +410,7 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          mobile?: string | null
           name: string
           photo_url?: string | null
           role_title: string
@@ -377,6 +420,7 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          mobile?: string | null
           name?: string
           photo_url?: string | null
           role_title?: string

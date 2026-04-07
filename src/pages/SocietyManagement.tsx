@@ -61,7 +61,7 @@ const SocietyManagement = () => {
 
   const handleSave = async () => {
     if (!form.name || !form.role_title) { toast.error(t('please_fill_required')); return; }
-    const payload = { name: form.name, role_title: form.role_title, photo_url: form.photo_url || null, mobile: form.mobile || null, display_order: Number(form.display_order) };
+    const payload: any = { name: form.name, role_title: form.role_title, photo_url: form.photo_url || null, mobile: form.mobile || null, display_order: Number(form.display_order) };
     if (editingId) {
       const { error } = await supabase.from('society_management').update(payload).eq('id', editingId);
       if (error) { toast.error(error.message); return; }
