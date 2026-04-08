@@ -398,6 +398,11 @@ const Maintenance = () => {
                       </Tooltip>
                     </TooltipProvider>
                   )}
+                  {isAdmin && (
+                    <Button variant="ghost" size="sm" onClick={() => setHistoryRecordId(c.id)}>
+                      <History className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => toggleVisibility(c.id, c.is_visible)}>
                     {c.is_visible ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5" />}
                   </Button>
@@ -459,6 +464,11 @@ const Maintenance = () => {
                           </Tooltip>
                         </TooltipProvider>
                       )}
+                      {isAdmin && (
+                        <Button variant="ghost" size="icon" onClick={() => setHistoryRecordId(c.id)}>
+                          <History className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => toggleVisibility(c.id, c.is_visible)}>
                         {c.is_visible ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
                       </Button>
@@ -472,6 +482,12 @@ const Maintenance = () => {
           </TableBody>
         </Table>
       </Card>
+      <AuditHistoryDialog
+        open={!!historyRecordId}
+        onClose={() => setHistoryRecordId(null)}
+        tableName="maintenance_collections"
+        recordId={historyRecordId || ''}
+      />
     </div>
   );
 };
