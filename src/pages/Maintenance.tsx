@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
+import AuditHistoryDialog from '@/components/AuditHistoryDialog';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 

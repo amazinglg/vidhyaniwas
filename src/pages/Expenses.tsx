@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
+import AuditHistoryDialog from '@/components/AuditHistoryDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type ExpenseCategory = Database['public']['Enums']['expense_category'];
