@@ -1,12 +1,14 @@
 import { ReactNode } from 'react';
 import AppSidebar from './AppSidebar';
 import TopBar from './TopBar';
+import { useWebNotifications } from '@/hooks/useWebNotifications';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
+  useWebNotifications();
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
