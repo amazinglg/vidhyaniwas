@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, Receipt, TrendingDown, Calendar, Edit2, Trash2, Eye, EyeOff, Download } from 'lucide-react';
+import { Plus, Search, Filter, Receipt, TrendingDown, Calendar, Edit2, Trash2, Eye, EyeOff, Download, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
+import AuditHistoryDialog from '@/components/AuditHistoryDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type ExpenseCategory = Database['public']['Enums']['expense_category'];
@@ -37,6 +38,7 @@ const Expenses = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ category: 'maintenance' as ExpenseCategory, description: '', amount: '', date: new Date().toISOString().split('T')[0], approved_by_name: '', notes: '' });
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const readOnly = isResident || isCoordinator;
 
   // Fetch admin names for approved_by dropdown
@@ -208,6 +210,11 @@ const Expenses = () => {
             </div>
             {!readOnly && (
               <div className="flex gap-1 pt-1 border-t">
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" onClick={() => setHistoryRecordId(e.id)}>
+                    <History className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => toggleVisibility(e.id, e.is_visible)}>
                   {e.is_visible ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5" />}
                 </Button>
@@ -246,6 +253,11 @@ const Expenses = () => {
                 <TableCell className="text-right font-semibold text-destructive">₹{Number(e.amount).toLocaleString('en-IN')}</TableCell>
                 {!readOnly && (
                   <TableCell className="text-right space-x-1">
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" onClick={() => setHistoryRecordId(e.id)}>
+                        <History className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => toggleVisibility(e.id, e.is_visible)}>
                       {e.is_visible ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
                     </Button>
@@ -258,6 +270,12 @@ const Expenses = () => {
           </TableBody>
         </Table>
       </Card>
+      <AuditHistoryDialog
+        open={!!historyRecordId}
+        onClose={() => setHistoryRecordId(null)}
+        tableName="expenses"
+        recordId={historyRecordId || ''}
+      />
     </div>
   );
 };

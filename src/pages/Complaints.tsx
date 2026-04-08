@@ -40,7 +40,7 @@ const Complaints = () => {
   }, [residentId]);
 
   const updateStatus = async (id: string, status: string) => {
-    const update: Record<string, unknown> = { status };
+    const update: { status: string; resolved_at?: string } = { status };
     if (status === 'resolved') update.resolved_at = new Date().toISOString().split('T')[0];
     const { error } = await supabase.from('complaints').update(update).eq('id', id);
     if (error) { toast.error(error.message); return; }

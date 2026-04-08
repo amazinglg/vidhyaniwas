@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon } from 'lucide-react';
+import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
+import AuditHistoryDialog from '@/components/AuditHistoryDialog';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 
@@ -38,6 +39,7 @@ const Maintenance = () => {
   const [duePaymentDialog, setDuePaymentDialog] = useState(false);
   const [duePaymentEntry, setDuePaymentEntry] = useState<any>(null);
   const [duePaymentForm, setDuePaymentForm] = useState({ amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const readOnly = isResident || isCoordinator;
 
   const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
@@ -396,6 +398,11 @@ const Maintenance = () => {
                       </Tooltip>
                     </TooltipProvider>
                   )}
+                  {isAdmin && (
+                    <Button variant="ghost" size="sm" onClick={() => setHistoryRecordId(c.id)}>
+                      <History className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => toggleVisibility(c.id, c.is_visible)}>
                     {c.is_visible ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5" />}
                   </Button>
@@ -457,6 +464,11 @@ const Maintenance = () => {
                           </Tooltip>
                         </TooltipProvider>
                       )}
+                      {isAdmin && (
+                        <Button variant="ghost" size="icon" onClick={() => setHistoryRecordId(c.id)}>
+                          <History className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => toggleVisibility(c.id, c.is_visible)}>
                         {c.is_visible ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
                       </Button>
@@ -470,6 +482,12 @@ const Maintenance = () => {
           </TableBody>
         </Table>
       </Card>
+      <AuditHistoryDialog
+        open={!!historyRecordId}
+        onClose={() => setHistoryRecordId(null)}
+        tableName="maintenance_collections"
+        recordId={historyRecordId || ''}
+      />
     </div>
   );
 };
