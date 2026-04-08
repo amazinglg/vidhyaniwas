@@ -16,10 +16,8 @@ const showBrowserNotification = (title: string, body: string) => {
     const notification = new Notification(title, {
       body,
       icon: '/favicon.ico',
-      badge: '/favicon.ico',
       tag: 'society-notice',
-      renotify: true,
-    });
+    } as NotificationOptions);
     notification.onclick = () => {
       window.focus();
       notification.close();
