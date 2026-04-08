@@ -39,6 +39,7 @@ const Maintenance = () => {
   const [duePaymentDialog, setDuePaymentDialog] = useState(false);
   const [duePaymentEntry, setDuePaymentEntry] = useState<any>(null);
   const [duePaymentForm, setDuePaymentForm] = useState({ amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const readOnly = isResident || isCoordinator;
 
   const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
