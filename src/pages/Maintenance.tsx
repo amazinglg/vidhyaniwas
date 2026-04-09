@@ -27,7 +27,7 @@ const DEFAULT_TOTAL_MAINTENANCE = 3000;
 const Maintenance = () => {
   const { data: collections = [], isLoading } = useMaintenanceCollections();
   const { data: residents = [] } = useResidents();
-  const { isAdmin, isCoordinator, isResident } = useAuth();
+  const { isAdmin, isCoordinator, isResident, isMasterAdmin } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -43,6 +43,11 @@ const Maintenance = () => {
   const [duePaymentForm, setDuePaymentForm] = useState({ amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const readOnly = isResident || isCoordinator;
+
+  // Receipt edit state (master admin only)
+  const [receiptEditDialog, setReceiptEditDialog] = useState(false);
+  const [receiptEditData, setReceiptEditData] = useState<any>(null);
+  const [receiptEditForm, setReceiptEditForm] = useState({ society_name: '', notes: '', custom_key: '', custom_value: '' });
 
   const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
 
