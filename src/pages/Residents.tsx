@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Home, Edit2, Trash2, Users as UsersIcon, Download } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ResidentDetailModal from '@/components/ResidentDetailModal';
 import TenantModal from '@/components/TenantModal';
+import { downloadReceipt } from '@/utils/generateReceipt';
+import { Dialog as ReceiptDialog, DialogContent as ReceiptDialogContent, DialogHeader as ReceiptDialogHeader, DialogTitle as ReceiptDialogTitle } from '@/components/ui/dialog';
 
 const Residents = () => {
   const { data: allResidents = [], isLoading } = useAllResidents();
@@ -127,6 +129,29 @@ const Residents = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadResidentReceipts = async (r: any) => {
+    const { data: receipts } = await supabase.from('maintenance_receipts').select('*').eq('resident_id', r.id).order('created_at', { ascending: false });
+    if (!receipts || receipts.length === 0) { toast.info('No maintenance receipts found for this resident'); return; }
+    // Download latest receipt
+    const rec: any = receipts[0];
+    downloadReceipt({
+      societyName: rec.society_name || 'Vidhya Niwas Society',
+      receiptNo: rec.receipt_no || 'N/A',
+      receiptDate: rec.receipt_date || '',
+      residentName: rec.resident_name || r.name,
+      houseNo: rec.house_no || r.house_no,
+      laneNo: rec.lane_no || r.lane_no,
+      month: rec.month,
+      year: rec.year,
+      totalMaintenance: Number(rec.total_maintenance || 0),
+      amountPaid: Number(rec.amount_paid || 0),
+      dueAmount: Number(rec.due_amount || 0),
+      paymentMode: rec.payment_mode || '',
+      notes: rec.notes || 'This is a digitally generated receipt and does not require a manual signature.',
+      customFields: rec.custom_fields || {},
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -230,6 +255,16 @@ const Residents = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>{t('view_tenant')}</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {isAdmin && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => handleDownloadResidentReceipts(r)}>
+                            <FileDown className="h-4 w-4 text-primary" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Download Receipt</TooltipContent>
                       </Tooltip>
                     )}
                     <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Edit2 className="h-4 w-4" /></Button>

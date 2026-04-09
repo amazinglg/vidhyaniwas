@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound } from 'lucide-react';
+import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { downloadReceipt } from '@/utils/generateReceipt';
+import { supabase as sb } from '@/integrations/supabase/client';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 const statusIcon: Record<string, any> = { paid: CheckCircle2, partial: Clock, pending: Clock, overdue: AlertTriangle };
@@ -185,6 +187,28 @@ const MyProfile = () => {
   const totalPaid = maintenance.reduce((s, m) => s + Number(m.amount || 0), 0);
   const totalDue = maintenance.reduce((s, m) => s + Number(m.due_amount || 0), 0);
 
+  const handleDownloadReceipt = async (m: any) => {
+    // Try fetching receipt from DB first (may have master admin edits)
+    const { data: receipt } = await supabase.from('maintenance_receipts').select('*').eq('maintenance_collection_id', m.id).maybeSingle();
+    const r: any = receipt || {};
+    downloadReceipt({
+      societyName: r.society_name || 'Vidhya Niwas Society',
+      receiptNo: r.receipt_no || m.receipt_no || 'N/A',
+      receiptDate: r.receipt_date || m.paid_date || new Date().toISOString().split('T')[0],
+      residentName: r.resident_name || resident?.name || form.full_name || '',
+      houseNo: r.house_no || resident?.house_no || '',
+      laneNo: r.lane_no || resident?.lane_no || '',
+      month: r.month || m.month,
+      year: r.year || m.year,
+      totalMaintenance: Number(r.total_maintenance || m.total_maintenance || 0),
+      amountPaid: Number(r.amount_paid || m.amount || 0),
+      dueAmount: Number(r.due_amount || m.due_amount || 0),
+      paymentMode: r.payment_mode || m.payment_mode || '',
+      notes: r.notes || 'This is a digitally generated receipt and does not require a manual signature.',
+      customFields: r.custom_fields || {},
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
@@ -332,9 +356,11 @@ const MyProfile = () => {
       {/* Maintenance Payment History */}
       {residentId && (
         <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><IndianRupee className="h-5 w-5 text-primary-foreground" /></div>
-            <div><h3 className="text-lg font-bold font-display">{t('maintenance_fund')}</h3><p className="text-sm text-muted-foreground">{t('your_payment_history')}</p></div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><IndianRupee className="h-5 w-5 text-primary-foreground" /></div>
+              <div><h3 className="text-lg font-bold font-display">{t('maintenance_fund')}</h3><p className="text-sm text-muted-foreground">{t('your_payment_history')}</p></div>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
@@ -353,7 +379,7 @@ const MyProfile = () => {
               <div className="hidden md:block">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead>{t('month')}</TableHead><TableHead>{t('total_maintenance')}</TableHead><TableHead>{t('paid')}</TableHead><TableHead>{t('due')}</TableHead><TableHead>{t('date')}</TableHead><TableHead>{t('status')}</TableHead><TableHead>{t('payment_mode')}</TableHead>
+                    <TableHead>{t('month')}</TableHead><TableHead>{t('total_maintenance')}</TableHead><TableHead>{t('paid')}</TableHead><TableHead>{t('due')}</TableHead><TableHead>{t('date')}</TableHead><TableHead>{t('status')}</TableHead><TableHead>{t('payment_mode')}</TableHead><TableHead></TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {maintenance.map((m) => {
@@ -367,6 +393,11 @@ const MyProfile = () => {
                           <TableCell>{m.paid_date || '-'}</TableCell>
                           <TableCell><Badge variant={statusBadge[m.status] || 'outline'} className="gap-1"><StatusIcon className="h-3 w-3" />{t(m.status)}</Badge></TableCell>
                           <TableCell className="capitalize">{m.payment_mode || '-'}</TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(m)} title="Download Receipt">
+                              <FileDown className="h-4 w-4 text-primary" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -388,6 +419,11 @@ const MyProfile = () => {
                         <div><p className="text-muted-foreground text-xs">{t('due')}</p><p className="font-medium text-orange-600">₹{Number(m.due_amount || 0).toLocaleString()}</p></div>
                       </div>
                       <div className="text-xs text-muted-foreground">{m.paid_date || '-'} • {m.payment_mode || '-'}</div>
+                      <div className="flex justify-end pt-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleDownloadReceipt(m)}>
+                          <FileDown className="h-3.5 w-3.5 text-primary mr-1" /> Receipt
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}

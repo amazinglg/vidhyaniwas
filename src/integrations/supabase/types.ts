@@ -251,6 +251,87 @@ export type Database = {
           },
         ]
       }
+      maintenance_receipts: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          custom_fields: Json | null
+          due_amount: number
+          house_no: string | null
+          id: string
+          lane_no: string | null
+          maintenance_collection_id: string
+          month: string
+          notes: string | null
+          payment_mode: string | null
+          receipt_date: string
+          receipt_no: string | null
+          resident_id: string
+          resident_name: string | null
+          society_name: string
+          total_maintenance: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          custom_fields?: Json | null
+          due_amount?: number
+          house_no?: string | null
+          id?: string
+          lane_no?: string | null
+          maintenance_collection_id: string
+          month: string
+          notes?: string | null
+          payment_mode?: string | null
+          receipt_date?: string
+          receipt_no?: string | null
+          resident_id: string
+          resident_name?: string | null
+          society_name?: string
+          total_maintenance?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          custom_fields?: Json | null
+          due_amount?: number
+          house_no?: string | null
+          id?: string
+          lane_no?: string | null
+          maintenance_collection_id?: string
+          month?: string
+          notes?: string | null
+          payment_mode?: string | null
+          receipt_date?: string
+          receipt_no?: string | null
+          resident_id?: string
+          resident_name?: string | null
+          society_name?: string
+          total_maintenance?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_receipts_maintenance_collection_id_fkey"
+            columns: ["maintenance_collection_id"]
+            isOneToOne: true
+            referencedRelation: "maintenance_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_receipts_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notices: {
         Row: {
           content: string
