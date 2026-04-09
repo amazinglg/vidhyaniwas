@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound } from 'lucide-react';
+import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { downloadReceipt } from '@/utils/generateReceipt';
+import { supabase as sb } from '@/integrations/supabase/client';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 const statusIcon: Record<string, any> = { paid: CheckCircle2, partial: Clock, pending: Clock, overdue: AlertTriangle };
