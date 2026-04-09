@@ -257,6 +257,16 @@ const Residents = () => {
                         <TooltipContent>{t('view_tenant')}</TooltipContent>
                       </Tooltip>
                     )}
+                    {isAdmin && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => handleDownloadResidentReceipts(r)}>
+                            <FileDown className="h-4 w-4 text-primary" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Download Receipt</TooltipContent>
+                      </Tooltip>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Edit2 className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </TableCell>
