@@ -460,6 +460,14 @@ const Maintenance = () => {
                       <History className="h-3.5 w-3.5 text-muted-foreground" />
                     </Button>
                   )}
+                  <Button variant="ghost" size="sm" onClick={() => handleDownloadReceipt(c)}>
+                    <FileDown className="h-3.5 w-3.5 text-primary" />
+                  </Button>
+                  {isMasterAdmin && (
+                    <Button variant="ghost" size="sm" onClick={() => openReceiptEdit(c)}>
+                      <FilePenLine className="h-3.5 w-3.5 text-amber-500" />
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => toggleVisibility(c.id, c.is_visible)}>
                     {c.is_visible ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5" />}
                   </Button>
