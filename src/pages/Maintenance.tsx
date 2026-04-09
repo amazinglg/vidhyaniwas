@@ -17,6 +17,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
 import AuditHistoryDialog from '@/components/AuditHistoryDialog';
+import { downloadReceipt } from '@/utils/generateReceipt';
+import { Textarea } from '@/components/ui/textarea';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 
