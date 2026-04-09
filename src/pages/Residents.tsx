@@ -129,6 +129,29 @@ const Residents = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadResidentReceipts = async (r: any) => {
+    const { data: receipts } = await supabase.from('maintenance_receipts').select('*').eq('resident_id', r.id).order('created_at', { ascending: false });
+    if (!receipts || receipts.length === 0) { toast.info('No maintenance receipts found for this resident'); return; }
+    // Download latest receipt
+    const rec: any = receipts[0];
+    downloadReceipt({
+      societyName: rec.society_name || 'Vidhya Niwas Society',
+      receiptNo: rec.receipt_no || 'N/A',
+      receiptDate: rec.receipt_date || '',
+      residentName: rec.resident_name || r.name,
+      houseNo: rec.house_no || r.house_no,
+      laneNo: rec.lane_no || r.lane_no,
+      month: rec.month,
+      year: rec.year,
+      totalMaintenance: Number(rec.total_maintenance || 0),
+      amountPaid: Number(rec.amount_paid || 0),
+      dueAmount: Number(rec.due_amount || 0),
+      paymentMode: rec.payment_mode || '',
+      notes: rec.notes || 'This is a digitally generated receipt and does not require a manual signature.',
+      customFields: rec.custom_fields || {},
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
