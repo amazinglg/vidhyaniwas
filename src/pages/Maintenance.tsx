@@ -561,6 +561,42 @@ const Maintenance = () => {
         tableName="maintenance_collections"
         recordId={historyRecordId || ''}
       />
+
+      {/* Receipt Edit Dialog (Master Admin only) */}
+      <Dialog open={receiptEditDialog} onOpenChange={setReceiptEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="font-display">Edit Receipt</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Society Name</Label>
+              <Input value={receiptEditForm.society_name} onChange={(e) => setReceiptEditForm({ ...receiptEditForm, society_name: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Footer Note</Label>
+              <Textarea value={receiptEditForm.notes} onChange={(e) => setReceiptEditForm({ ...receiptEditForm, notes: e.target.value })} rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Custom Field Name</Label>
+                <Input value={receiptEditForm.custom_key} onChange={(e) => setReceiptEditForm({ ...receiptEditForm, custom_key: e.target.value })} placeholder="e.g. Late Fee" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Custom Field Value</Label>
+                <Input value={receiptEditForm.custom_value} onChange={(e) => setReceiptEditForm({ ...receiptEditForm, custom_value: e.target.value })} placeholder="e.g. ₹200" />
+              </div>
+            </div>
+            {receiptEditData?.custom_fields && Object.keys(receiptEditData.custom_fields).length > 0 && (
+              <div className="p-3 rounded-lg bg-muted text-sm space-y-1">
+                <p className="font-medium text-xs text-muted-foreground">Existing Custom Fields:</p>
+                {Object.entries(receiptEditData.custom_fields).map(([k, v]) => (
+                  <p key={k}>{k}: {String(v)}</p>
+                ))}
+              </div>
+            )}
+            <Button onClick={handleSaveReceipt} className="w-full gradient-warm text-primary-foreground">Save Receipt Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
