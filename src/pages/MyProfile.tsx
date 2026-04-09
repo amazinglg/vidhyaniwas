@@ -334,9 +334,11 @@ const MyProfile = () => {
       {/* Maintenance Payment History */}
       {residentId && (
         <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><IndianRupee className="h-5 w-5 text-primary-foreground" /></div>
-            <div><h3 className="text-lg font-bold font-display">{t('maintenance_fund')}</h3><p className="text-sm text-muted-foreground">{t('your_payment_history')}</p></div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><IndianRupee className="h-5 w-5 text-primary-foreground" /></div>
+              <div><h3 className="text-lg font-bold font-display">{t('maintenance_fund')}</h3><p className="text-sm text-muted-foreground">{t('your_payment_history')}</p></div>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
