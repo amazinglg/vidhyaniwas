@@ -419,6 +419,11 @@ const MyProfile = () => {
                         <div><p className="text-muted-foreground text-xs">{t('due')}</p><p className="font-medium text-orange-600">₹{Number(m.due_amount || 0).toLocaleString()}</p></div>
                       </div>
                       <div className="text-xs text-muted-foreground">{m.paid_date || '-'} • {m.payment_mode || '-'}</div>
+                      <div className="flex justify-end pt-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleDownloadReceipt(m)}>
+                          <FileDown className="h-3.5 w-3.5 text-primary mr-1" /> Receipt
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
