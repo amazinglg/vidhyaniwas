@@ -379,7 +379,7 @@ const MyProfile = () => {
               <div className="hidden md:block">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead>{t('month')}</TableHead><TableHead>{t('total_maintenance')}</TableHead><TableHead>{t('paid')}</TableHead><TableHead>{t('due')}</TableHead><TableHead>{t('date')}</TableHead><TableHead>{t('status')}</TableHead><TableHead>{t('payment_mode')}</TableHead>
+                    <TableHead>{t('month')}</TableHead><TableHead>{t('total_maintenance')}</TableHead><TableHead>{t('paid')}</TableHead><TableHead>{t('due')}</TableHead><TableHead>{t('date')}</TableHead><TableHead>{t('status')}</TableHead><TableHead>{t('payment_mode')}</TableHead><TableHead></TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {maintenance.map((m) => {
@@ -393,6 +393,11 @@ const MyProfile = () => {
                           <TableCell>{m.paid_date || '-'}</TableCell>
                           <TableCell><Badge variant={statusBadge[m.status] || 'outline'} className="gap-1"><StatusIcon className="h-3 w-3" />{t(m.status)}</Badge></TableCell>
                           <TableCell className="capitalize">{m.payment_mode || '-'}</TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(m)} title="Download Receipt">
+                              <FileDown className="h-4 w-4 text-primary" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
