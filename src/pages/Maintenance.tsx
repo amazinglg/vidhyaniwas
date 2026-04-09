@@ -202,6 +202,56 @@ const Maintenance = () => {
     return c.status;
   };
 
+  const handleDownloadReceipt = async (c: any) => {
+    const { data: receipt } = await supabase.from('maintenance_receipts').select('*').eq('maintenance_collection_id', c.id).maybeSingle();
+    const r: any = receipt || {};
+    downloadReceipt({
+      societyName: r.society_name || 'Vidhya Niwas Society',
+      receiptNo: r.receipt_no || c.receipt_no || 'N/A',
+      receiptDate: r.receipt_date || c.paid_date || new Date().toISOString().split('T')[0],
+      residentName: r.resident_name || (c.residents as any)?.name || '',
+      houseNo: r.house_no || (c.residents as any)?.house_no || '',
+      laneNo: r.lane_no || (c.residents as any)?.lane_no || '',
+      month: r.month || c.month,
+      year: r.year || c.year,
+      totalMaintenance: Number(r.total_maintenance || c.total_maintenance || 0),
+      amountPaid: Number(r.amount_paid || c.amount || 0),
+      dueAmount: Number(r.due_amount || c.due_amount || 0),
+      paymentMode: r.payment_mode || c.payment_mode || '',
+      notes: r.notes || 'This is a digitally generated receipt and does not require a manual signature.',
+      customFields: r.custom_fields || {},
+    });
+  };
+
+  const openReceiptEdit = async (c: any) => {
+    const { data: receipt } = await supabase.from('maintenance_receipts').select('*').eq('maintenance_collection_id', c.id).maybeSingle();
+    if (!receipt) { toast.error('No receipt found for this entry'); return; }
+    setReceiptEditData(receipt);
+    setReceiptEditForm({
+      society_name: receipt.society_name || 'Vidhya Niwas Society',
+      notes: receipt.notes || '',
+      custom_key: '',
+      custom_value: '',
+    });
+    setReceiptEditDialog(true);
+  };
+
+  const handleSaveReceipt = async () => {
+    if (!receiptEditData) return;
+    const customFields = { ...(receiptEditData.custom_fields || {}) };
+    if (receiptEditForm.custom_key && receiptEditForm.custom_value) {
+      customFields[receiptEditForm.custom_key] = receiptEditForm.custom_value;
+    }
+    const { error } = await supabase.from('maintenance_receipts').update({
+      society_name: receiptEditForm.society_name,
+      notes: receiptEditForm.notes,
+      custom_fields: customFields,
+    }).eq('id', receiptEditData.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Receipt updated');
+    setReceiptEditDialog(false);
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
