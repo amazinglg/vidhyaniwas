@@ -187,6 +187,28 @@ const MyProfile = () => {
   const totalPaid = maintenance.reduce((s, m) => s + Number(m.amount || 0), 0);
   const totalDue = maintenance.reduce((s, m) => s + Number(m.due_amount || 0), 0);
 
+  const handleDownloadReceipt = async (m: any) => {
+    // Try fetching receipt from DB first (may have master admin edits)
+    const { data: receipt } = await supabase.from('maintenance_receipts').select('*').eq('maintenance_collection_id', m.id).maybeSingle();
+    const r = receipt || {};
+    downloadReceipt({
+      societyName: r.society_name || 'Vidhya Niwas Society',
+      receiptNo: r.receipt_no || m.receipt_no || 'N/A',
+      receiptDate: r.receipt_date || m.paid_date || new Date().toISOString().split('T')[0],
+      residentName: r.resident_name || resident?.name || form.full_name || '',
+      houseNo: r.house_no || resident?.house_no || '',
+      laneNo: r.lane_no || resident?.lane_no || '',
+      month: r.month || m.month,
+      year: r.year || m.year,
+      totalMaintenance: Number(r.total_maintenance || m.total_maintenance || 0),
+      amountPaid: Number(r.amount_paid || m.amount || 0),
+      dueAmount: Number(r.due_amount || m.due_amount || 0),
+      paymentMode: r.payment_mode || m.payment_mode || '',
+      notes: r.notes || 'This is a digitally generated receipt and does not require a manual signature.',
+      customFields: r.custom_fields || {},
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
