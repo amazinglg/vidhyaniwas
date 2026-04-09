@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Home, Edit2, Trash2, Users as UsersIcon, Download } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ResidentDetailModal from '@/components/ResidentDetailModal';
 import TenantModal from '@/components/TenantModal';
+import { downloadReceipt } from '@/utils/generateReceipt';
+import { Dialog as ReceiptDialog, DialogContent as ReceiptDialogContent, DialogHeader as ReceiptDialogHeader, DialogTitle as ReceiptDialogTitle } from '@/components/ui/dialog';
 
 const Residents = () => {
   const { data: allResidents = [], isLoading } = useAllResidents();
