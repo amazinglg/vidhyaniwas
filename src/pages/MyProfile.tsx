@@ -190,7 +190,7 @@ const MyProfile = () => {
   const handleDownloadReceipt = async (m: any) => {
     // Try fetching receipt from DB first (may have master admin edits)
     const { data: receipt } = await supabase.from('maintenance_receipts').select('*').eq('maintenance_collection_id', m.id).maybeSingle();
-    const r = receipt || {};
+    const r: any = receipt || {};
     downloadReceipt({
       societyName: r.society_name || 'Vidhya Niwas Society',
       receiptNo: r.receipt_no || m.receipt_no || 'N/A',
