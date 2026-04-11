@@ -52,6 +52,7 @@ export type Database = {
           admin_comment: string | null
           assigned_to: string | null
           category: string
+          comments: Json | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -66,6 +67,7 @@ export type Database = {
           admin_comment?: string | null
           assigned_to?: string | null
           category?: string
+          comments?: Json | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -80,6 +82,7 @@ export type Database = {
           admin_comment?: string | null
           assigned_to?: string | null
           category?: string
+          comments?: Json | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -629,6 +632,7 @@ export type Database = {
         | "secretary"
         | "coordinator"
         | "resident"
+        | "supervisor"
       expense_category:
         | "repair"
         | "purchase"
@@ -778,6 +782,7 @@ export const Constants = {
         "secretary",
         "coordinator",
         "resident",
+        "supervisor",
       ],
       expense_category: [
         "repair",
