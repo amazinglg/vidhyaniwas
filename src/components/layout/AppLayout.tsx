@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import AppSidebar from './AppSidebar';
 import TopBar from './TopBar';
 import { useWebNotifications } from '@/hooks/useWebNotifications';
+import NotificationPermissionBanner from '@/components/NotificationPermissionBanner';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -16,6 +17,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <TopBar />
         <main className="p-4 md:p-6">{children}</main>
       </div>
+      <NotificationPermissionBanner />
     </div>
   );
 };
