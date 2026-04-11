@@ -49,8 +49,8 @@ const Complaints = () => {
     if (residentId) setRaiseForm(f => ({ ...f, residentId }));
   }, [residentId]);
 
-  const appendComment = (existing: any, text: string, byName: string): CommentEntry[] => {
-    const prev: CommentEntry[] = Array.isArray(existing) ? existing : [];
+  const appendComment = (existing: any, text: string, byName: string): Record<string, string>[] => {
+    const prev: Record<string, string>[] = Array.isArray(existing) ? existing : [];
     return [...prev, { text, by: byName, at: new Date().toISOString() }];
   };
 
