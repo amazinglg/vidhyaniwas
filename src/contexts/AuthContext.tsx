@@ -6,6 +6,7 @@ import type { Database } from '@/integrations/supabase/types';
 type AppRole = Database['public']['Enums']['app_role'];
 
 const ADMIN_ROLES: string[] = ['master_admin', 'president', 'vice_president', 'treasury_head', 'secretary'];
+const SUPERVISOR_ROLE = 'supervisor';
 
 interface AuthContextType {
   session: Session | null;
@@ -16,6 +17,7 @@ interface AuthContextType {
   isMasterAdmin: boolean;
   isAdmin: boolean;
   isCoordinator: boolean;
+  isSupervisor: boolean;
   isResident: boolean;
   profileId: string | null;
   residentId: string | null;
@@ -31,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   isMasterAdmin: false,
   isAdmin: false,
   isCoordinator: false,
+  isSupervisor: false,
   isResident: false,
   profileId: null,
   residentId: null,
@@ -118,10 +121,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isMasterAdmin = userRole === 'master_admin';
   const isAdmin = userRole ? ADMIN_ROLES.includes(userRole) : false;
   const isCoordinator = userRole === 'coordinator';
+  const isSupervisor = userRole === SUPERVISOR_ROLE;
   const isResident = userRole === 'resident' || (!userRole && !!session);
 
   return (
-    <AuthContext.Provider value={{ session, user, userRole, loading, signOut, isMasterAdmin, isAdmin, isCoordinator, isResident, profileId, residentId, isApproved }}>
+    <AuthContext.Provider value={{ session, user, userRole, loading, signOut, isMasterAdmin, isAdmin, isCoordinator, isSupervisor, isResident, profileId, residentId, isApproved }}>
       {children}
     </AuthContext.Provider>
   );

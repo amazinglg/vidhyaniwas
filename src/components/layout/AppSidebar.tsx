@@ -25,7 +25,7 @@ const AppSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const { isAdmin, isCoordinator, isMasterAdmin, isResident } = useAuth();
+  const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor } = useAuth();
   const { t } = useLanguage();
 
   const navItems = [];
@@ -44,6 +44,11 @@ const AppSidebar = () => {
     if (isMasterAdmin) {
       navItems.push({ label: t('settings'), icon: Settings, path: '/settings' });
     }
+  } else if (isSupervisor) {
+    navItems.push(
+      { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
+      { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
+    );
   } else if (isCoordinator || isResident) {
     navItems.push(
       { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },

@@ -52,6 +52,7 @@ export type Database = {
           admin_comment: string | null
           assigned_to: string | null
           category: string
+          comments: Json | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -66,6 +67,7 @@ export type Database = {
           admin_comment?: string | null
           assigned_to?: string | null
           category?: string
+          comments?: Json | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -80,6 +82,7 @@ export type Database = {
           admin_comment?: string | null
           assigned_to?: string | null
           category?: string
+          comments?: Json | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -619,6 +622,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_coordinator: { Args: { _user_id: string }; Returns: boolean }
+      is_supervisor: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
@@ -629,6 +633,7 @@ export type Database = {
         | "secretary"
         | "coordinator"
         | "resident"
+        | "supervisor"
       expense_category:
         | "repair"
         | "purchase"
@@ -778,6 +783,7 @@ export const Constants = {
         "secretary",
         "coordinator",
         "resident",
+        "supervisor",
       ],
       expense_category: [
         "repair",

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon, History, FileDown, FilePenLine } from 'lucide-react';
+import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon, History, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -44,10 +44,6 @@ const Maintenance = () => {
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const readOnly = isResident || isCoordinator;
 
-  // Receipt edit state (master admin only)
-  const [receiptEditDialog, setReceiptEditDialog] = useState(false);
-  const [receiptEditData, setReceiptEditData] = useState<any>(null);
-  const [receiptEditForm, setReceiptEditForm] = useState({ society_name: '', notes: '', custom_key: '', custom_value: '' });
 
   const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
 
@@ -223,34 +219,7 @@ const Maintenance = () => {
     });
   };
 
-  const openReceiptEdit = async (c: any) => {
-    const { data: receipt } = await supabase.from('maintenance_receipts').select('*').eq('maintenance_collection_id', c.id).maybeSingle();
-    if (!receipt) { toast.error('No receipt found for this entry'); return; }
-    setReceiptEditData(receipt);
-    setReceiptEditForm({
-      society_name: receipt.society_name || 'Vidhya Niwas Society',
-      notes: receipt.notes || '',
-      custom_key: '',
-      custom_value: '',
-    });
-    setReceiptEditDialog(true);
-  };
-
-  const handleSaveReceipt = async () => {
-    if (!receiptEditData) return;
-    const customFields = { ...(receiptEditData.custom_fields || {}) };
-    if (receiptEditForm.custom_key && receiptEditForm.custom_value) {
-      customFields[receiptEditForm.custom_key] = receiptEditForm.custom_value;
-    }
-    const { error } = await supabase.from('maintenance_receipts').update({
-      society_name: receiptEditForm.society_name,
-      notes: receiptEditForm.notes,
-      custom_fields: customFields,
-    }).eq('id', receiptEditData.id);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Receipt updated');
-    setReceiptEditDialog(false);
-  };
+      
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -463,11 +432,6 @@ const Maintenance = () => {
                   <Button variant="ghost" size="sm" onClick={() => handleDownloadReceipt(c)}>
                     <FileDown className="h-3.5 w-3.5 text-primary" />
                   </Button>
-                  {isMasterAdmin && (
-                    <Button variant="ghost" size="sm" onClick={() => openReceiptEdit(c)}>
-                      <FilePenLine className="h-3.5 w-3.5 text-amber-500" />
-                    </Button>
-                  )}
                   <Button variant="ghost" size="sm" onClick={() => toggleVisibility(c.id, c.is_visible)}>
                     {c.is_visible ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5" />}
                   </Button>
@@ -537,11 +501,6 @@ const Maintenance = () => {
                       <Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(c)}>
                         <FileDown className="h-4 w-4 text-primary" />
                       </Button>
-                      {isMasterAdmin && (
-                        <Button variant="ghost" size="icon" onClick={() => openReceiptEdit(c)}>
-                          <FilePenLine className="h-4 w-4 text-amber-500" />
-                        </Button>
-                      )}
                       <Button variant="ghost" size="icon" onClick={() => toggleVisibility(c.id, c.is_visible)}>
                         {c.is_visible ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
                       </Button>
@@ -562,41 +521,6 @@ const Maintenance = () => {
         recordId={historyRecordId || ''}
       />
 
-      {/* Receipt Edit Dialog (Master Admin only) */}
-      <Dialog open={receiptEditDialog} onOpenChange={setReceiptEditDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Edit Receipt</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Society Name</Label>
-              <Input value={receiptEditForm.society_name} onChange={(e) => setReceiptEditForm({ ...receiptEditForm, society_name: e.target.value })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Footer Note</Label>
-              <Textarea value={receiptEditForm.notes} onChange={(e) => setReceiptEditForm({ ...receiptEditForm, notes: e.target.value })} rows={3} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Custom Field Name</Label>
-                <Input value={receiptEditForm.custom_key} onChange={(e) => setReceiptEditForm({ ...receiptEditForm, custom_key: e.target.value })} placeholder="e.g. Late Fee" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Custom Field Value</Label>
-                <Input value={receiptEditForm.custom_value} onChange={(e) => setReceiptEditForm({ ...receiptEditForm, custom_value: e.target.value })} placeholder="e.g. ₹200" />
-              </div>
-            </div>
-            {receiptEditData?.custom_fields && Object.keys(receiptEditData.custom_fields).length > 0 && (
-              <div className="p-3 rounded-lg bg-muted text-sm space-y-1">
-                <p className="font-medium text-xs text-muted-foreground">Existing Custom Fields:</p>
-                {Object.entries(receiptEditData.custom_fields).map(([k, v]) => (
-                  <p key={k}>{k}: {String(v)}</p>
-                ))}
-              </div>
-            )}
-            <Button onClick={handleSaveReceipt} className="w-full gradient-warm text-primary-foreground">Save Receipt Changes</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

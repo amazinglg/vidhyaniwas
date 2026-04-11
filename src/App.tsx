@@ -56,6 +56,13 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AdminOrSupervisorRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin, isSupervisor, loading } = useAuth();
+  if (loading) return null;
+  if (!isAdmin && !isSupervisor) return <Navigate to="/my-profile" replace />;
+  return <>{children}</>;
+};
+
 const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isMasterAdmin, loading } = useAuth();
   if (loading) return null;
@@ -64,8 +71,9 @@ const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const DefaultRedirect = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isSupervisor } = useAuth();
   if (isAdmin) return <Dashboard />;
+  if (isSupervisor) return <Navigate to="/complaints" replace />;
   return <Navigate to="/my-profile" replace />;
 };
 
@@ -88,7 +96,7 @@ const App = () => (
                       <Route path="/maintenance" element={<Maintenance />} />
                       <Route path="/expenses" element={<Expenses />} />
                       <Route path="/notices" element={<Notices />} />
-                      <Route path="/complaints" element={<Complaints />} />
+                      <Route path="/complaints" element={<AdminOrSupervisorRoute><Complaints /></AdminOrSupervisorRoute>} />
                       <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
                       <Route path="/my-profile" element={<MyProfile />} />
                       <Route path="/my-complaints" element={<MyComplaints />} />
