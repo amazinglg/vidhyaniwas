@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useComplaints, useResidents } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -23,34 +24,71 @@ const statusColors: Record<string, string> = {
   closed: 'bg-muted text-muted-foreground',
 };
 
+interface CommentEntry {
+  text: string;
+  by: string;
+  at: string;
+}
+
 const Complaints = () => {
   const { data: complaints = [], isLoading } = useComplaints();
   const { data: residents = [] } = useResidents();
-  const { user, isAdmin, residentId } = useAuth();
+  const { user, isAdmin, isSupervisor, residentId } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
   const [comment, setComment] = useState('');
+  const [pendingStatus, setPendingStatus] = useState<{ id: string; status: string } | null>(null);
+  const [statusComment, setStatusComment] = useState('');
   const [raiseDialogOpen, setRaiseDialogOpen] = useState(false);
   const [raiseForm, setRaiseForm] = useState({ title: '', description: '', category: 'General', residentId: '' });
 
-  // For admin raising complaint, they need to pick a resident or use their own
+  const canManage = isAdmin || isSupervisor;
+
   useEffect(() => {
     if (residentId) setRaiseForm(f => ({ ...f, residentId }));
   }, [residentId]);
 
-  const updateStatus = async (id: string, status: string) => {
-    const update: { status: string; resolved_at?: string } = { status };
-    if (status === 'resolved') update.resolved_at = new Date().toISOString().split('T')[0];
-    const { error } = await supabase.from('complaints').update(update).eq('id', id);
+  const appendComment = (existing: any, text: string, byName: string): CommentEntry[] => {
+    const prev: CommentEntry[] = Array.isArray(existing) ? existing : [];
+    return [...prev, { text, by: byName, at: new Date().toISOString() }];
+  };
+
+  const getUserDisplayName = () => {
+    return user?.user_metadata?.full_name || user?.email || 'Unknown';
+  };
+
+  const handleStatusChange = (id: string, status: string) => {
+    setPendingStatus({ id, status });
+    setStatusComment('');
+  };
+
+  const confirmStatusChange = async () => {
+    if (!pendingStatus) return;
+    if (!statusComment.trim()) {
+      toast.error('Please add a comment before changing status');
+      return;
+    }
+    const complaint = complaints.find((c: any) => c.id === pendingStatus.id);
+    const newComments = appendComment(
+      complaint?.comments,
+      `Status changed to ${pendingStatus.status.replace('_', ' ')}: ${statusComment}`,
+      getUserDisplayName()
+    );
+    const update: any = { status: pendingStatus.status, comments: newComments };
+    if (pendingStatus.status === 'resolved') update.resolved_at = new Date().toISOString().split('T')[0];
+    const { error } = await supabase.from('complaints').update(update).eq('id', pendingStatus.id);
     if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ['complaints'] });
     toast.success(t('status_updated'));
+    setPendingStatus(null);
+    setStatusComment('');
   };
 
   const addComment = async () => {
     if (!selectedComplaint || !comment.trim()) return;
-    const { error } = await supabase.from('complaints').update({ admin_comment: comment }).eq('id', selectedComplaint.id);
+    const newComments = appendComment(selectedComplaint.comments, comment, getUserDisplayName());
+    const { error } = await supabase.from('complaints').update({ admin_comment: comment, comments: newComments }).eq('id', selectedComplaint.id);
     if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ['complaints'] });
     setSelectedComplaint(null);
@@ -85,7 +123,7 @@ const Complaints = () => {
           <h1 className="text-3xl font-bold font-display text-foreground">{t('manage_complaints')}</h1>
           <p className="text-muted-foreground mt-1">{t('review_complaints')}</p>
         </div>
-        {isAdmin && (
+        {canManage && (
           <Dialog open={raiseDialogOpen} onOpenChange={setRaiseDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gradient-warm text-primary-foreground shadow-lg"><Plus className="h-4 w-4 mr-2" /> {t('raise_complaint')}</Button>
@@ -130,48 +168,72 @@ const Complaints = () => {
               <TableHead>{t('house')}</TableHead>
               <TableHead>{t('title')}</TableHead>
               <TableHead>{t('category')}</TableHead>
+              <TableHead>Assigned To</TableHead>
               <TableHead>{t('date')}</TableHead>
               <TableHead>{t('status')}</TableHead>
-              <TableHead>{t('actions')}</TableHead>
+              {canManage && <TableHead>{t('actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={canManage ? 8 : 7} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
             ) : complaints.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">{t('no_complaints')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={canManage ? 8 : 7} className="text-center py-8 text-muted-foreground">{t('no_complaints')}</TableCell></TableRow>
             ) : complaints.map((c: any) => (
               <TableRow key={c.id} className="animate-fade-in">
                 <TableCell className="font-medium">{c.residents?.name}</TableCell>
                 <TableCell>{c.residents?.house_no}</TableCell>
                 <TableCell>{c.title}</TableCell>
                 <TableCell>{c.category}</TableCell>
+                <TableCell>{c.assigned_to || '-'}</TableCell>
                 <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
                 <TableCell><Badge className={statusColors[c.status] || 'bg-muted'}>{c.status.replace('_', ' ')}</Badge></TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    <Select value={c.status} onValueChange={(v) => updateStatus(c.id, v)}>
-                      <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="open">{t('open')}</SelectItem>
-                        <SelectItem value="in_progress">{t('in_progress')}</SelectItem>
-                        <SelectItem value="resolved">{t('resolved')}</SelectItem>
-                        <SelectItem value="closed">{t('closed')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="ghost" size="icon" onClick={() => { setSelectedComplaint(c); setComment(c.admin_comment || ''); }}>
-                      <MessageSquareWarning className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+                {canManage && (
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Select value={c.status} onValueChange={(v) => handleStatusChange(c.id, v)}>
+                        <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">{t('open')}</SelectItem>
+                          <SelectItem value="in_progress">{t('in_progress')}</SelectItem>
+                          <SelectItem value="resolved">{t('resolved')}</SelectItem>
+                          <SelectItem value="closed">{t('closed')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedComplaint(c); setComment(''); }}>
+                        <MessageSquareWarning className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Card>
 
+      {/* Status change comment required dialog */}
+      <Dialog open={!!pendingStatus} onOpenChange={() => setPendingStatus(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="font-display">Add Comment for Status Change</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Changing status to <Badge className={statusColors[pendingStatus?.status || ''] || 'bg-muted'}>{pendingStatus?.status?.replace('_', ' ')}</Badge>
+            </p>
+            <div className="grid gap-2">
+              <Label>Comment *</Label>
+              <Textarea value={statusComment} onChange={(e) => setStatusComment(e.target.value)} rows={3} placeholder="Add reason or update for this status change..." />
+            </div>
+            <Button onClick={confirmStatusChange} className="w-full gradient-warm text-primary-foreground">
+              <Send className="h-4 w-4 mr-2" /> Confirm Status Change
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comment dialog with history */}
       <Dialog open={!!selectedComplaint} onOpenChange={() => setSelectedComplaint(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle className="font-display">{t('respond_complaint')}</DialogTitle></DialogHeader>
           {selectedComplaint && (
             <div className="space-y-4">
@@ -179,9 +241,30 @@ const Complaints = () => {
                 <p className="font-semibold">{selectedComplaint.title}</p>
                 <p className="text-sm text-muted-foreground mt-1">{selectedComplaint.description}</p>
               </div>
+
+              {/* Comment history */}
+              {Array.isArray(selectedComplaint.comments) && selectedComplaint.comments.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Comment History</Label>
+                  <ScrollArea className="h-40 rounded-lg border p-3">
+                    <div className="space-y-3">
+                      {(selectedComplaint.comments as CommentEntry[]).map((entry, idx) => (
+                        <div key={idx} className="text-sm border-b border-border pb-2 last:border-0">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium text-foreground">{entry.by}</span>
+                            <span className="text-xs text-muted-foreground">{new Date(entry.at).toLocaleString()}</span>
+                          </div>
+                          <p className="text-muted-foreground">{entry.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
               <div className="grid gap-2">
                 <Label>{t('admin_comment')}</Label>
-                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="..." />
+                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="Add a comment..." />
               </div>
               <Button onClick={addComment} className="w-full gradient-warm text-primary-foreground">
                 <Send className="h-4 w-4 mr-2" /> {t('send_response')}
