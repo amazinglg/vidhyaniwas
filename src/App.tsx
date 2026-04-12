@@ -70,10 +70,18 @@ const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const ResidentOrAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin, isResident, loading } = useAuth();
+  if (loading) return null;
+  if (!isAdmin && !isResident) return <Navigate to="/my-profile" replace />;
+  return <>{children}</>;
+};
+
 const DefaultRedirect = () => {
-  const { isAdmin, isSupervisor } = useAuth();
+  const { isAdmin, isSupervisor, isCoordinator } = useAuth();
   if (isAdmin) return <Dashboard />;
   if (isSupervisor) return <Navigate to="/complaints" replace />;
+  if (isCoordinator) return <Navigate to="/my-profile" replace />;
   return <Navigate to="/my-profile" replace />;
 };
 
@@ -92,17 +100,17 @@ const App = () => (
                   <AppLayout>
                     <Routes>
                       <Route path="/" element={<DefaultRedirect />} />
-                      <Route path="/residents" element={<Residents />} />
-                      <Route path="/maintenance" element={<Maintenance />} />
-                      <Route path="/expenses" element={<Expenses />} />
-                      <Route path="/notices" element={<Notices />} />
+                      <Route path="/residents" element={<ResidentOrAdminRoute><Residents /></ResidentOrAdminRoute>} />
+                      <Route path="/maintenance" element={<ResidentOrAdminRoute><Maintenance /></ResidentOrAdminRoute>} />
+                      <Route path="/expenses" element={<ResidentOrAdminRoute><Expenses /></ResidentOrAdminRoute>} />
+                      <Route path="/notices" element={<ResidentOrAdminRoute><Notices /></ResidentOrAdminRoute>} />
                       <Route path="/complaints" element={<AdminOrSupervisorRoute><Complaints /></AdminOrSupervisorRoute>} />
                       <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
                       <Route path="/my-profile" element={<MyProfile />} />
                       <Route path="/my-complaints" element={<MyComplaints />} />
                       <Route path="/change-password" element={<ChangePassword />} />
                       <Route path="/pending-signups" element={<AdminRoute><PendingSignups /></AdminRoute>} />
-                      <Route path="/society-management" element={<SocietyManagement />} />
+                      <Route path="/society-management" element={<ResidentOrAdminRoute><SocietyManagement /></ResidentOrAdminRoute>} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>

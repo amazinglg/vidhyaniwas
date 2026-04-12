@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, MessageSquareWarning, Send } from 'lucide-react';
+import { Plus, MessageSquareWarning, Send, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +33,7 @@ interface CommentEntry {
 const Complaints = () => {
   const { data: complaints = [], isLoading } = useComplaints();
   const { data: residents = [] } = useResidents();
-  const { user, isAdmin, isSupervisor, residentId } = useAuth();
+  const { user, isAdmin, isSupervisor, isMasterAdmin, residentId } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
@@ -66,13 +66,13 @@ const Complaints = () => {
   const confirmStatusChange = async () => {
     if (!pendingStatus) return;
     if (!statusComment.trim()) {
-      toast.error('Please add a comment before changing status');
+      toast.error(t('add_comment_required'));
       return;
     }
     const complaint = complaints.find((c: any) => c.id === pendingStatus.id);
     const newComments = appendComment(
       complaint?.comments,
-      `Status changed to ${pendingStatus.status.replace('_', ' ')}: ${statusComment}`,
+      `${t('status_changed_to')} ${t(pendingStatus.status)}: ${statusComment}`,
       getUserDisplayName()
     );
     const update: any = { status: pendingStatus.status, comments: newComments };
@@ -116,19 +116,27 @@ const Complaints = () => {
     toast.success(t('complaint_submitted'));
   };
 
+  const handleDeleteComplaint = async (id: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    const { error } = await supabase.from('complaints').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['complaints'] });
+    toast.success(t('delete'));
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">{t('manage_complaints')}</h1>
-          <p className="text-muted-foreground mt-1">{t('review_complaints')}</p>
+          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('manage_complaints')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('review_complaints')}</p>
         </div>
         {canManage && (
           <Dialog open={raiseDialogOpen} onOpenChange={setRaiseDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gradient-warm text-primary-foreground shadow-lg"><Plus className="h-4 w-4 mr-2" /> {t('raise_complaint')}</Button>
+              <Button className="gradient-warm text-primary-foreground shadow-lg" size="sm"><Plus className="h-4 w-4 mr-2" /> {t('raise_complaint')}</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-display">{t('raise_complaint')}</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
@@ -148,19 +156,67 @@ const Complaints = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {['open', 'in_progress', 'resolved', 'closed'].map(status => {
           const count = complaints.filter((c: any) => c.status === status).length;
           return (
-            <Card key={status} className="p-4 text-center">
-              <p className="text-2xl font-bold font-display">{count}</p>
-              <p className="text-sm text-muted-foreground capitalize">{t(status)}</p>
+            <Card key={status} className="p-3 md:p-4 text-center">
+              <p className="text-xl md:text-2xl font-bold font-display">{count}</p>
+              <p className="text-xs md:text-sm text-muted-foreground capitalize">{t(status)}</p>
             </Card>
           );
         })}
       </div>
 
-      <Card>
+      {/* Mobile card view */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
+        ) : complaints.length === 0 ? (
+          <Card className="p-8 text-center text-muted-foreground">{t('no_complaints')}</Card>
+        ) : complaints.map((c: any) => (
+          <Card key={c.id} className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-sm">{c.title}</p>
+                <p className="text-xs text-muted-foreground">{c.residents?.name} • {c.residents?.house_no}</p>
+              </div>
+              <Badge className={`text-xs ${statusColors[c.status] || 'bg-muted'}`}>{t(c.status)}</Badge>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{c.category}</span>
+              <span>•</span>
+              <span>{c.assigned_to || '-'}</span>
+              <span>•</span>
+              <span>{new Date(c.created_at).toLocaleDateString()}</span>
+            </div>
+            {canManage && (
+              <div className="flex gap-1 pt-1 border-t flex-wrap">
+                <Select value={c.status} onValueChange={(v) => handleStatusChange(c.id, v)}>
+                  <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">{t('open')}</SelectItem>
+                    <SelectItem value="in_progress">{t('in_progress')}</SelectItem>
+                    <SelectItem value="resolved">{t('resolved')}</SelectItem>
+                    <SelectItem value="closed">{t('closed')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="ghost" size="sm" onClick={() => { setSelectedComplaint(c); setComment(''); }}>
+                  <MessageSquareWarning className="h-3.5 w-3.5" />
+                </Button>
+                {isMasterAdmin && (
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteComplaint(c.id)}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <Card className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -168,7 +224,7 @@ const Complaints = () => {
               <TableHead>{t('house')}</TableHead>
               <TableHead>{t('title')}</TableHead>
               <TableHead>{t('category')}</TableHead>
-              <TableHead>Assigned To</TableHead>
+              <TableHead>{t('assigned_to')}</TableHead>
               <TableHead>{t('date')}</TableHead>
               <TableHead>{t('status')}</TableHead>
               {canManage && <TableHead>{t('actions')}</TableHead>}
@@ -187,7 +243,7 @@ const Complaints = () => {
                 <TableCell>{c.category}</TableCell>
                 <TableCell>{c.assigned_to || '-'}</TableCell>
                 <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
-                <TableCell><Badge className={statusColors[c.status] || 'bg-muted'}>{c.status.replace('_', ' ')}</Badge></TableCell>
+                <TableCell><Badge className={statusColors[c.status] || 'bg-muted'}>{t(c.status).replace('_', ' ')}</Badge></TableCell>
                 {canManage && (
                   <TableCell>
                     <div className="flex gap-1">
@@ -203,6 +259,11 @@ const Complaints = () => {
                       <Button variant="ghost" size="icon" onClick={() => { setSelectedComplaint(c); setComment(''); }}>
                         <MessageSquareWarning className="h-4 w-4" />
                       </Button>
+                      {isMasterAdmin && (
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteComplaint(c.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 )}
@@ -215,17 +276,17 @@ const Complaints = () => {
       {/* Status change comment required dialog */}
       <Dialog open={!!pendingStatus} onOpenChange={() => setPendingStatus(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Add Comment for Status Change</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{t('add_comment_for_status')}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Changing status to <Badge className={statusColors[pendingStatus?.status || ''] || 'bg-muted'}>{pendingStatus?.status?.replace('_', ' ')}</Badge>
+              {t('changing_status_to')} <Badge className={statusColors[pendingStatus?.status || ''] || 'bg-muted'}>{t(pendingStatus?.status || '')}</Badge>
             </p>
             <div className="grid gap-2">
-              <Label>Comment *</Label>
-              <Textarea value={statusComment} onChange={(e) => setStatusComment(e.target.value)} rows={3} placeholder="Add reason or update for this status change..." />
+              <Label>{t('admin_comment')} *</Label>
+              <Textarea value={statusComment} onChange={(e) => setStatusComment(e.target.value)} rows={3} placeholder={t('add_reason_placeholder')} />
             </div>
             <Button onClick={confirmStatusChange} className="w-full gradient-warm text-primary-foreground">
-              <Send className="h-4 w-4 mr-2" /> Confirm Status Change
+              <Send className="h-4 w-4 mr-2" /> {t('confirm_status_change')}
             </Button>
           </div>
         </DialogContent>
@@ -233,7 +294,7 @@ const Complaints = () => {
 
       {/* Comment dialog with history */}
       <Dialog open={!!selectedComplaint} onOpenChange={() => setSelectedComplaint(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="font-display">{t('respond_complaint')}</DialogTitle></DialogHeader>
           {selectedComplaint && (
             <div className="space-y-4">
@@ -245,7 +306,7 @@ const Complaints = () => {
               {/* Comment history */}
               {Array.isArray(selectedComplaint.comments) && selectedComplaint.comments.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Comment History</Label>
+                  <Label className="text-xs text-muted-foreground">{t('comment_history')}</Label>
                   <ScrollArea className="h-40 rounded-lg border p-3">
                     <div className="space-y-3">
                       {(selectedComplaint.comments as CommentEntry[]).map((entry, idx) => (
@@ -264,7 +325,7 @@ const Complaints = () => {
 
               <div className="grid gap-2">
                 <Label>{t('admin_comment')}</Label>
-                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="Add a comment..." />
+                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder={t('add_comment_placeholder')} />
               </div>
               <Button onClick={addComment} className="w-full gradient-warm text-primary-foreground">
                 <Send className="h-4 w-4 mr-2" /> {t('send_response')}
