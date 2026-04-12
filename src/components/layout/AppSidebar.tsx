@@ -46,10 +46,13 @@ const AppSidebar = () => {
     }
   } else if (isSupervisor) {
     navItems.push(
-      { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
       { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
     );
-  } else if (isCoordinator || isResident) {
+  } else if (isCoordinator) {
+    navItems.push(
+      { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
+    );
+  } else if (isResident) {
     navItems.push(
       { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
       { label: t('residents'), icon: Users, path: '/residents' },

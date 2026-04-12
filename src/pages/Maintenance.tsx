@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon, History, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,15 @@ import { Textarea } from '@/components/ui/textarea';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 
-const DEFAULT_TOTAL_MAINTENANCE = 3000;
+const STORAGE_KEY = 'society_default_maintenance';
+
+const getStoredDefault = (): number => {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v) return Number(v);
+  } catch {}
+  return 9000;
+};
 
 const Maintenance = () => {
   const { data: collections = [], isLoading } = useMaintenanceCollections();
@@ -35,15 +43,15 @@ const Maintenance = () => {
   const [filterMonth, setFilterMonth] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ residentId: '', totalMaintenance: String(DEFAULT_TOTAL_MAINTENANCE), amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '', dueDate: '' });
+  const [storedDefault, setStoredDefault] = useState(getStoredDefault);
+  const [form, setForm] = useState({ residentId: '', totalMaintenance: String(storedDefault), amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '', dueDate: '' });
   const [defaultAmountDialog, setDefaultAmountDialog] = useState(false);
-  const [defaultAmount, setDefaultAmount] = useState(String(DEFAULT_TOTAL_MAINTENANCE));
+  const [defaultAmount, setDefaultAmount] = useState(String(storedDefault));
   const [duePaymentDialog, setDuePaymentDialog] = useState(false);
   const [duePaymentEntry, setDuePaymentEntry] = useState<any>(null);
   const [duePaymentForm, setDuePaymentForm] = useState({ amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const readOnly = isResident || isCoordinator;
-
 
   const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
 
@@ -63,7 +71,7 @@ const Maintenance = () => {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ residentId: '', totalMaintenance: defaultAmount, amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '', dueDate: '' });
+    setForm({ residentId: '', totalMaintenance: String(storedDefault), amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '', dueDate: '' });
     setDialogOpen(true);
   };
 
@@ -71,7 +79,7 @@ const Maintenance = () => {
     setEditingId(c.id);
     setForm({
       residentId: c.resident_id,
-      totalMaintenance: String(c.total_maintenance || DEFAULT_TOTAL_MAINTENANCE),
+      totalMaintenance: String(c.total_maintenance || storedDefault),
       amount: String(c.amount),
       date: c.paid_date || new Date().toISOString().split('T')[0],
       paymentMode: c.payment_mode || 'upi',
@@ -90,7 +98,7 @@ const Maintenance = () => {
   const handleSave = async () => {
     if (!form.residentId || !form.amount) { toast.error(t('please_fill_required')); return; }
     const amt = Number(form.amount);
-    const totalMaint = Number(form.totalMaintenance) || DEFAULT_TOTAL_MAINTENANCE;
+    const totalMaint = Number(form.totalMaintenance) || storedDefault;
     const dueAmount = computeDue(totalMaint, amt);
     const dateObj = new Date(form.date);
     const month = MONTHS[dateObj.getMonth()];
@@ -121,15 +129,12 @@ const Maintenance = () => {
     const payAmount = Number(duePaymentForm.amount);
     const remainingDue = Math.max(0, Number(duePaymentEntry.due_amount) - payAmount);
     
-    // Update the original entry - reduce due, change status
-    const newOriginalDue = remainingDue;
-    const newOriginalStatus = newOriginalDue <= 0 ? 'paid' : 'partial';
+    const newOriginalStatus = remainingDue <= 0 ? 'paid' : 'partial';
     await supabase.from('maintenance_collections').update({ 
-      due_amount: newOriginalDue, 
+      due_amount: remainingDue, 
       status: newOriginalStatus 
     }).eq('id', duePaymentEntry.id);
 
-    // Create a new entry for the due payment
     const dateObj = new Date(duePaymentForm.date);
     const { error } = await supabase.from('maintenance_collections').insert({
       resident_id: duePaymentEntry.resident_id,
@@ -167,10 +172,11 @@ const Maintenance = () => {
   const handleUpdateDefaultAmount = async () => {
     const newAmt = Number(defaultAmount);
     if (!newAmt || newAmt <= 0) { toast.error(t('please_fill_required')); return; }
-    const { error } = await supabase.from('maintenance_collections')
-      .update({ total_maintenance: newAmt })
-      .gte('id', '00000000-0000-0000-0000-000000000000');
-    if (error) { toast.error(error.message); return; }
+    // Save to localStorage so it persists
+    localStorage.setItem(STORAGE_KEY, String(newAmt));
+    setStoredDefault(newAmt);
+    
+    // Update all existing records
     for (const c of collections) {
       const due = computeDue(newAmt, Number(c.amount || 0));
       const status = due <= 0 ? 'paid' : Number(c.amount) > 0 ? 'partial' : 'pending';
@@ -178,7 +184,7 @@ const Maintenance = () => {
     }
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
     setDefaultAmountDialog(false);
-    toast.success(t('visibility_updated'));
+    toast.success(t('amount_updated'));
   };
 
   const downloadCSV = () => {
@@ -191,7 +197,6 @@ const Maintenance = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Check overdue status based on due_date
   const getEffectiveStatus = (c: any) => {
     if (c.status === 'paid') return 'paid';
     if (c.due_date && new Date(c.due_date) < new Date() && Number(c.due_amount) > 0) return 'overdue';
@@ -219,8 +224,6 @@ const Maintenance = () => {
     });
   };
 
-      
-
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -236,11 +239,13 @@ const Maintenance = () => {
           )}
           {!readOnly && (
             <>
-              <Button variant="outline" size="sm" onClick={() => { setDefaultAmount(String(DEFAULT_TOTAL_MAINTENANCE)); setDefaultAmountDialog(true); }}>
-                <Settings2 className="h-4 w-4 mr-1" /> {t('amount')}
-              </Button>
+              {isMasterAdmin && (
+                <Button variant="outline" size="sm" onClick={() => { setDefaultAmount(String(storedDefault)); setDefaultAmountDialog(true); }}>
+                  <Settings2 className="h-4 w-4 mr-1" /> {t('amount')}
+                </Button>
+              )}
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild><Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">{t('record_payment')}</span><span className="sm:hidden">Add</span></Button></DialogTrigger>
+                <DialogTrigger asChild><Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">{t('record_payment')}</span><span className="sm:hidden">{t('add')}</span></Button></DialogTrigger>
                 <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                   <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit') + ' ' + t('record_payment') : t('record_payment')}</DialogTitle></DialogHeader>
                   <div className="grid gap-4 py-4">
@@ -253,7 +258,7 @@ const Maintenance = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
-                        <Label>Total {t('amount')} (₹)</Label>
+                        <Label>{t('total_maintenance')} (₹)</Label>
                         <Input type="number" value={form.totalMaintenance} onChange={(e) => setForm({ ...form, totalMaintenance: e.target.value })} />
                       </div>
                       <div className="grid gap-2">
@@ -330,12 +335,12 @@ const Maintenance = () => {
 
       <Dialog open={defaultAmountDialog} onOpenChange={setDefaultAmountDialog}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-display">Set Default {t('amount')}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{t('set_default_amount')}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Total Maintenance {t('amount')} (₹)</Label>
+              <Label>{t('total_maintenance')} (₹)</Label>
               <Input type="number" value={defaultAmount} onChange={(e) => setDefaultAmount(e.target.value)} />
-              <p className="text-xs text-muted-foreground">This will update the total maintenance for all existing records and recalculate dues.</p>
+              <p className="text-xs text-muted-foreground">{t('default_amount_note')}</p>
             </div>
             <Button onClick={handleUpdateDefaultAmount} className="w-full gradient-warm text-primary-foreground">{t('update')}</Button>
           </div>
@@ -397,7 +402,7 @@ const Maintenance = () => {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground">Total</p>
-                  <p className="font-medium">₹{Number(c.total_maintenance || DEFAULT_TOTAL_MAINTENANCE).toLocaleString('en-IN')}</p>
+                  <p className="font-medium">₹{Number(c.total_maintenance || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{t('paid')}</p>
@@ -411,7 +416,7 @@ const Maintenance = () => {
               {c.due_date && <div className="text-xs text-muted-foreground">{t('due_date')}: {c.due_date}</div>}
               <div className="text-xs text-muted-foreground capitalize">{c.payment_mode?.replace('_', ' ') || '-'}</div>
               {!readOnly && (
-                <div className="flex gap-1 pt-1 border-t">
+                <div className="flex gap-1 pt-1 border-t flex-wrap">
                   {Number(c.due_amount) > 0 && (
                     <TooltipProvider>
                       <Tooltip>
@@ -473,7 +478,7 @@ const Maintenance = () => {
                   <TableCell className="font-medium">{(c.residents as any)?.name}</TableCell>
                   <TableCell>{(c.residents as any)?.house_no}</TableCell>
                   <TableCell>{c.paid_date || '-'}</TableCell>
-                  <TableCell className="font-medium">₹{Number(c.total_maintenance || DEFAULT_TOTAL_MAINTENANCE).toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="font-medium">₹{Number(c.total_maintenance || 0).toLocaleString('en-IN')}</TableCell>
                   <TableCell className="text-success font-medium">₹{Number(c.amount).toLocaleString('en-IN')}</TableCell>
                   <TableCell className={Number(c.due_amount) > 0 ? 'text-destructive font-medium' : ''}>₹{Number(c.due_amount).toLocaleString('en-IN')}</TableCell>
                   <TableCell>{c.due_date || '-'}</TableCell>
@@ -520,7 +525,6 @@ const Maintenance = () => {
         tableName="maintenance_collections"
         recordId={historyRecordId || ''}
       />
-
     </div>
   );
 };

@@ -29,6 +29,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'no': { en: 'No', hi: 'नहीं' },
   'sign_out': { en: 'Sign Out', hi: 'साइन आउट' },
   'change_password': { en: 'Change Password', hi: 'पासवर्ड बदलें' },
+  'total': { en: 'Total', hi: 'कुल' },
 
   // Sidebar & Navigation
   'dashboard': { en: 'Dashboard', hi: 'डैशबोर्ड' },
@@ -101,6 +102,9 @@ const translations: Record<string, Record<Lang, string>> = {
   'total_pending': { en: 'Total Pending', hi: 'कुल बकाया' },
   'no_records': { en: 'No maintenance records found', hi: 'कोई रखरखाव रिकॉर्ड नहीं मिला' },
   'total_maintenance': { en: 'Total Maintenance', hi: 'कुल रखरखाव' },
+  'set_default_amount': { en: 'Set Default Amount', hi: 'डिफ़ॉल्ट राशि सेट करें' },
+  'default_amount_note': { en: 'This will update the total maintenance for all existing records and recalculate dues.', hi: 'यह सभी मौजूदा रिकॉर्ड के लिए कुल रखरखाव अपडेट करेगा और बकाया की पुनर्गणना करेगा।' },
+  'amount_updated': { en: 'Amount updated successfully', hi: 'राशि सफलतापूर्वक अपडेट की गई' },
 
   // Expenses
   'track_expenses': { en: 'Track all society expenditures', hi: 'सभी सोसायटी खर्चों को ट्रैक करें' },
@@ -157,7 +161,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'resolved': { en: 'Resolved', hi: 'समाधान हो गया' },
   'closed': { en: 'Closed', hi: 'बंद' },
   'respond_complaint': { en: 'Respond to Complaint', hi: 'शिकायत का उत्तर दें' },
-  'admin_comment': { en: 'Admin Comment / Response', hi: 'व्यवस्थापक टिप्पणी / उत्तर' },
+  'admin_comment': { en: 'Comment / Response', hi: 'टिप्पणी / उत्तर' },
   'send_response': { en: 'Send Response', hi: 'उत्तर भेजें' },
   'no_complaints': { en: 'No complaints', hi: 'कोई शिकायत नहीं' },
   'status_updated': { en: 'Status updated', hi: 'स्थिति अपडेट की गई' },
@@ -169,6 +173,15 @@ const translations: Record<string, Record<Lang, string>> = {
   'no_complaints_submitted': { en: 'No complaints submitted yet.', hi: 'अभी तक कोई शिकायत दर्ज नहीं की गई।' },
   'admin_response': { en: 'Admin Response', hi: 'व्यवस्थापक उत्तर' },
   'track_complaints': { en: 'Track your submitted complaints', hi: 'अपनी दर्ज शिकायतों को ट्रैक करें' },
+  'assigned_to': { en: 'Assigned To', hi: 'को सौंपा गया' },
+  'add_comment_required': { en: 'Please add a comment before changing status', hi: 'स्थिति बदलने से पहले कृपया टिप्पणी जोड़ें' },
+  'status_changed_to': { en: 'Status changed to', hi: 'स्थिति बदली गई' },
+  'add_comment_for_status': { en: 'Add Comment for Status Change', hi: 'स्थिति परिवर्तन के लिए टिप्पणी जोड़ें' },
+  'changing_status_to': { en: 'Changing status to', hi: 'स्थिति बदल रहे हैं' },
+  'add_reason_placeholder': { en: 'Add reason or update for this status change...', hi: 'इस स्थिति परिवर्तन के लिए कारण या अपडेट जोड़ें...' },
+  'confirm_status_change': { en: 'Confirm Status Change', hi: 'स्थिति परिवर्तन की पुष्टि करें' },
+  'add_comment_placeholder': { en: 'Add a comment...', hi: 'टिप्पणी जोड़ें...' },
+  'comment_history': { en: 'Comment History', hi: 'टिप्पणी इतिहास' },
 
   // Settings
   'master_admin_controls': { en: 'Master Administrator controls', hi: 'मास्टर व्यवस्थापक नियंत्रण' },
@@ -192,6 +205,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'monthly_maintenance': { en: 'Monthly Maintenance', hi: 'मासिक रखरखाव' },
   'master_admin': { en: 'Master Admin', hi: 'मास्टर व्यवस्थापक' },
   'society_info_updated': { en: 'Society info updated', hi: 'सोसायटी जानकारी अपडेट की गई' },
+  'residential_society_mgmt': { en: 'Residential Society Management System', hi: 'आवासीय सोसायटी प्रबंधन प्रणाली' },
 
   // Roles
   'role_master_admin': { en: 'Master Administrator', hi: 'मास्टर व्यवस्थापक' },
@@ -201,6 +215,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'role_secretary': { en: 'Society Secretary', hi: 'सोसायटी सचिव' },
   'role_coordinator': { en: 'Coordinator', hi: 'समन्वयक' },
   'role_resident': { en: 'Resident', hi: 'निवासी' },
+  'role_supervisor': { en: 'Supervisor', hi: 'सुपरवाइज़र' },
 
   // Auth
   'sign_in': { en: 'Sign In', hi: 'साइन इन' },
@@ -300,6 +315,28 @@ const translations: Record<string, Record<Lang, string>> = {
   'specific_users': { en: 'Specific Users', hi: 'विशिष्ट उपयोगकर्ता' },
   'select_users': { en: 'Select Users', hi: 'उपयोगकर्ता चुनें' },
   'notification_sent': { en: 'Notification sent', hi: 'सूचना भेजी गई' },
+
+  // Notification banner
+  'enable_notifications': { en: 'Enable Notifications', hi: 'सूचनाएं सक्षम करें' },
+  'notification_desc': { en: 'Get instant alerts for notices & updates.', hi: 'सूचनाओं और अपडेट के लिए तुरंत अलर्ट प्राप्त करें।' },
+  'allow': { en: 'Allow', hi: 'अनुमति दें' },
+
+  // TopBar
+  'signed_out': { en: 'Signed out', hi: 'साइन आउट किया गया' },
+
+  // Signup pending
+  'signup_pending_title': { en: 'Signup Pending Approval', hi: 'साइनअप अनुमोदन लंबित' },
+  'signup_pending_desc': { en: 'Your account is pending approval from Society management. You will be able to login once approved.', hi: 'आपका खाता सोसायटी प्रबंधन से अनुमोदन की प्रतीक्षा में है। अनुमोदित होने के बाद आप लॉगिन कर पाएंगे।' },
+
+  // Receipt
+  'download_receipt': { en: 'Download Receipt', hi: 'रसीद डाउनलोड करें' },
+  'no_receipts': { en: 'No maintenance receipts found for this resident', hi: 'इस निवासी के लिए कोई रखरखाव रसीद नहीं मिली' },
+
+  // PWA Install
+  'install_app': { en: 'Install App', hi: 'ऐप इंस्टॉल करें' },
+  'install_app_desc': { en: 'Install this app on your device for quick access', hi: 'त्वरित पहुंच के लिए इस ऐप को अपने डिवाइस पर इंस्टॉल करें' },
+  'install': { en: 'Install', hi: 'इंस्टॉल करें' },
+  'not_signed_up': { en: 'Not signed up', hi: 'साइनअप नहीं किया' },
 };
 
 interface LanguageContextType {
