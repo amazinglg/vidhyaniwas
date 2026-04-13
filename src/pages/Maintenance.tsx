@@ -127,7 +127,10 @@ const Maintenance = () => {
   const handleDuePayment = async () => {
     if (!duePaymentEntry || !duePaymentForm.amount) { toast.error(t('please_fill_required')); return; }
     const payAmount = Number(duePaymentForm.amount);
-    const remainingDue = Math.max(0, Number(duePaymentEntry.due_amount) - payAmount);
+    const originalDue = Number(duePaymentEntry.due_amount);
+    const previousPaid = Number(duePaymentEntry.amount);
+    const totalMaint = Number(duePaymentEntry.total_maintenance);
+    const remainingDue = Math.max(0, originalDue - payAmount);
     
     const newOriginalStatus = remainingDue <= 0 ? 'paid' : 'partial';
     await supabase.from('maintenance_collections').update({ 
@@ -139,16 +142,42 @@ const Maintenance = () => {
     const { error } = await supabase.from('maintenance_collections').insert({
       resident_id: duePaymentEntry.resident_id,
       amount: payAmount,
-      due_amount: 0,
-      total_maintenance: Number(duePaymentEntry.due_amount),
+      due_amount: remainingDue,
+      total_maintenance: totalMaint,
       paid_date: duePaymentForm.date,
       month: MONTHS[dateObj.getMonth()],
       year: dateObj.getFullYear(),
-      status: 'paid',
+      status: remainingDue <= 0 ? 'paid' : 'partial',
       payment_mode: duePaymentForm.paymentMode,
       receipt_no: duePaymentForm.receiptNo || null,
     });
     if (error) { toast.error(error.message); return; }
+
+    // Auto-download due clearance receipt with full breakdown
+    const resName = (duePaymentEntry.residents as any)?.name || '';
+    const houseNo = (duePaymentEntry.residents as any)?.house_no || '';
+    const laneNo = (duePaymentEntry.residents as any)?.lane_no || '';
+    downloadReceipt({
+      societyName: 'Shri Vidhya Niwas Colony',
+      receiptNo: duePaymentForm.receiptNo || 'N/A',
+      receiptDate: duePaymentForm.date,
+      residentName: resName,
+      houseNo,
+      laneNo,
+      month: MONTHS[dateObj.getMonth()],
+      year: dateObj.getFullYear(),
+      totalMaintenance: totalMaint,
+      amountPaid: payAmount,
+      dueAmount: remainingDue,
+      paymentMode: duePaymentForm.paymentMode,
+      notes: 'This is a digitally generated receipt and does not require a manual signature.',
+      isDueClearance: true,
+      previousPaid,
+      originalDue,
+      currentPayment: payAmount,
+      remainingDue,
+    });
+
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
     setDuePaymentDialog(false);
     toast.success(t('due_payment_recorded'));
