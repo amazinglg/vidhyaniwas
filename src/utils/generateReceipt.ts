@@ -15,6 +15,12 @@ interface ReceiptData {
   paymentMode: string;
   notes: string;
   customFields?: Record<string, string>;
+  // Due clearance fields
+  previousPaid?: number;
+  originalDue?: number;
+  currentPayment?: number;
+  remainingDue?: number;
+  isDueClearance?: boolean;
 }
 
 const PAYMENT_MODE_LABELS: Record<string, string> = {
@@ -42,7 +48,7 @@ export const generateReceiptPDF = (data: ReceiptData) => {
   y += 7;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Maintenance Payment Receipt', pageW / 2, y, { align: 'center' });
+  doc.text(data.isDueClearance ? 'Due Clearance Payment Receipt' : 'Maintenance Payment Receipt', pageW / 2, y, { align: 'center' });
   y += 7;
 
   // Receipt no & date row
@@ -83,12 +89,23 @@ export const generateReceiptPDF = (data: ReceiptData) => {
   const labelX = tableX + 4;
   const valX = tableX + tableW - 4;
 
-  const rows = [
-    ['Total Maintenance', `₹ ${data.totalMaintenance.toLocaleString('en-IN')}`],
-    ['Amount Paid', `₹ ${data.amountPaid.toLocaleString('en-IN')}`],
-    ['Remaining Due', `₹ ${data.dueAmount.toLocaleString('en-IN')}`],
-    ['Payment Mode', PAYMENT_MODE_LABELS[data.paymentMode] || data.paymentMode || 'N/A'],
-  ];
+  const rows: [string, string, string?][] = [];
+
+  if (data.isDueClearance) {
+    // Due clearance receipt - show full breakdown
+    rows.push(['Total Maintenance Amount', `₹ ${data.totalMaintenance.toLocaleString('en-IN')}`]);
+    rows.push(['Previously Paid', `₹ ${(data.previousPaid ?? 0).toLocaleString('en-IN')}`, 'normal']);
+    rows.push(['Due Amount (Before)', `₹ ${(data.originalDue ?? 0).toLocaleString('en-IN')}`, 'due']);
+    rows.push(['Current Payment', `₹ ${(data.currentPayment ?? data.amountPaid).toLocaleString('en-IN')}`, 'paid']);
+    rows.push(['Remaining Due', `₹ ${(data.remainingDue ?? data.dueAmount).toLocaleString('en-IN')}`, data.remainingDue && data.remainingDue > 0 ? 'due' : 'normal']);
+    rows.push(['Payment Mode', PAYMENT_MODE_LABELS[data.paymentMode] || data.paymentMode || 'N/A']);
+  } else {
+    // Standard receipt
+    rows.push(['Total Maintenance', `₹ ${data.totalMaintenance.toLocaleString('en-IN')}`]);
+    rows.push(['Amount Paid', `₹ ${data.amountPaid.toLocaleString('en-IN')}`, 'paid']);
+    rows.push(['Remaining Due', `₹ ${data.dueAmount.toLocaleString('en-IN')}`, data.dueAmount > 0 ? 'due' : 'normal']);
+    rows.push(['Payment Mode', PAYMENT_MODE_LABELS[data.paymentMode] || data.paymentMode || 'N/A']);
+  }
 
   // Custom fields
   if (data.customFields) {
@@ -108,9 +125,10 @@ export const generateReceiptPDF = (data: ReceiptData) => {
     doc.setFont('helvetica', 'normal');
     doc.text(row[0], labelX, ry);
 
-    // Highlight amount paid in green, due in red
-    if (i === 1) doc.setTextColor(22, 163, 74);
-    else if (i === 2 && data.dueAmount > 0) doc.setTextColor(220, 38, 38);
+    // Color based on type
+    const colorHint = row[2];
+    if (colorHint === 'paid') doc.setTextColor(22, 163, 74);
+    else if (colorHint === 'due') doc.setTextColor(220, 38, 38);
     else doc.setTextColor(30, 30, 30);
 
     doc.setFont('helvetica', 'bold');
@@ -125,8 +143,9 @@ export const generateReceiptPDF = (data: ReceiptData) => {
   y += 8;
 
   // Status badge
-  const status = data.dueAmount <= 0 ? 'PAID' : 'PARTIALLY PAID';
-  const badgeColor = data.dueAmount <= 0 ? [22, 163, 74] : [234, 88, 12];
+  const finalDue = data.isDueClearance ? (data.remainingDue ?? data.dueAmount) : data.dueAmount;
+  const status = finalDue <= 0 ? 'PAID' : 'PARTIALLY PAID';
+  const badgeColor = finalDue <= 0 ? [22, 163, 74] : [234, 88, 12];
   doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
   const badgeW = doc.getTextWidth(status) + 12;
   doc.roundedRect(pageW / 2 - badgeW / 2, y - 4, badgeW, 8, 2, 2, 'F');
@@ -152,5 +171,6 @@ export const generateReceiptPDF = (data: ReceiptData) => {
 
 export const downloadReceipt = (data: ReceiptData) => {
   const doc = generateReceiptPDF(data);
-  doc.save(`receipt_${data.residentName.replace(/\s+/g, '_')}_${data.month}_${data.year}.pdf`);
+  const suffix = data.isDueClearance ? '_due_clearance' : '';
+  doc.save(`receipt_${data.residentName.replace(/\s+/g, '_')}_${data.month}_${data.year}${suffix}.pdf`);
 };
