@@ -1,0 +1,105 @@
+import { useState, useEffect } from 'react';
+import { X, Download, Smartphone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+const InstallAppBanner = () => {
+  const [dismissed, setDismissed] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const { lang } = useLanguage();
+
+  useEffect(() => {
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as any).standalone === true;
+    setIsStandalone(standalone);
+
+    if (sessionStorage.getItem('install-banner-dismissed') === '1') {
+      setDismissed(true);
+    }
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  if (isStandalone || dismissed) return null;
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDismissed(true);
+        sessionStorage.setItem('install-banner-dismissed', '1');
+      }
+      setDeferredPrompt(null);
+    } else {
+      // Fallback: show manual instructions
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const msg = isIOS
+        ? (lang === 'hi'
+          ? 'Safari में Share बटन (⬆) दबाएं, फिर "Add to Home Screen" चुनें'
+          : 'Tap the Share button (⬆) in Safari, then "Add to Home Screen"')
+        : (lang === 'hi'
+          ? 'ब्राउज़र मेनू (⋮) खोलें और "Add to Home Screen" या "Install App" चुनें'
+          : 'Open browser menu (⋮) and tap "Add to Home Screen" or "Install App"');
+      alert(msg);
+    }
+  };
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    sessionStorage.setItem('install-banner-dismissed', '1');
+  };
+
+  return (
+    <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-6 md:max-w-sm animate-in slide-in-from-bottom-4 duration-500">
+      <div className="relative bg-primary text-primary-foreground rounded-xl shadow-2xl p-4 flex items-center gap-3">
+        <button
+          onClick={handleDismiss}
+          className="absolute top-2 right-2 p-1 rounded-full hover:bg-primary-foreground/20 transition-colors"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="flex-shrink-0 bg-primary-foreground/20 rounded-lg p-2">
+          <Smartphone className="h-6 w-6" />
+        </div>
+
+        <div className="flex-1 min-w-0 pr-4">
+          <p className="font-semibold text-sm leading-tight">
+            {lang === 'hi' ? 'ऐप इंस्टॉल करें!' : 'Install our App!'}
+          </p>
+          <p className="text-xs opacity-90 mt-0.5">
+            {lang === 'hi'
+              ? 'फ़ोन पर ऐप की तरह इस्तेमाल करें'
+              : 'Use like a native app on your phone'}
+          </p>
+        </div>
+
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={handleInstall}
+          className="flex-shrink-0 gap-1 text-xs font-bold"
+        >
+          <Download className="h-3.5 w-3.5" />
+          {lang === 'hi' ? 'इंस्टॉल' : 'Install'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default InstallAppBanner;
