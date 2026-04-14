@@ -10,15 +10,25 @@ interface BeforeInstallPromptEvent extends Event {
 
 const InstallAppBanner = () => {
   const [dismissed, setDismissed] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(true); // default true to avoid flash
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installing, setInstalling] = useState(false);
   const { lang } = useLanguage();
 
   useEffect(() => {
+    // Detect if running as installed PWA
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as any).standalone === true;
+      (navigator as any).standalone === true ||
+      document.referrer.includes('android-app://');
     setIsStandalone(standalone);
+
+    // Listen for display-mode changes (e.g. user installs while on page)
+    const mq = window.matchMedia('(display-mode: standalone)');
+    const mqHandler = (e: MediaQueryListEvent) => {
+      if (e.matches) setIsStandalone(true);
+    };
+    mq.addEventListener('change', mqHandler);
 
     if (sessionStorage.getItem('install-banner-dismissed') === '1') {
       setDismissed(true);
@@ -29,30 +39,45 @@ const InstallAppBanner = () => {
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+
+    // Hide banner if app gets installed
+    const installedHandler = () => {
+      setIsStandalone(true);
+      setDismissed(true);
+    };
+    window.addEventListener('appinstalled', installedHandler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installedHandler);
+      mq.removeEventListener('change', mqHandler);
+    };
   }, []);
 
+  // Don't show if already installed PWA, or dismissed, or no install prompt available on non-iOS
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   if (isStandalone || dismissed) return null;
+  // Only show if we have the native prompt OR on iOS (where we show manual instructions)
+  if (!deferredPrompt && !isIOS) return null;
 
   const handleInstall = async () => {
     if (deferredPrompt) {
-      await deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDismissed(true);
-        sessionStorage.setItem('install-banner-dismissed', '1');
+      setInstalling(true);
+      try {
+        await deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setDismissed(true);
+          sessionStorage.setItem('install-banner-dismissed', '1');
+        }
+      } finally {
+        setInstalling(false);
+        setDeferredPrompt(null);
       }
-      setDeferredPrompt(null);
-    } else {
-      // Fallback: show manual instructions
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const msg = isIOS
-        ? (lang === 'hi'
-          ? 'Safari में Share बटन (⬆) दबाएं, फिर "Add to Home Screen" चुनें'
-          : 'Tap the Share button (⬆) in Safari, then "Add to Home Screen"')
-        : (lang === 'hi'
-          ? 'ब्राउज़र मेनू (⋮) खोलें और "Add to Home Screen" या "Install App" चुनें'
-          : 'Open browser menu (⋮) and tap "Add to Home Screen" or "Install App"');
+    } else if (isIOS) {
+      const msg = lang === 'hi'
+        ? 'Safari में नीचे Share बटन (⬆) दबाएं, फिर "Add to Home Screen" चुनें'
+        : 'Tap the Share button (⬆) at the bottom in Safari, then tap "Add to Home Screen"';
       alert(msg);
     }
   };
@@ -73,7 +98,7 @@ const InstallAppBanner = () => {
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex-shrink-0 bg-primary-foreground/20 rounded-lg p-2">
+        <div className="flex-shrink-0 bg-primary-foreground/20 rounded-lg p-2.5 animate-pulse">
           <Smartphone className="h-6 w-6" />
         </div>
 
@@ -83,8 +108,8 @@ const InstallAppBanner = () => {
           </p>
           <p className="text-xs opacity-90 mt-0.5">
             {lang === 'hi'
-              ? 'फ़ोन पर ऐप की तरह इस्तेमाल करें'
-              : 'Use like a native app on your phone'}
+              ? 'एक क्लिक में फ़ोन पर इंस्टॉल करें'
+              : 'One tap install — use like a real app'}
           </p>
         </div>
 
@@ -92,10 +117,13 @@ const InstallAppBanner = () => {
           size="sm"
           variant="secondary"
           onClick={handleInstall}
+          disabled={installing}
           className="flex-shrink-0 gap-1 text-xs font-bold"
         >
           <Download className="h-3.5 w-3.5" />
-          {lang === 'hi' ? 'इंस्टॉल' : 'Install'}
+          {installing
+            ? (lang === 'hi' ? 'इंस्टॉल हो रहा...' : 'Installing...')
+            : (lang === 'hi' ? 'इंस्टॉल' : 'Install')}
         </Button>
       </div>
     </div>
