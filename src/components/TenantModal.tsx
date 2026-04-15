@@ -27,7 +27,7 @@ const TenantModal = ({ owner, open, onClose }: Props) => {
   const [tenants, setTenants] = useState<any[]>([]);
   const [addDialog, setAddDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', mobile: '', email: '', family_members: '1' });
+  const [form, setForm] = useState({ name: '', mobile: '', family_members: '1' });
 
   const canEdit = isAdmin || (residentId === owner?.id);
   const canView = !isResident && !isCoordinator;
@@ -45,7 +45,7 @@ const TenantModal = ({ owner, open, onClose }: Props) => {
   const handleSave = async () => {
     if (!form.name || !form.mobile) { toast.error(t('please_fill_required')); return; }
     const payload = {
-      name: form.name, mobile: form.mobile, email: form.email || null,
+      name: form.name, mobile: form.mobile,
       family_members: Number(form.family_members),
       house_no: owner.house_no, lane_no: owner.lane_no,
       resident_type: 'tenant' as const, owner_id: owner.id,
@@ -70,8 +70,8 @@ const TenantModal = ({ owner, open, onClose }: Props) => {
     fetchTenants();
   };
 
-  const openAdd = () => { setEditingId(null); setForm({ name: '', mobile: '', email: '', family_members: '1' }); setAddDialog(true); };
-  const openEdit = (t: any) => { setEditingId(t.id); setForm({ name: t.name, mobile: t.mobile, email: t.email || '', family_members: String(t.family_members || 1) }); setAddDialog(true); };
+  const openAdd = () => { setEditingId(null); setForm({ name: '', mobile: '', family_members: '1' }); setAddDialog(true); };
+  const openEdit = (t: any) => { setEditingId(t.id); setForm({ name: t.name, mobile: t.mobile, family_members: String(t.family_members || 1) }); setAddDialog(true); };
 
   if (!owner) return null;
 
@@ -102,7 +102,7 @@ const TenantModal = ({ owner, open, onClose }: Props) => {
                     <div>
                       <p className="font-semibold">{tenant.name}</p>
                       <p className="text-sm text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{tenant.mobile}</p>
-                      {tenant.email && <p className="text-xs text-muted-foreground">{tenant.email}</p>}
+                      <p className="text-xs text-muted-foreground">{t('family_members')}: {tenant.family_members || 1}</p>
                       <p className="text-xs text-muted-foreground">{t('family_members')}: {tenant.family_members || 1}</p>
                     </div>
                     {canEdit && (
@@ -125,7 +125,7 @@ const TenantModal = ({ owner, open, onClose }: Props) => {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2"><Label>{t('full_name')} *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
-            <div className="grid gap-2"><Label>{t('email')}</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>{t('family_members')}</Label><Input type="number" value={form.family_members} onChange={(e) => setForm({ ...form, family_members: e.target.value })} min="1" /></div>
             <div className="grid gap-2"><Label>{t('family_members')}</Label><Input type="number" value={form.family_members} onChange={(e) => setForm({ ...form, family_members: e.target.value })} min="1" /></div>
             <div className="p-3 rounded-lg bg-muted/50 border text-sm">
               <p><span className="text-muted-foreground">{t('house_no')}:</span> <span className="font-medium">{owner.house_no}</span></p>
