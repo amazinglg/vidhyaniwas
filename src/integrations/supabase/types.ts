@@ -407,8 +407,10 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           full_name: string | null
+          house_no: string | null
           id: string
           is_approved: boolean
+          lane_no: string | null
           mobile: string | null
           resident_id: string | null
           updated_at: string
@@ -420,8 +422,10 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
+          house_no?: string | null
           id?: string
           is_approved?: boolean
+          lane_no?: string | null
           mobile?: string | null
           resident_id?: string | null
           updated_at?: string
@@ -433,8 +437,10 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
+          house_no?: string | null
           id?: string
           is_approved?: boolean
+          lane_no?: string | null
           mobile?: string | null
           resident_id?: string | null
           updated_at?: string
