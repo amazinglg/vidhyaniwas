@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Mail, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown } from 'lucide-react';
+import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,7 @@ const Residents = () => {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1', resident_type: 'owner' });
+  const [form, setForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', family_members: '1', resident_type: 'owner' });
   const readOnly = !isAdmin;
 
   const [selectedResident, setSelectedResident] = useState<any>(null);
@@ -63,13 +63,13 @@ const Residents = () => {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1', resident_type: 'owner' });
+    setForm({ name: '', house_no: '', lane_no: '', mobile: '', family_members: '1', resident_type: 'owner' });
     setDialogOpen(true);
   };
 
   const openEdit = (r: any) => {
     setEditingId(r.id);
-    setForm({ name: r.name, house_no: r.house_no, lane_no: r.lane_no, mobile: r.mobile, email: r.email || '', family_members: String(r.family_members || 1), resident_type: r.resident_type || 'owner' });
+    setForm({ name: r.name, house_no: r.house_no, lane_no: r.lane_no, mobile: r.mobile, family_members: String(r.family_members || 1), resident_type: r.resident_type || 'owner' });
     setDialogOpen(true);
   };
 
@@ -87,9 +87,22 @@ const Residents = () => {
       ownerId = ownersList[0].id;
     }
 
+    // Block duplicate house owner (for all users including admins)
+    if (form.resident_type === 'owner') {
+      const { data: existingOwners } = await supabase.from('residents').select('id')
+        .eq('house_no', form.house_no).eq('lane_no', form.lane_no).eq('resident_type', 'owner');
+      const isDuplicate = editingId
+        ? existingOwners && existingOwners.filter(o => o.id !== editingId).length > 0
+        : existingOwners && existingOwners.length > 0;
+      if (isDuplicate) {
+        toast.error('A house owner already exists for this house number. Use member or tenant instead.');
+        return;
+      }
+    }
+
     const payload = {
       name: form.name, house_no: form.house_no, lane_no: form.lane_no,
-      mobile: form.mobile, email: form.email || null,
+      mobile: form.mobile,
       family_members: Number(form.family_members),
       resident_type: form.resident_type,
       owner_id: ownerId,
@@ -119,8 +132,8 @@ const Residents = () => {
   };
 
   const downloadCSV = () => {
-    const headers = [t('name'), t('house'), t('lane'), t('mobile'), t('email'), t('family_members'), t('status')];
-    const rows = filtered.map((r: any) => [r.name, r.house_no, r.lane_no, r.mobile, r.email || '', r.family_members || 1, r.is_active ? 'Active' : 'Inactive']);
+    const headers = [t('name'), t('house'), t('lane'), t('mobile'), t('family_members'), t('status')];
+    const rows = filtered.map((r: any) => [r.name, r.house_no, r.lane_no, r.mobile, r.family_members || 1, r.is_active ? 'Active' : 'Inactive']);
     const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -186,7 +199,6 @@ const Residents = () => {
                     <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={form.lane_no} onChange={(e) => setForm({ ...form, lane_no: e.target.value })} /></div>
                   </div>
                   <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
-                  <div className="grid gap-2"><Label>{t('email')}</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
                   <div className="grid gap-2"><Label>{t('family_members')}</Label><Input type="number" value={form.family_members} onChange={(e) => setForm({ ...form, family_members: e.target.value })} min="1" /></div>
                   <Button onClick={handleSave} className="w-full mt-2">{editingId ? t('update') : t('add_resident')}</Button>
                 </div>
@@ -226,7 +238,6 @@ const Residents = () => {
             </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
               <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{r.mobile}</span>
-              {r.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
             </div>
             {!readOnly && (
               <div className="flex gap-1 pt-1 border-t flex-wrap">
@@ -284,7 +295,6 @@ const Residents = () => {
                 <TableCell>
                   <div className="space-y-0.5">
                     <span className="flex items-center gap-1 text-sm"><Phone className="h-3 w-3" />{r.mobile}</span>
-                    {r.email && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Mail className="h-3 w-3" />{r.email}</span>}
                   </div>
                 </TableCell>
                 <TableCell>{r.family_members}</TableCell>
