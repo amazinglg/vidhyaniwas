@@ -104,6 +104,18 @@ const SocietySettings = () => {
       return;
     }
 
+    // Block duplicate house owner
+    if (addUserForm.resident_type === 'owner') {
+      const { data: existingOwners } = await supabase.from('residents').select('id')
+        .eq('house_no', addUserForm.house_no)
+        .eq('lane_no', addUserForm.lane_no)
+        .eq('resident_type', 'owner');
+      if (existingOwners && existingOwners.length > 0) {
+        toast.error('A house owner already exists for this house number. Use member or tenant instead.');
+        return;
+      }
+    }
+
     let ownerId: string | null = null;
     if (addUserForm.resident_type === 'member' || addUserForm.resident_type === 'tenant') {
       const { data: owners } = await supabase.from('residents').select('id')

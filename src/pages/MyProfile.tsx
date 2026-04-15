@@ -481,7 +481,6 @@ const MyProfile = () => {
             <div className="grid gap-2"><Label>{t('name')} *</Label><Input value={tenantForm.name} onChange={(e) => setTenantForm({ ...tenantForm, name: e.target.value })} /></div>
             <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={tenantForm.mobile} onChange={(e) => setTenantForm({ ...tenantForm, mobile: e.target.value })} /></div>
             <Button onClick={handleSaveTenant} className="w-full gradient-warm text-primary-foreground">{editingTenantId ? t('update') : t('add_tenant')}</Button>
-            <Button onClick={handleSaveTenant} className="w-full gradient-warm text-primary-foreground">{editingTenantId ? t('update') : t('add_tenant')}</Button>
           </div>
         </DialogContent>
       </Dialog>
