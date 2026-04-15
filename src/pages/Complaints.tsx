@@ -55,7 +55,7 @@ const Complaints = () => {
   };
 
   const getUserDisplayName = () => {
-    return user?.user_metadata?.full_name || user?.email || 'Unknown';
+    return user?.user_metadata?.full_name || user?.user_metadata?.mobile || 'Unknown';
   };
 
   const handleStatusChange = (id: string, status: string) => {

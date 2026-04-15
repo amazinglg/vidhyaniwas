@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Mail, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown } from 'lucide-react';
+import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,7 +29,7 @@ const MyProfile = () => {
   const [profile, setProfile] = useState<any>(null);
   const [resident, setResident] = useState<any>(null);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ full_name: '', mobile: '', email: '' });
+  const [form, setForm] = useState({ full_name: '', mobile: '' });
   const [maintenance, setMaintenance] = useState<any[]>([]);
 
   // Family members
@@ -48,7 +48,7 @@ const MyProfile = () => {
   const [tenants, setTenants] = useState<any[]>([]);
   const [tenantDialog, setTenantDialog] = useState(false);
   const [editingTenantId, setEditingTenantId] = useState<string | null>(null);
-  const [tenantForm, setTenantForm] = useState({ name: '', mobile: '', email: '' });
+  const [tenantForm, setTenantForm] = useState({ name: '', mobile: '' });
 
   useEffect(() => {
     if (!user) return;
@@ -57,7 +57,7 @@ const MyProfile = () => {
       if (profileData) {
         setProfile(profileData);
         setResident(profileData.residents);
-        setForm({ full_name: profileData.full_name || '', mobile: profileData.mobile || '', email: profileData.residents?.email || user.email || '' });
+        setForm({ full_name: profileData.full_name || '', mobile: profileData.mobile || '' });
       }
     };
     fetchData();
@@ -97,10 +97,6 @@ const MyProfile = () => {
     if (!user) return;
     const { error } = await supabase.from('profiles').update({ full_name: form.full_name, mobile: form.mobile }).eq('user_id', user.id);
     if (error) { toast.error(error.message); return; }
-    // Update email on resident record if exists
-    if (residentId && form.email) {
-      await supabase.from('residents').update({ email: form.email }).eq('id', residentId);
-    }
     toast.success(t('profile_updated'));
     setEditing(false);
   };
@@ -153,14 +149,14 @@ const MyProfile = () => {
 
   // Tenant CRUD (owner only)
   const isOwner = resident?.resident_type === 'owner';
-  const openAddTenant = () => { setEditingTenantId(null); setTenantForm({ name: '', mobile: '', email: '' }); setTenantDialog(true); };
-  const openEditTenant = (t: any) => { setEditingTenantId(t.id); setTenantForm({ name: t.name, mobile: t.mobile, email: t.email || '' }); setTenantDialog(true); };
+  const openAddTenant = () => { setEditingTenantId(null); setTenantForm({ name: '', mobile: '' }); setTenantDialog(true); };
+  const openEditTenant = (t: any) => { setEditingTenantId(t.id); setTenantForm({ name: t.name, mobile: t.mobile }); setTenantDialog(true); };
   const handleSaveTenant = async () => {
     if (!tenantForm.name || !tenantForm.mobile || !residentId || !resident) { toast.error(t('please_fill_required')); return; }
     // Only allow one tenant
     if (!editingTenantId && tenants.length >= 1) { toast.error('Only one tenant per house is allowed'); return; }
     const payload = {
-      name: tenantForm.name, mobile: tenantForm.mobile, email: tenantForm.email || null,
+      name: tenantForm.name, mobile: tenantForm.mobile,
       house_no: resident.house_no, lane_no: resident.lane_no,
       resident_type: 'tenant' as const, owner_id: residentId,
     };
@@ -231,7 +227,7 @@ const MyProfile = () => {
           <div className="grid gap-4">
             <div className="grid gap-2"><Label>{t('full_name')}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
             <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
-            <div className="grid gap-2"><Label>{t('email')}</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={form.mobile} readOnly className="bg-muted" /></div>
             <div className="flex gap-2">
               <Button onClick={handleSave} className="gradient-warm text-primary-foreground"><Save className="h-4 w-4 mr-2" />{t('save')}</Button>
               <Button variant="outline" onClick={() => setEditing(false)}>{t('cancel')}</Button>
@@ -241,7 +237,7 @@ const MyProfile = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Phone className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('mobile')}</p><p className="font-medium">{form.mobile || t('not_set')}</p></div></div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Mail className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('email')}</p><p className="font-medium text-sm">{form.email || t('not_set')}</p></div></div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Home className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{resident?.house_no || t('not_set')}</p></div></div>
               {resident && (
                 <>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Home className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{resident.house_no}</p></div></div>
@@ -274,7 +270,7 @@ const MyProfile = () => {
                     <span className="font-medium">{tn.name}</span>
                     <Badge variant="outline" className="ml-2 text-xs">{t('tenant')}</Badge>
                     <span className="text-muted-foreground text-sm ml-2">{tn.mobile}</span>
-                    {tn.email && <span className="text-muted-foreground text-sm ml-2">• {tn.email}</span>}
+                    <span className="text-muted-foreground text-sm ml-2">{tn.mobile}</span>
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEditTenant(tn)}><Edit2 className="h-4 w-4" /></Button>
@@ -484,7 +480,6 @@ const MyProfile = () => {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2"><Label>{t('name')} *</Label><Input value={tenantForm.name} onChange={(e) => setTenantForm({ ...tenantForm, name: e.target.value })} /></div>
             <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={tenantForm.mobile} onChange={(e) => setTenantForm({ ...tenantForm, mobile: e.target.value })} /></div>
-            <div className="grid gap-2"><Label>{t('email')}</Label><Input type="email" value={tenantForm.email} onChange={(e) => setTenantForm({ ...tenantForm, email: e.target.value })} /></div>
             <Button onClick={handleSaveTenant} className="w-full gradient-warm text-primary-foreground">{editingTenantId ? t('update') : t('add_tenant')}</Button>
           </div>
         </DialogContent>

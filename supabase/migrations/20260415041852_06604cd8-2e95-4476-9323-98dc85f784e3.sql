@@ -1,0 +1,1 @@
+ALTER TABLE public.residents DROP COLUMN IF EXISTS email;

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Home, Phone, Mail, Users, Car, IndianRupee, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { Home, Phone, Users, Car, IndianRupee, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -67,8 +67,8 @@ const ResidentDetailModal = ({ resident, open, onClose }: Props) => {
             <div><p className="text-xs text-muted-foreground">{t('family')}</p><p className="font-medium text-sm">{resident.family_members || 1}</p></div>
           </div>
           <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border">
-            <Mail className="h-4 w-4 text-primary" />
-            <div><p className="text-xs text-muted-foreground">{t('email')}</p><p className="font-medium text-sm truncate">{resident.email || '-'}</p></div>
+            <Home className="h-4 w-4 text-primary" />
+            <div><p className="text-xs text-muted-foreground">{t('lane')}</p><p className="font-medium text-sm">{resident.lane_no}</p></div>
           </div>
         </div>
 
