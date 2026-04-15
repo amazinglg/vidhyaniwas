@@ -21,7 +21,13 @@ const PendingSignups = () => {
 
   const fetchPending = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*').eq('is_approved', false);
-    setPendingSignups(profiles || []);
+    // Sort by house_no naturally
+    const sorted = (profiles || []).sort((a: any, b: any) => {
+      const aH = a.house_no || '';
+      const bH = b.house_no || '';
+      return aH.localeCompare(bH, undefined, { numeric: true });
+    });
+    setPendingSignups(sorted);
     setLoading(false);
   };
 
