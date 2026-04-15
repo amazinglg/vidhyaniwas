@@ -28,11 +28,11 @@ const SocietySettings = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [editResident, setEditResident] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', family_members: '1' });
+  const [editForm, setEditForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', family_members: '1' });
 
   // Add user dialog
   const [addUserOpen, setAddUserOpen] = useState(false);
-  const [addUserForm, setAddUserForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', email: '', resident_type: 'owner' });
+  const [addUserForm, setAddUserForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', resident_type: 'owner' });
 
   const [editingSociety, setEditingSociety] = useState(false);
   const [societyForm, setSocietyForm] = useState({
@@ -75,14 +75,14 @@ const SocietySettings = () => {
 
   const openEditResident = (r: any) => {
     setEditResident(r);
-    setEditForm({ name: r.name, house_no: r.house_no, lane_no: r.lane_no, mobile: r.mobile, email: r.email || '', family_members: String(r.family_members || 1) });
+    setEditForm({ name: r.name, house_no: r.house_no, lane_no: r.lane_no, mobile: r.mobile, family_members: String(r.family_members || 1) });
   };
 
   const handleSaveResident = async () => {
     if (!editResident) return;
     const { error } = await supabase.from('residents').update({
       name: editForm.name, house_no: editForm.house_no, lane_no: editForm.lane_no,
-      mobile: editForm.mobile, email: editForm.email || null, family_members: Number(editForm.family_members),
+      mobile: editForm.mobile, family_members: Number(editForm.family_members),
     }).eq('id', editResident.id);
     if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ['residents'] });
@@ -123,7 +123,6 @@ const SocietySettings = () => {
       house_no: addUserForm.house_no,
       lane_no: addUserForm.lane_no,
       mobile: addUserForm.mobile,
-      email: addUserForm.email || null,
       resident_type: addUserForm.resident_type,
       owner_id: ownerId,
     });
@@ -132,7 +131,7 @@ const SocietySettings = () => {
     queryClient.invalidateQueries({ queryKey: ['residents'] });
     queryClient.invalidateQueries({ queryKey: ['all_residents'] });
     setAddUserOpen(false);
-    setAddUserForm({ name: '', house_no: '', lane_no: '', mobile: '', email: '', resident_type: 'owner' });
+    setAddUserForm({ name: '', house_no: '', lane_no: '', mobile: '', resident_type: 'owner' });
   };
 
   const handleSaveSocietyInfo = () => {
@@ -290,7 +289,7 @@ const SocietySettings = () => {
               <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={editForm.lane_no} onChange={(e) => setEditForm({ ...editForm, lane_no: e.target.value })} /></div>
             </div>
             <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
-            <div className="grid gap-2"><Label>{t('email')}</Label><Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
+            
             <Button onClick={handleSaveResident} className="w-full gradient-warm text-primary-foreground">{t('save_changes')}</Button>
           </div>
         </DialogContent>
@@ -318,7 +317,7 @@ const SocietySettings = () => {
               <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={addUserForm.lane_no} onChange={(e) => setAddUserForm({ ...addUserForm, lane_no: e.target.value })} /></div>
             </div>
             <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={addUserForm.mobile} onChange={(e) => setAddUserForm({ ...addUserForm, mobile: e.target.value })} /></div>
-            <div className="grid gap-2"><Label>{t('email')}</Label><Input value={addUserForm.email} onChange={(e) => setAddUserForm({ ...addUserForm, email: e.target.value })} /></div>
+            
             <Button onClick={handleAddUser} className="w-full gradient-warm text-primary-foreground">{t('add_user')}</Button>
           </div>
         </DialogContent>

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useComplaints, useResidents } from '@/hooks/useSocietyData';
+import { useComplaints, useAllResidents } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,7 +32,7 @@ interface CommentEntry {
 
 const Complaints = () => {
   const { data: complaints = [], isLoading } = useComplaints();
-  const { data: residents = [] } = useResidents();
+  const { data: allResidents = [] } = useAllResidents();
   const { user, isAdmin, isSupervisor, isMasterAdmin, residentId } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
@@ -41,7 +41,7 @@ const Complaints = () => {
   const [pendingStatus, setPendingStatus] = useState<{ id: string; status: string } | null>(null);
   const [statusComment, setStatusComment] = useState('');
   const [raiseDialogOpen, setRaiseDialogOpen] = useState(false);
-  const [raiseForm, setRaiseForm] = useState({ title: '', description: '', category: 'General', residentId: '' });
+  const [raiseForm, setRaiseForm] = useState({ title: '', description: '', category: 'General', residentId: residentId || '' });
 
   const canManage = isAdmin || isSupervisor;
 
@@ -141,9 +141,13 @@ const Complaints = () => {
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label>{t('resident')} *</Label>
-                  <Select value={raiseForm.residentId} onValueChange={(v) => setRaiseForm({ ...raiseForm, residentId: v })}>
+                  <Select 
+                    value={raiseForm.residentId} 
+                    onValueChange={(v) => setRaiseForm({ ...raiseForm, residentId: v })}
+                    disabled={!isAdmin && !!residentId}
+                  >
                     <SelectTrigger><SelectValue placeholder={t('select_resident')} /></SelectTrigger>
-                    <SelectContent>{residents.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
+                    <SelectContent>{allResidents.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2"><Label>{t('title')} *</Label><Input value={raiseForm.title} onChange={(e) => setRaiseForm({ ...raiseForm, title: e.target.value })} /></div>
