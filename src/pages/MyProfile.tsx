@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown } from 'lucide-react';
+import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,6 +49,9 @@ const MyProfile = () => {
   const [tenantDialog, setTenantDialog] = useState(false);
   const [editingTenantId, setEditingTenantId] = useState<string | null>(null);
   const [tenantForm, setTenantForm] = useState({ name: '', mobile: '' });
+
+  // House owner info (for tenants/members)
+  const [houseOwner, setHouseOwner] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
