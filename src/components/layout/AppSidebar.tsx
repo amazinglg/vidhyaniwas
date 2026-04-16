@@ -54,7 +54,6 @@ const AppSidebar = () => {
     );
   } else if (isResident) {
     navItems.push(
-      { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
       { label: t('residents'), icon: Users, path: '/residents' },
       { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
       { label: t('expenses'), icon: Receipt, path: '/expenses' },
@@ -62,6 +61,11 @@ const AppSidebar = () => {
       { label: t('society_management'), icon: Shield, path: '/society-management' },
       { label: t('my_complaints'), icon: MessageSquareWarning, path: '/my-complaints' },
     );
+  }
+
+  // Ensure My Profile is available for ALL user types
+  if (!navItems.some(item => item.path === '/my-profile')) {
+    navItems.push({ label: t('my_profile'), icon: UserCircle, path: '/my-profile' });
   }
 
   const sidebarContent = (
