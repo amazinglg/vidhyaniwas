@@ -269,6 +269,39 @@ const MyProfile = () => {
         )}
       </Card>
 
+      {/* House Owner Info (for tenants/family members) */}
+      {resident && resident.resident_type !== 'owner' && houseOwner && (
+        <Card className="p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 shadow-lg">
+              <Crown className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold font-display">{lang === 'hi' ? 'मकान मालिक' : 'House Owner'}</h3>
+              <p className="text-sm text-muted-foreground">{lang === 'hi' ? 'आपके घर के मालिक की जानकारी' : 'Your house owner details'}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <UserCircle className="h-4 w-4 text-primary" />
+              <div><p className="text-xs text-muted-foreground">{t('name')}</p><p className="font-medium">{houseOwner.name}</p></div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <Phone className="h-4 w-4 text-primary" />
+              <div><p className="text-xs text-muted-foreground">{t('mobile')}</p><p className="font-medium">{houseOwner.mobile}</p></div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <Home className="h-4 w-4 text-primary" />
+              <div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{houseOwner.house_no}</p></div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <Home className="h-4 w-4 text-primary" />
+              <div><p className="text-xs text-muted-foreground">{t('lane')}</p><p className="font-medium">{houseOwner.lane_no}</p></div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Tenant Management (owners only) */}
       {residentId && isOwner && (
         <Card className="p-6">
