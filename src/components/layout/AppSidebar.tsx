@@ -52,14 +52,7 @@ const AppSidebar = () => {
     navItems.push(
       { label: t('my_profile'), icon: UserCircle, path: '/my-profile' },
     );
-  }
-
-  // My Profile for ALL user types (avoid duplicate if already added)
-  if (!navItems.some(item => item.path === '/my-profile')) {
-    navItems.unshift({ label: t('my_profile'), icon: UserCircle, path: '/my-profile' });
-  }
-
-  if (isResident) {
+  } else if (isResident) {
     navItems.push(
       { label: t('residents'), icon: Users, path: '/residents' },
       { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },

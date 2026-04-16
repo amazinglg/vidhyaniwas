@@ -19,6 +19,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <TopBar />
         <main className="p-4 md:p-6">{children}</main>
       </div>
+      <PwaUpdatePrompt />
       <NotificationPermissionBanner />
       <InstallAppBanner />
     </div>
