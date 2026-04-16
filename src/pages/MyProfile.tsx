@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown } from 'lucide-react';
+import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,7 +24,7 @@ const VEHICLE_TYPES = ['Car', 'Bike', 'Scooter', 'Bicycle', 'Auto', 'Other'];
 
 const MyProfile = () => {
   const { user, residentId } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<any>(null);
   const [resident, setResident] = useState<any>(null);
@@ -49,6 +49,9 @@ const MyProfile = () => {
   const [tenantDialog, setTenantDialog] = useState(false);
   const [editingTenantId, setEditingTenantId] = useState<string | null>(null);
   const [tenantForm, setTenantForm] = useState({ name: '', mobile: '' });
+
+  // House owner info (for tenants/members)
+  const [houseOwner, setHouseOwner] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -92,6 +95,22 @@ const MyProfile = () => {
   };
 
   useEffect(() => { fetchFamily(); fetchVehicles(); fetchTenants(); }, [residentId]);
+
+  // Fetch house owner for tenants/family members
+  useEffect(() => {
+    if (!resident || resident.resident_type === 'owner') return;
+    const fetchOwner = async () => {
+      if (resident.owner_id) {
+        const { data } = await supabase.from('residents').select('name, mobile, house_no, lane_no').eq('id', resident.owner_id).maybeSingle();
+        setHouseOwner(data);
+      } else {
+        // Find owner by same house_no + lane_no
+        const { data } = await supabase.from('residents').select('name, mobile, house_no, lane_no').eq('house_no', resident.house_no).eq('lane_no', resident.lane_no).eq('resident_type', 'owner').maybeSingle();
+        setHouseOwner(data);
+      }
+    };
+    fetchOwner();
+  }, [resident]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -249,6 +268,39 @@ const MyProfile = () => {
           </div>
         )}
       </Card>
+
+      {/* House Owner Info (for tenants/family members) */}
+      {resident && resident.resident_type !== 'owner' && houseOwner && (
+        <Card className="p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 shadow-lg">
+              <Crown className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold font-display">{lang === 'hi' ? 'मकान मालिक' : 'House Owner'}</h3>
+              <p className="text-sm text-muted-foreground">{lang === 'hi' ? 'आपके घर के मालिक की जानकारी' : 'Your house owner details'}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <UserCircle className="h-4 w-4 text-primary" />
+              <div><p className="text-xs text-muted-foreground">{t('name')}</p><p className="font-medium">{houseOwner.name}</p></div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <Phone className="h-4 w-4 text-primary" />
+              <div><p className="text-xs text-muted-foreground">{t('mobile')}</p><p className="font-medium">{houseOwner.mobile}</p></div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <Home className="h-4 w-4 text-primary" />
+              <div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{houseOwner.house_no}</p></div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <Home className="h-4 w-4 text-primary" />
+              <div><p className="text-xs text-muted-foreground">{t('lane')}</p><p className="font-medium">{houseOwner.lane_no}</p></div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Tenant Management (owners only) */}
       {residentId && isOwner && (
