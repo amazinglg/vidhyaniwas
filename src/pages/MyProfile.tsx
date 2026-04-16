@@ -96,6 +96,22 @@ const MyProfile = () => {
 
   useEffect(() => { fetchFamily(); fetchVehicles(); fetchTenants(); }, [residentId]);
 
+  // Fetch house owner for tenants/family members
+  useEffect(() => {
+    if (!resident || resident.resident_type === 'owner') return;
+    const fetchOwner = async () => {
+      if (resident.owner_id) {
+        const { data } = await supabase.from('residents').select('name, mobile, house_no, lane_no').eq('id', resident.owner_id).maybeSingle();
+        setHouseOwner(data);
+      } else {
+        // Find owner by same house_no + lane_no
+        const { data } = await supabase.from('residents').select('name, mobile, house_no, lane_no').eq('house_no', resident.house_no).eq('lane_no', resident.lane_no).eq('resident_type', 'owner').maybeSingle();
+        setHouseOwner(data);
+      }
+    };
+    fetchOwner();
+  }, [resident]);
+
   const handleSave = async () => {
     if (!user) return;
     const { error } = await supabase.from('profiles').update({ full_name: form.full_name, mobile: form.mobile }).eq('user_id', user.id);
