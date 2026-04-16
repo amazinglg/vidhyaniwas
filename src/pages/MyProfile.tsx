@@ -24,7 +24,7 @@ const VEHICLE_TYPES = ['Car', 'Bike', 'Scooter', 'Bicycle', 'Auto', 'Other'];
 
 const MyProfile = () => {
   const { user, residentId } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<any>(null);
   const [resident, setResident] = useState<any>(null);
