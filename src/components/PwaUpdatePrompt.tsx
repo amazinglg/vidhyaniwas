@@ -3,6 +3,8 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+const UPDATE_CHECK_INTERVAL = 60 * 1000; // Check every 60 seconds
+
 const PwaUpdatePrompt = () => {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -27,16 +29,18 @@ const PwaUpdatePrompt = () => {
 
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // New content available — show update prompt
             setWaitingWorker(newWorker);
           }
         });
       });
+
+      // Force an immediate update check
+      registration.update();
     };
 
     checkForWaiting();
 
-    // Also listen for controllerchange to auto-reload
+    // Auto-reload when the new SW takes over
     let refreshing = false;
     const onControllerChange = () => {
       if (refreshing) return;
@@ -45,14 +49,24 @@ const PwaUpdatePrompt = () => {
     };
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
 
-    // Periodically check for updates (every 30 minutes)
+    // Check for updates frequently (every 60s)
     const interval = setInterval(() => {
       navigator.serviceWorker.getRegistration().then(reg => reg?.update());
-    }, 30 * 60 * 1000);
+    }, UPDATE_CHECK_INTERVAL);
+
+    // Also check on page focus (user switches back to app)
+    const onFocus = () => {
+      navigator.serviceWorker.getRegistration().then(reg => reg?.update());
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') onFocus();
+    });
 
     return () => {
       navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
       clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
 
@@ -60,7 +74,7 @@ const PwaUpdatePrompt = () => {
     if (!waitingWorker) return;
     setUpdating(true);
     waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-    // controllerchange listener above will trigger reload
+    // controllerchange listener will trigger reload
   };
 
   if (!waitingWorker) return null;
