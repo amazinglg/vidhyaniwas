@@ -4,6 +4,7 @@ import TopBar from './TopBar';
 import { useWebNotifications } from '@/hooks/useWebNotifications';
 import NotificationPermissionBanner from '@/components/NotificationPermissionBanner';
 import InstallAppBanner from '@/components/InstallAppBanner';
+import PwaUpdatePrompt from '@/components/PwaUpdatePrompt';
 
 interface AppLayoutProps {
   children: ReactNode;
