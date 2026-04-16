@@ -63,6 +63,11 @@ const AppSidebar = () => {
     );
   }
 
+  // Ensure My Profile is available for ALL user types
+  if (!navItems.some(item => item.path === '/my-profile')) {
+    navItems.push({ label: t('my_profile'), icon: UserCircle, path: '/my-profile' });
+  }
+
   const sidebarContent = (
     <>
       <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
