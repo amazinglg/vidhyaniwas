@@ -185,6 +185,8 @@ const Residents = () => {
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
     setMaintAmountDialog({ open: false, resident: null, value: '' });
   };
+
+  const handleDownloadResidentReceipts = async (r: any) => {
     const { data: receipts } = await supabase.from('maintenance_receipts').select('*').eq('resident_id', r.id).order('created_at', { ascending: false });
     if (!receipts || receipts.length === 0) { toast.info(t('no_receipts')); return; }
     const rec: any = receipts[0];
