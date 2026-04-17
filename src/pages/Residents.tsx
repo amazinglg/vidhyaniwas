@@ -32,6 +32,7 @@ const Residents = () => {
 
   const [selectedResident, setSelectedResident] = useState<any>(null);
   const [tenantResident, setTenantResident] = useState<any>(null);
+  const [maintAmountDialog, setMaintAmountDialog] = useState<{ open: boolean; resident: any | null; value: string }>({ open: false, resident: null, value: '' });
   const canViewDetails = isAdmin || isCoordinator;
 
   // Filter to show owners only in main list
@@ -141,7 +142,49 @@ const Residents = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadResidentReceipts = async (r: any) => {
+  const openMaintAmount = (r: any) => {
+    setMaintAmountDialog({ open: true, resident: r, value: String(r.maintenance_amount || 0) });
+  };
+
+  const saveMaintAmount = async () => {
+    const r = maintAmountDialog.resident;
+    if (!r) return;
+    const amount = Number(maintAmountDialog.value || 0);
+    if (isNaN(amount) || amount < 0) { toast.error('Enter a valid amount'); return; }
+
+    // 1. Update resident's maintenance_amount
+    const { error: updErr } = await supabase.from('residents').update({ maintenance_amount: amount }).eq('id', r.id);
+    if (updErr) { toast.error(updErr.message); return; }
+
+    // 2. Upsert a yearly maintenance_collections entry for current year (Annual)
+    const year = new Date().getFullYear();
+    const { data: existing } = await supabase.from('maintenance_collections')
+      .select('*').eq('resident_id', r.id).eq('year', year).eq('month', 'Annual').maybeSingle();
+
+    if (existing) {
+      // Don't overwrite if already paid/cleared
+      if (existing.status !== 'paid' && Number(existing.due_amount || 0) > 0) {
+        const paid = Number(existing.amount || 0);
+        const newDue = Math.max(amount - paid, 0);
+        await supabase.from('maintenance_collections').update({
+          total_maintenance: amount,
+          due_amount: newDue,
+          status: paid >= amount ? 'paid' : (paid > 0 ? 'partial' : 'pending'),
+        }).eq('id', existing.id);
+      }
+    } else if (amount > 0) {
+      await supabase.from('maintenance_collections').insert({
+        resident_id: r.id, year, month: 'Annual',
+        total_maintenance: amount, amount: 0, due_amount: amount, status: 'pending',
+      });
+    }
+
+    toast.success('Maintenance amount saved');
+    queryClient.invalidateQueries({ queryKey: ['all_residents'] });
+    queryClient.invalidateQueries({ queryKey: ['residents'] });
+    queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
+    setMaintAmountDialog({ open: false, resident: null, value: '' });
+  };
     const { data: receipts } = await supabase.from('maintenance_receipts').select('*').eq('resident_id', r.id).order('created_at', { ascending: false });
     if (!receipts || receipts.length === 0) { toast.info(t('no_receipts')); return; }
     const rec: any = receipts[0];
