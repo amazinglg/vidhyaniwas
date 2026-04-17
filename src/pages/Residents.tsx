@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown } from 'lucide-react';
+import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown, IndianRupee, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
