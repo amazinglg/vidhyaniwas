@@ -1,0 +1,1 @@
+ALTER TABLE public.residents ADD COLUMN IF NOT EXISTS maintenance_amount numeric NOT NULL DEFAULT 0;
