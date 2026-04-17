@@ -465,6 +465,7 @@ export type Database = {
           id: string
           is_active: boolean
           lane_no: string
+          maintenance_amount: number
           mobile: string
           move_in_date: string | null
           name: string
@@ -481,6 +482,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           lane_no: string
+          maintenance_amount?: number
           mobile: string
           move_in_date?: string | null
           name: string
@@ -497,6 +499,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           lane_no?: string
+          maintenance_amount?: number
           mobile?: string
           move_in_date?: string | null
           name?: string

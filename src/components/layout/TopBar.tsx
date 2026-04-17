@@ -1,4 +1,4 @@
-import { Bell, LogOut, KeyRound, Languages } from 'lucide-react';
+import { Bell, LogOut, KeyRound, Languages, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,6 +61,9 @@ const TopBar = () => {
           <Languages className="h-4 w-4" />
           <span className="hidden sm:inline">{lang === 'en' ? 'हिंदी' : 'English'}</span>
           <span className="sm:hidden">{lang === 'en' ? 'हि' : 'EN'}</span>
+        </Button>
+        <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => navigate('/my-profile')} title={t('my_profile')}>
+          <UserCircle className="h-4 w-4 md:h-5 md:w-5" />
         </Button>
         <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => navigate('/change-password')} title={t('change_password')}>
           <KeyRound className="h-4 w-4 md:h-5 md:w-5" />

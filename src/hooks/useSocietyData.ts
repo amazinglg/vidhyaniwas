@@ -20,11 +20,24 @@ export const useResidents = () => {
   return useQuery({
     queryKey: ['residents'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('residents').select('*').eq('resident_type', 'owner').order('house_no');
+      const { data, error } = await supabase.from('residents').select('*').eq('resident_type', 'owner');
       if (error) throw error;
-      return data;
+      return (data || []).slice().sort(sortByLaneHouse);
     },
   });
+};
+
+const naturalKey = (s: string) => {
+  const m = String(s ?? '').match(/(\d+)/);
+  return { num: m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER, raw: String(s ?? '').toLowerCase() };
+};
+const sortByLaneHouse = (a: any, b: any) => {
+  const la = naturalKey(a.lane_no); const lb = naturalKey(b.lane_no);
+  if (la.num !== lb.num) return la.num - lb.num;
+  if (la.raw !== lb.raw) return la.raw.localeCompare(lb.raw);
+  const ha = naturalKey(a.house_no); const hb = naturalKey(b.house_no);
+  if (ha.num !== hb.num) return ha.num - hb.num;
+  return ha.raw.localeCompare(hb.raw);
 };
 
 export const useAllResidents = () => {
@@ -32,9 +45,9 @@ export const useAllResidents = () => {
   return useQuery({
     queryKey: ['all_residents'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('residents').select('*').order('house_no');
+      const { data, error } = await supabase.from('residents').select('*');
       if (error) throw error;
-      return data;
+      return (data || []).slice().sort(sortByLaneHouse);
     },
   });
 };

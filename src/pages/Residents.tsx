@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown } from 'lucide-react';
+import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown, IndianRupee, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ const Residents = () => {
 
   const [selectedResident, setSelectedResident] = useState<any>(null);
   const [tenantResident, setTenantResident] = useState<any>(null);
+  const [maintAmountDialog, setMaintAmountDialog] = useState<{ open: boolean; resident: any | null; value: string }>({ open: false, resident: null, value: '' });
   const canViewDetails = isAdmin || isCoordinator;
 
   // Filter to show owners only in main list
@@ -141,6 +142,50 @@ const Residents = () => {
     URL.revokeObjectURL(url);
   };
 
+  const openMaintAmount = (r: any) => {
+    setMaintAmountDialog({ open: true, resident: r, value: String(r.maintenance_amount || 0) });
+  };
+
+  const saveMaintAmount = async () => {
+    const r = maintAmountDialog.resident;
+    if (!r) return;
+    const amount = Number(maintAmountDialog.value || 0);
+    if (isNaN(amount) || amount < 0) { toast.error('Enter a valid amount'); return; }
+
+    // 1. Update resident's maintenance_amount
+    const { error: updErr } = await supabase.from('residents').update({ maintenance_amount: amount }).eq('id', r.id);
+    if (updErr) { toast.error(updErr.message); return; }
+
+    // 2. Upsert a yearly maintenance_collections entry for current year (Annual)
+    const year = new Date().getFullYear();
+    const { data: existing } = await supabase.from('maintenance_collections')
+      .select('*').eq('resident_id', r.id).eq('year', year).eq('month', 'Annual').maybeSingle();
+
+    if (existing) {
+      // Don't overwrite if already paid/cleared
+      if (existing.status !== 'paid' && Number(existing.due_amount || 0) > 0) {
+        const paid = Number(existing.amount || 0);
+        const newDue = Math.max(amount - paid, 0);
+        await supabase.from('maintenance_collections').update({
+          total_maintenance: amount,
+          due_amount: newDue,
+          status: paid >= amount ? 'paid' : (paid > 0 ? 'partial' : 'pending'),
+        }).eq('id', existing.id);
+      }
+    } else if (amount > 0) {
+      await supabase.from('maintenance_collections').insert({
+        resident_id: r.id, year, month: 'Annual',
+        total_maintenance: amount, amount: 0, due_amount: amount, status: 'pending',
+      });
+    }
+
+    toast.success('Maintenance amount saved');
+    queryClient.invalidateQueries({ queryKey: ['all_residents'] });
+    queryClient.invalidateQueries({ queryKey: ['residents'] });
+    queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
+    setMaintAmountDialog({ open: false, resident: null, value: '' });
+  };
+
   const handleDownloadResidentReceipts = async (r: any) => {
     const { data: receipts } = await supabase.from('maintenance_receipts').select('*').eq('resident_id', r.id).order('created_at', { ascending: false });
     if (!receipts || receipts.length === 0) { toast.info(t('no_receipts')); return; }
@@ -238,6 +283,12 @@ const Residents = () => {
             </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
               <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{r.mobile}</span>
+              <span className="flex items-center gap-1 text-foreground font-medium">
+                <IndianRupee className="h-3 w-3" />{Number(r.maintenance_amount || 0).toLocaleString('en-IN')} / yr
+                {isAdmin && (
+                  <button onClick={() => openMaintAmount(r)} className="ml-1 text-primary"><Pencil className="h-3 w-3" /></button>
+                )}
+              </span>
             </div>
             {!readOnly && (
               <div className="flex gap-1 pt-1 border-t flex-wrap">
@@ -269,15 +320,16 @@ const Residents = () => {
               <TableHead>{t('lane')}</TableHead>
               <TableHead>{t('contact')}</TableHead>
               <TableHead>{t('family')}</TableHead>
+              <TableHead>Maintenance (₹/yr)</TableHead>
               <TableHead>{t('status')}</TableHead>
               {!readOnly && <TableHead className="text-right">{t('actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={readOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={readOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={readOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">{t('no_residents_found')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={readOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">{t('no_residents_found')}</TableCell></TableRow>
             ) : filtered.map((r: any) => (
               <TableRow key={r.id} className="animate-fade-in">
                 <TableCell className="font-medium">
@@ -298,6 +350,22 @@ const Residents = () => {
                   </div>
                 </TableCell>
                 <TableCell>{r.family_members}</TableCell>
+                <TableCell>
+                  <span className="inline-flex items-center gap-1 font-medium">
+                    <IndianRupee className="h-3.5 w-3.5 text-muted-foreground" />
+                    {Number(r.maintenance_amount || 0).toLocaleString('en-IN')}
+                    {isAdmin && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" onClick={() => openMaintAmount(r)}>
+                            <Pencil className="h-3.5 w-3.5 text-primary" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit maintenance amount</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </span>
+                </TableCell>
                 <TableCell><Badge variant={r.is_active ? 'default' : 'secondary'}>{r.is_active ? t('active') : t('inactive')}</Badge></TableCell>
                 {!readOnly && (
                   <TableCell className="text-right space-x-1">
@@ -342,6 +410,32 @@ const Residents = () => {
         open={!!tenantResident}
         onClose={() => setTenantResident(null)}
       />
+
+      <Dialog open={maintAmountDialog.open} onOpenChange={(o) => !o && setMaintAmountDialog({ open: false, resident: null, value: '' })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Set Maintenance Amount</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              {maintAmountDialog.resident?.name} • {maintAmountDialog.resident?.house_no}
+            </p>
+            <div className="grid gap-2">
+              <Label>Annual amount (₹)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={maintAmountDialog.value}
+                onChange={(e) => setMaintAmountDialog({ ...maintAmountDialog, value: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                This will create or update the pending due for {new Date().getFullYear()}. Already-paid entries will not be changed.
+              </p>
+            </div>
+            <Button onClick={saveMaintAmount} className="w-full">Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
