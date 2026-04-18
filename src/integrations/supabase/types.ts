@@ -410,6 +410,7 @@ export type Database = {
           house_no: string | null
           id: string
           is_approved: boolean
+          is_blocked: boolean
           lane_no: string | null
           mobile: string | null
           resident_id: string | null
@@ -425,6 +426,7 @@ export type Database = {
           house_no?: string | null
           id?: string
           is_approved?: boolean
+          is_blocked?: boolean
           lane_no?: string | null
           mobile?: string | null
           resident_id?: string | null
@@ -440,6 +442,7 @@ export type Database = {
           house_no?: string | null
           id?: string
           is_approved?: boolean
+          is_blocked?: boolean
           lane_no?: string | null
           mobile?: string | null
           resident_id?: string | null
