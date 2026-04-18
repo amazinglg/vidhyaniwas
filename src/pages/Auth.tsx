@@ -42,7 +42,13 @@ const Auth = () => {
     } else {
       const { data: session } = await supabase.auth.getSession();
       if (session?.session?.user) {
-        const { data: profile } = await supabase.from('profiles').select('is_approved').eq('user_id', session.session.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_approved, is_blocked').eq('user_id', session.session.user.id).maybeSingle();
+        if (profile && (profile as any).is_blocked) {
+          await supabase.auth.signOut();
+          toast.error('Something went wrong. Please contact the admins.');
+          setLoading(false);
+          return;
+        }
         if (profile && !profile.is_approved) {
           await supabase.auth.signOut();
           toast.error('Your signup is pending approval from Society management. Please wait for approval.');

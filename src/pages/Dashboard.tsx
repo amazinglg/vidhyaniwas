@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, IndianRupee, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import StatCard from '@/components/dashboard/StatCard';
@@ -24,6 +25,7 @@ const Dashboard = () => {
   const { data: expenses = [] } = useExpenses();
   const { t } = useLanguage();
   const { isAdmin, residentId } = useAuth();
+  const navigate = useNavigate();
 
   // For non-admin: fetch own maintenance
   const { data: myMaintenance = [] } = useQuery({
@@ -166,10 +168,18 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <StatCard title={t('total_residents')} value={String(residents.length)} subtitle={`${residents.filter((r: any) => r.is_active).length} ${t('active').toLowerCase()}`} icon={Users} variant="primary" />
-        <StatCard title={t('total_collected')} value={`₹${totalCollected.toLocaleString('en-IN')}`} subtitle={`${paidCount} ${t('payments_received')}`} icon={TrendingUp} variant="success" />
-        <StatCard title={t('total_expenses')} value={`₹${totalExpensesAmt.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
-        <StatCard title={t('pending_dues')} value={`₹${totalDue.toLocaleString('en-IN')}`} subtitle={`${overdueCount} ${t('residents_pending')}`} icon={AlertTriangle} variant="warning" />
+        <button type="button" onClick={() => navigate('/residents')} className="text-left transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
+          <StatCard title={t('total_residents')} value={String(residents.length)} subtitle={`${residents.filter((r: any) => r.is_active).length} ${t('active').toLowerCase()}`} icon={Users} variant="primary" />
+        </button>
+        <button type="button" onClick={() => navigate('/maintenance?filter=paid')} className="text-left transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
+          <StatCard title={t('total_collected')} value={`₹${totalCollected.toLocaleString('en-IN')}`} subtitle={`${paidCount} ${t('payments_received')}`} icon={TrendingUp} variant="success" />
+        </button>
+        <button type="button" onClick={() => navigate('/expenses')} className="text-left transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
+          <StatCard title={t('total_expenses')} value={`₹${totalExpensesAmt.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
+        </button>
+        <button type="button" onClick={() => navigate('/maintenance?filter=pending')} className="text-left transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
+          <StatCard title={t('pending_dues')} value={`₹${totalDue.toLocaleString('en-IN')}`} subtitle={`${overdueCount} ${t('residents_pending')}`} icon={AlertTriangle} variant="warning" />
+        </button>
       </div>
 
       <Card className="p-5">
