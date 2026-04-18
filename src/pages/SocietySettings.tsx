@@ -286,11 +286,22 @@ const SocietySettings = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1 flex-wrap">
+                          {matchedUser?.is_blocked && <Badge variant="destructive" className="text-xs">Blocked</Badge>}
                           <Button variant="ghost" size="icon" onClick={() => openEditResident(r)}><Edit2 className="h-4 w-4" /></Button>
                           {matchedUser && (
                             <Button variant="outline" size="sm" onClick={() => handleForceResetPassword(matchedUser.user_id)} className="text-destructive border-destructive/30">
                               <KeyRound className="h-3 w-3 mr-1" /> {t('reset_password')}
+                            </Button>
+                          )}
+                          {isMasterAdmin && matchedUser && currentRole !== 'master_admin' && matchedUser.user_id !== user?.id && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleBlock(matchedUser, currentRole)}
+                              className={matchedUser.is_blocked ? 'border-success/40 text-success' : 'border-destructive/40 text-destructive'}
+                            >
+                              {matchedUser.is_blocked ? <><ShieldCheck className="h-3 w-3 mr-1" />Unblock</> : <><Ban className="h-3 w-3 mr-1" />Block</>}
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteResident(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
