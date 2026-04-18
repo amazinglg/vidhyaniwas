@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ROLE_LABELS } from '@/types/society';
-import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus, Ban, ShieldCheck } from 'lucide-react';
+import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus, Ban, ShieldCheck, Rocket } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -226,6 +226,42 @@ const SocietySettings = () => {
               </div>
             )}
           </Card>
+
+          {isMasterAdmin && (
+            <Card className="p-6 mt-6 border-destructive/30 bg-destructive/5">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                    <Rocket className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold font-display">Release Updates</h3>
+                    <p className="text-sm text-muted-foreground max-w-xl mt-1">
+                      Force every installed PWA and browser session to immediately reload and reinstall the latest published version. Use this only after publishing new changes.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!confirm('This will force-refresh the app for ALL users right now. Continue?')) return;
+                    const { error } = await supabase.from('app_releases').insert({
+                      released_by: user?.id ?? null,
+                      note: 'Manual release triggered from Settings',
+                    });
+                    if (error) {
+                      toast.error('Failed to broadcast release: ' + error.message);
+                      return;
+                    }
+                    toast.success('Release broadcast sent. All users will update shortly.');
+                  }}
+                >
+                  <Rocket className="h-4 w-4 mr-2" />
+                  Release Updates
+                </Button>
+              </div>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="users" className="mt-6 space-y-4">
