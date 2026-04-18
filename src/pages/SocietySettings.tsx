@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ROLE_LABELS } from '@/types/society';
-import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus } from 'lucide-react';
+import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus, Ban, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -21,7 +21,7 @@ import type { Database } from '@/integrations/supabase/types';
 type AppRole = Database['public']['Enums']['app_role'];
 
 const SocietySettings = () => {
-  const { user } = useAuth();
+  const { user, isMasterAdmin } = useAuth();
   const { t } = useLanguage();
   const { data: residents = [] } = useAllResidents();
   const queryClient = useQueryClient();
@@ -71,6 +71,21 @@ const SocietySettings = () => {
     });
     if (error) { toast.error('Failed to reset password'); return; }
     toast.success(data?.message || 'Password reset to mobile number');
+  };
+
+  const handleToggleBlock = async (matchedUser: any, currentRole: string) => {
+    if (!matchedUser) { toast.error('User has not signed up yet'); return; }
+    if (currentRole === 'master_admin') { toast.error('Cannot block the master admin'); return; }
+    if (matchedUser.user_id === user?.id) { toast.error('You cannot block yourself'); return; }
+    const newBlocked = !matchedUser.is_blocked;
+    const { error } = await supabase.from('profiles').update({ is_blocked: newBlocked } as any).eq('user_id', matchedUser.user_id);
+    if (error) { toast.error(error.message); return; }
+    if (newBlocked) {
+      // Force-logout the blocked user from any active session by triggering a force password reset (invalidates session)
+      await supabase.functions.invoke('force-reset-password', { body: { target_user_id: matchedUser.user_id } }).catch(() => {});
+    }
+    toast.success(newBlocked ? 'User blocked' : 'User unblocked');
+    fetchUsersAndRoles();
   };
 
   const openEditResident = (r: any) => {
