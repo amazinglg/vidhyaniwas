@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon, History, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +40,19 @@ const Maintenance = () => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get('filter');
+  const [filterStatus, setFilterStatus] = useState(
+    initialFilter === 'paid' ? 'paid'
+    : initialFilter === 'pending' ? 'pending'
+    : initialFilter === 'partial' ? 'partial'
+    : initialFilter === 'overdue' ? 'overdue'
+    : 'all'
+  );
+  useEffect(() => {
+    const f = searchParams.get('filter');
+    if (f && ['paid','pending','partial','overdue'].includes(f)) setFilterStatus(f);
+  }, [searchParams]);
   const [filterMonth, setFilterMonth] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
