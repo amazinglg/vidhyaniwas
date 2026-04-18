@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import AppSidebar from './AppSidebar';
 import TopBar from './TopBar';
 import { useWebNotifications } from '@/hooks/useWebNotifications';
+import { useForcedReleaseSync } from '@/hooks/useForcedReleaseSync';
 import NotificationPermissionBanner from '@/components/NotificationPermissionBanner';
 import InstallAppBanner from '@/components/InstallAppBanner';
 import PwaUpdatePrompt from '@/components/PwaUpdatePrompt';
@@ -12,6 +13,7 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   useWebNotifications();
+  useForcedReleaseSync();
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
