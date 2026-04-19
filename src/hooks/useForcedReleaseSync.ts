@@ -1,24 +1,8 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { hardRefreshApp } from '@/utils/hardRefresh';
 
 const STORAGE_KEY = 'app-last-applied-release';
-
-const wipeAndReload = async () => {
-  try {
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister().catch(() => false)));
-    }
-  } catch {}
-  try {
-    if ('caches' in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k).catch(() => false)));
-    }
-  } catch {}
-  // Hard reload bypassing HTTP cache where possible
-  window.location.replace(window.location.pathname + '?v=' + Date.now());
-};
 
 const checkAndApply = async () => {
   const { data, error } = await supabase
@@ -30,13 +14,12 @@ const checkAndApply = async () => {
   if (error || !data?.released_at) return;
   const last = localStorage.getItem(STORAGE_KEY);
   if (!last) {
-    // First time: just record current pointer, don't reload existing users on rollout
     localStorage.setItem(STORAGE_KEY, data.released_at);
     return;
   }
   if (last !== data.released_at) {
     localStorage.setItem(STORAGE_KEY, data.released_at);
-    await wipeAndReload();
+    await hardRefreshApp();
   }
 };
 
@@ -55,7 +38,7 @@ export const useForcedReleaseSync = () => {
           const last = localStorage.getItem(STORAGE_KEY);
           if (last !== releasedAt) {
             localStorage.setItem(STORAGE_KEY, releasedAt);
-            void wipeAndReload();
+            void hardRefreshApp();
           }
         },
       )
