@@ -212,13 +212,19 @@ const PwaUpdatePrompt = () => {
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">
-              {isApplyingUpdate ? 'Updating app now…' : 'New app update found'}
+              {isApplyingUpdate ? 'Updating app…' : 'New app update found'}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {isApplyingUpdate
-                ? 'Please keep the app open for a moment while the latest changes are applied.'
+                ? 'Clearing cache and loading the latest version. The app will reload automatically in a moment.'
                 : 'The latest published version is ready. Tap update to load it immediately.'}
             </p>
+
+            {isApplyingUpdate && (
+              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+              </div>
+            )}
 
             {!isApplyingUpdate && (
               <div className="mt-3 flex items-center gap-2">
