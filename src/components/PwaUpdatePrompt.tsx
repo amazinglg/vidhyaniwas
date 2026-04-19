@@ -18,25 +18,61 @@ const PwaUpdatePrompt = () => {
     localStorage.setItem(SW_ETAG_STORAGE_KEY, etag);
   }, []);
 
-  const applyUpdate = useCallback(async () => {
-    const registration = registrationRef.current;
-    if (!registration) return;
+  const hardReload = useCallback(async () => {
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k).catch(() => false)));
+      }
+    } catch {}
+    window.location.replace(window.location.pathname + '?v=' + Date.now());
+  }, []);
 
+  const applyUpdate = useCallback(async () => {
     setIsApplyingUpdate(true);
     setIsDismissed(false);
+
+    // Give the UI a tick to paint the loading state before heavy work
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const registration = registrationRef.current ?? (await navigator.serviceWorker?.getRegistration());
+
+    if (!registration) {
+      // No SW — just clear caches and reload
+      await hardReload();
+      return;
+    }
+
+    registrationRef.current = registration;
 
     await registration.update().catch(() => {});
 
     if (registration.waiting) {
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // Safety net: if controllerchange doesn't fire within 4s, force a hard reload
+      window.setTimeout(() => {
+        void hardReload();
+      }, 4000);
       return;
     }
 
     const installingWorker = registration.installing;
-    if (!installingWorker) {
-      setIsApplyingUpdate(false);
+    if (installingWorker) {
+      // Wait for install to finish, then skip waiting
+      installingWorker.addEventListener('statechange', () => {
+        if (installingWorker.state === 'installed') {
+          installingWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+      window.setTimeout(() => {
+        void hardReload();
+      }, 6000);
+      return;
     }
-  }, []);
+
+    // Nothing waiting/installing — just hard reload to fetch latest
+    await hardReload();
+  }, [hardReload]);
 
   const inspectRegistration = useCallback(async (forceApply = false) => {
     const registration = await navigator.serviceWorker.getRegistration();
@@ -176,13 +212,19 @@ const PwaUpdatePrompt = () => {
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">
-              {isApplyingUpdate ? 'Updating app now…' : 'New app update found'}
+              {isApplyingUpdate ? 'Updating app…' : 'New app update found'}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {isApplyingUpdate
-                ? 'Please keep the app open for a moment while the latest changes are applied.'
+                ? 'Clearing cache and loading the latest version. The app will reload automatically in a moment.'
                 : 'The latest published version is ready. Tap update to load it immediately.'}
             </p>
+
+            {isApplyingUpdate && (
+              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+              </div>
+            )}
 
             {!isApplyingUpdate && (
               <div className="mt-3 flex items-center gap-2">
