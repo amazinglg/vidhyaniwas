@@ -5,12 +5,76 @@ import { Button } from '@/components/ui/button';
 const SW_ETAG_STORAGE_KEY = 'pwa-last-seen-sw-etag';
 const UPDATE_CHECK_INTERVAL_MS = 15000;
 
+// Keys we MUST preserve across a forced update (auth + release pointer)
+const PRESERVE_LOCAL_STORAGE_KEYS = [
+  'app-last-applied-release',
+  SW_ETAG_STORAGE_KEY,
+];
+
+const nukeEverything = async () => {
+  // 1. Unregister all service workers
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister().catch(() => false)));
+    }
+  } catch {}
+
+  // 2. Delete all Cache Storage entries
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k).catch(() => false)));
+    }
+  } catch {}
+
+  // 3. Clear sessionStorage entirely
+  try {
+    sessionStorage.clear();
+  } catch {}
+
+  // 4. Clear localStorage but preserve auth + release pointer
+  try {
+    const preserved: Record<string, string> = {};
+    for (const key of PRESERVE_LOCAL_STORAGE_KEYS) {
+      const val = localStorage.getItem(key);
+      if (val !== null) preserved[key] = val;
+    }
+    // Preserve all Supabase auth tokens (keys starting with sb-)
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-')) {
+        const val = localStorage.getItem(key);
+        if (val !== null) preserved[key] = val;
+      }
+    }
+    localStorage.clear();
+    for (const [k, v] of Object.entries(preserved)) {
+      localStorage.setItem(k, v);
+    }
+  } catch {}
+
+  // 5. Clear non-essential cookies for this origin
+  try {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const eqIdx = cookie.indexOf('=');
+      const name = (eqIdx > -1 ? cookie.slice(0, eqIdx) : cookie).trim();
+      if (!name) continue;
+      // Expire on current path and root
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+    }
+  } catch {}
+};
+
 const PwaUpdatePrompt = () => {
   const [updateReady, setUpdateReady] = useState(false);
   const [isApplyingUpdate, setIsApplyingUpdate] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const lastSeenEtagRef = useRef<string | null>(null);
+  const isApplyingRef = useRef(false);
 
   const persistEtag = useCallback((etag: string | null) => {
     if (!etag) return;
@@ -19,59 +83,51 @@ const PwaUpdatePrompt = () => {
   }, []);
 
   const hardReload = useCallback(async () => {
-    try {
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((k) => caches.delete(k).catch(() => false)));
-      }
-    } catch {}
-    window.location.replace(window.location.pathname + '?v=' + Date.now());
+    await nukeEverything();
+    // Cache-busting reload — bypasses HTTP cache for index.html
+    const url = window.location.pathname + '?v=' + Date.now();
+    window.location.replace(url);
   }, []);
 
   const applyUpdate = useCallback(async () => {
+    if (isApplyingRef.current) return;
+    isApplyingRef.current = true;
     setIsApplyingUpdate(true);
     setIsDismissed(false);
 
-    // Give the UI a tick to paint the loading state before heavy work
+    // Let UI paint loading state
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    const registration = registrationRef.current ?? (await navigator.serviceWorker?.getRegistration());
+    try {
+      const registration =
+        registrationRef.current ?? (await navigator.serviceWorker?.getRegistration());
 
-    if (!registration) {
-      // No SW — just clear caches and reload
-      await hardReload();
-      return;
-    }
+      if (registration) {
+        registrationRef.current = registration;
 
-    registrationRef.current = registration;
+        // Try to fetch any pending update
+        await registration.update().catch(() => {});
 
-    await registration.update().catch(() => {});
-
-    if (registration.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      // Safety net: if controllerchange doesn't fire within 4s, force a hard reload
-      window.setTimeout(() => {
-        void hardReload();
-      }, 4000);
-      return;
-    }
-
-    const installingWorker = registration.installing;
-    if (installingWorker) {
-      // Wait for install to finish, then skip waiting
-      installingWorker.addEventListener('statechange', () => {
-        if (installingWorker.state === 'installed') {
-          installingWorker.postMessage({ type: 'SKIP_WAITING' });
+        // Tell waiting/installing worker to take over (best-effort)
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
-      });
-      window.setTimeout(() => {
-        void hardReload();
-      }, 6000);
-      return;
-    }
+        const installing = registration.installing;
+        if (installing) {
+          installing.addEventListener('statechange', () => {
+            if (installing.state === 'installed') {
+              installing.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      }
+    } catch {}
 
-    // Nothing waiting/installing — just hard reload to fetch latest
-    await hardReload();
+    // Always hard-reload after a short delay so the user sees progress and
+    // we guarantee fresh assets regardless of SW state.
+    window.setTimeout(() => {
+      void hardReload();
+    }, 800);
   }, [hardReload]);
 
   const inspectRegistration = useCallback(async (forceApply = false) => {
@@ -130,20 +186,10 @@ const PwaUpdatePrompt = () => {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    let refreshing = false;
-
-    const onControllerChange = () => {
-      if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
-    };
-
     const onVisibilityOrFocus = () => {
       if (document.visibilityState === 'hidden') return;
       void detectPublishedUpdate(true);
     };
-
-    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
 
     navigator.serviceWorker.getRegistration().then((registration) => {
       if (!registration) return;
@@ -182,7 +228,6 @@ const PwaUpdatePrompt = () => {
 
     return () => {
       window.clearInterval(intervalId);
-      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
       window.removeEventListener('focus', onVisibilityOrFocus);
       document.removeEventListener('visibilitychange', onVisibilityOrFocus);
     };
@@ -216,7 +261,7 @@ const PwaUpdatePrompt = () => {
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {isApplyingUpdate
-                ? 'Clearing cache and loading the latest version. The app will reload automatically in a moment.'
+                ? 'Clearing caches, cookies and storage. The app will reload to the latest version in a moment.'
                 : 'The latest published version is ready. Tap update to load it immediately.'}
             </p>
 
@@ -255,4 +300,3 @@ const PwaUpdatePrompt = () => {
 };
 
 export default PwaUpdatePrompt;
-
