@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown } from 'lucide-react';
+import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw } from 'lucide-react';
+import { hardRefreshApp } from '@/utils/hardRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -269,7 +270,31 @@ const MyProfile = () => {
         )}
       </Card>
 
-      {/* House Owner Info (for tenants/family members) */}
+      {/* Hard Refresh — for all users */}
+      <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-warm shrink-0">
+            <RefreshCw className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-bold font-display">{t('hard_refresh')}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{t('hard_refresh_desc')}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3 h-9 gap-1.5"
+              onClick={async () => {
+                if (!confirm(t('hard_refresh_confirm'))) return;
+                toast.success(t('hard_refreshing'), { description: t('hard_refresh_note') });
+                setTimeout(() => { void hardRefreshApp(); }, 400);
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+              {t('hard_refresh')}
+            </Button>
+          </div>
+        </div>
+      </Card>
       {resident && resident.resident_type !== 'owner' && houseOwner && (
         <Card className="p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
           <div className="flex items-center gap-3 mb-4">

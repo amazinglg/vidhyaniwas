@@ -336,7 +336,28 @@ const translations: Record<string, Record<Lang, string>> = {
   'install_app': { en: 'Install App', hi: 'ऐप इंस्टॉल करें' },
   'install_app_desc': { en: 'Install this app on your device for quick access', hi: 'त्वरित पहुंच के लिए इस ऐप को अपने डिवाइस पर इंस्टॉल करें' },
   'install': { en: 'Install', hi: 'इंस्टॉल करें' },
+  'installing': { en: 'Installing...', hi: 'इंस्टॉल हो रहा है...' },
+  'install_app_short': { en: 'One tap install — use like a real app', hi: 'एक टैप में इंस्टॉल करें — असली ऐप की तरह उपयोग करें' },
+  'install_ios_msg': { en: 'Tap the Share button (⬆) at the bottom in Safari, then tap "Add to Home Screen"', hi: 'Safari में नीचे Share बटन (⬆) दबाएं, फिर "Add to Home Screen" चुनें' },
   'not_signed_up': { en: 'Not signed up', hi: 'साइनअप नहीं किया' },
+
+  // Hard Refresh
+  'hard_refresh': { en: 'Hard Refresh', hi: 'हार्ड रिफ्रेश' },
+  'hard_refresh_desc': { en: 'Clear all caches & cookies and reinstall app to the latest version', hi: 'सभी कैश और कुकीज़ साफ़ करें और ऐप को नवीनतम संस्करण में पुनः इंस्टॉल करें' },
+  'hard_refresh_confirm': { en: 'This will clear all caches and reinstall the app. You will stay logged in. Continue?', hi: 'यह सभी कैश साफ़ करेगा और ऐप को पुनः इंस्टॉल करेगा। आप लॉग इन रहेंगे। जारी रखें?' },
+  'hard_refreshing': { en: 'Refreshing app…', hi: 'ऐप रिफ्रेश हो रहा है…' },
+  'hard_refresh_note': { en: 'The app will reload in a moment with the latest version.', hi: 'ऐप कुछ ही पल में नवीनतम संस्करण के साथ पुनः लोड होगा।' },
+
+  // PWA Update prompt
+  'app_update_available': { en: 'New app update found', hi: 'नया ऐप अपडेट उपलब्ध' },
+  'app_update_ready_msg': { en: 'The latest version is ready. Tap update to load it now.', hi: 'नवीनतम संस्करण तैयार है। अभी लोड करने के लिए अपडेट दबाएं।' },
+  'app_updating': { en: 'Updating app…', hi: 'ऐप अपडेट हो रहा है…' },
+  'app_updating_msg': { en: 'Clearing caches and loading the latest version.', hi: 'कैश साफ़ कर रहे हैं और नवीनतम संस्करण लोड कर रहे हैं।' },
+  'update_now': { en: 'Update now', hi: 'अभी अपडेट करें' },
+  'later': { en: 'Later', hi: 'बाद में' },
+
+  // Release updates
+  'release_updates': { en: 'Release Updates', hi: 'अपडेट जारी करें' },
 };
 
 interface LanguageContextType {
