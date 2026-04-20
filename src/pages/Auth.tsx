@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Phone, Lock, User, Home, AlertTriangle } from 'lucide-react';
+import { Building2, Phone, Lock, User, Home, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import buildingBg from '@/assets/building-bg.jpg';
@@ -15,18 +15,21 @@ const Auth = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loginForm, setLoginForm] = useState({ mobile: '', password: '' });
-  const [signupForm, setSignupForm] = useState({ 
-    password: '', fullName: '', mobile: '', 
-    house_no: '', lane_no: '', resident_type: 'owner' 
+  const [signupForm, setSignupForm] = useState({
+    password: '', fullName: '', mobile: '',
+    house_no: '', lane_no: '', resident_type: 'owner',
+    owner_mobile: '',
   });
+  const [ownerInfo, setOwnerInfo] = useState<{ name: string; house_no: string; lane_no: string } | null>(null);
   const [ownerError, setOwnerError] = useState('');
+  const [lookingUp, setLookingUp] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const { data: email, error: lookupError } = await supabase.rpc('get_email_by_mobile', { _mobile: loginForm.mobile });
-    
+
     if (lookupError || !email) {
       toast.error('No account found with this mobile number');
       setLoading(false);
@@ -62,52 +65,73 @@ const Auth = () => {
     setLoading(false);
   };
 
-  const validateOwnerExists = async () => {
-    if (signupForm.resident_type === 'owner') {
+  // For tenant/family: lookup owner by mobile and auto-fill house/lane
+  const lookupOwnerByMobile = async (ownerMobile: string) => {
+    if (!ownerMobile || ownerMobile.length < 8) {
+      setOwnerInfo(null);
       setOwnerError('');
-      return true;
+      return;
     }
-    const { data: owners } = await supabase.from('residents').select('id')
-      .eq('house_no', signupForm.house_no)
-      .eq('lane_no', signupForm.lane_no)
-      .eq('resident_type', 'owner')
-      .eq('is_active', true);
-    
-    if (!owners || owners.length === 0) {
-      setOwnerError('No house owner found for this house number and lane. House owner must be registered first.');
-      return false;
-    }
+    setLookingUp(true);
     setOwnerError('');
-    return true;
+    const { data, error } = await supabase.rpc('signup_lookup_owner', { _owner_mobile: ownerMobile });
+    setLookingUp(false);
+    if (error || !data || (Array.isArray(data) && data.length === 0)) {
+      setOwnerInfo(null);
+      setOwnerError("No registered house owner found with this mobile number. Please ask your house owner to sign up first.");
+      return;
+    }
+    const owner = Array.isArray(data) ? data[0] : data;
+    setOwnerInfo({ name: owner.owner_name, house_no: owner.house_no, lane_no: owner.lane_no });
+    setSignupForm(prev => ({ ...prev, house_no: owner.house_no, lane_no: owner.lane_no }));
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signupForm.mobile || !signupForm.house_no || !signupForm.lane_no) {
+    if (!signupForm.mobile) {
       toast.error('Please fill all required fields');
       return;
     }
 
+    // Owner: needs house & lane
+    if (signupForm.resident_type === 'owner' && (!signupForm.house_no || !signupForm.lane_no)) {
+      toast.error('Please fill house number and lane number');
+      return;
+    }
+
+    // Family/Tenant: needs owner_mobile + matched owner
+    if (signupForm.resident_type !== 'owner') {
+      if (!signupForm.owner_mobile) {
+        toast.error("Please enter your house owner's mobile number");
+        return;
+      }
+      if (!ownerInfo) {
+        toast.error("House owner not found. Please verify the owner's mobile number.");
+        return;
+      }
+    }
+
     setLoading(true);
 
-    const ownerValid = await validateOwnerExists();
-    if (!ownerValid) { setLoading(false); return; }
-
     let ownerId: string | null = null;
-    if (signupForm.resident_type !== 'owner') {
-      const { data: owners } = await supabase.from('residents').select('id')
-        .eq('house_no', signupForm.house_no)
-        .eq('lane_no', signupForm.lane_no)
-        .eq('resident_type', 'owner')
-        .limit(1);
-      ownerId = owners?.[0]?.id || null;
+    if (signupForm.resident_type !== 'owner' && ownerInfo) {
+      // Re-fetch the owner id
+      const { data } = await supabase.rpc('signup_lookup_owner', { _owner_mobile: signupForm.owner_mobile });
+      const owner = Array.isArray(data) ? data[0] : data;
+      ownerId = owner?.owner_id || null;
+      if (!ownerId) {
+        toast.error('Could not link to house owner. Please try again.');
+        setLoading(false);
+        return;
+      }
     }
 
     if (signupForm.resident_type === 'owner') {
       const { data: existingOwners } = await supabase.from('residents').select('id')
         .eq('house_no', signupForm.house_no)
         .eq('lane_no', signupForm.lane_no)
-        .eq('resident_type', 'owner');
+        .eq('resident_type', 'owner')
+        .eq('is_active', true);
       if (existingOwners && existingOwners.length > 0) {
         toast.error('A house owner already exists for this house. Please sign up as a member or tenant.');
         setLoading(false);
@@ -192,7 +216,11 @@ const Auth = () => {
               <form onSubmit={handleSignup} className="space-y-3">
                 <div className="grid gap-2">
                   <Label className="font-medium">I am a *</Label>
-                  <Select value={signupForm.resident_type} onValueChange={(v) => { setSignupForm({ ...signupForm, resident_type: v }); setOwnerError(''); }}>
+                  <Select value={signupForm.resident_type} onValueChange={(v) => {
+                    setSignupForm({ ...signupForm, resident_type: v, owner_mobile: '', house_no: v === 'owner' ? signupForm.house_no : '', lane_no: v === 'owner' ? signupForm.lane_no : '' });
+                    setOwnerError('');
+                    setOwnerInfo(null);
+                  }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="owner">House Owner</SelectItem>
@@ -208,30 +236,62 @@ const Auth = () => {
                     <Input className="pl-10" value={signupForm.fullName} onChange={(e) => setSignupForm({ ...signupForm, fullName: e.target.value })} placeholder="Your full name" required />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="grid gap-2">
-                    <Label className="font-medium">House No. *</Label>
-                    <div className="relative">
-                      <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input className="pl-10" value={signupForm.house_no} onChange={(e) => setSignupForm({ ...signupForm, house_no: e.target.value })} placeholder="e.g. A-101" required />
+
+                {signupForm.resident_type === 'owner' ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-2">
+                      <Label className="font-medium">House No. *</Label>
+                      <div className="relative">
+                        <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input className="pl-10" value={signupForm.house_no} onChange={(e) => setSignupForm({ ...signupForm, house_no: e.target.value })} placeholder="e.g. A-101" required />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="font-medium">Lane No. *</Label>
+                      <Input value={signupForm.lane_no} onChange={(e) => setSignupForm({ ...signupForm, lane_no: e.target.value })} placeholder="e.g. 1" required />
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label className="font-medium">Lane No. *</Label>
-                    <Input value={signupForm.lane_no} onChange={(e) => setSignupForm({ ...signupForm, lane_no: e.target.value })} placeholder="e.g. 1" required />
-                  </div>
-                </div>
-                {signupForm.resident_type !== 'owner' && (
-                  <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs">
-                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                    <span className="text-amber-700 dark:text-amber-300">Enter the correct House No. & Lane No. — you cannot change these later. House owner must be registered first.</span>
-                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-2">
+                      <Label className="font-medium">House Owner's Mobile *</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          value={signupForm.owner_mobile}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setSignupForm({ ...signupForm, owner_mobile: v });
+                            setOwnerInfo(null);
+                            setOwnerError('');
+                          }}
+                          onBlur={() => lookupOwnerByMobile(signupForm.owner_mobile)}
+                          placeholder="Enter house owner's registered mobile"
+                          required
+                        />
+                      </div>
+                      {lookingUp && <p className="text-xs text-muted-foreground">Looking up owner…</p>}
+                      {ownerInfo && (
+                        <div className="flex items-start gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-xs">
+                          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                          <span className="text-green-700 dark:text-green-300">
+                            Owner: <strong>{ownerInfo.name}</strong> • House {ownerInfo.house_no} • Lane {ownerInfo.lane_no}
+                          </span>
+                        </div>
+                      )}
+                      {ownerError && (
+                        <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                          <span className="text-amber-700 dark:text-amber-300">{ownerError}</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
-                {ownerError && (
-                  <p className="text-xs text-destructive font-medium">{ownerError}</p>
-                )}
+
                 <div className="grid gap-2">
-                  <Label className="font-medium">Mobile Number *</Label>
+                  <Label className="font-medium">Your Mobile Number *</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input className="pl-10" value={signupForm.mobile} onChange={(e) => setSignupForm({ ...signupForm, mobile: e.target.value })} placeholder="10-digit mobile" required />
@@ -244,7 +304,7 @@ const Auth = () => {
                     <Input className="pl-10" type="password" value={signupForm.password} onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })} placeholder="Min 6 characters" required minLength={6} />
                   </div>
                 </div>
-                <Button type="submit" className="w-full h-11 gradient-warm text-primary-foreground font-semibold text-base shadow-lg" disabled={loading}>
+                <Button type="submit" className="w-full h-11 gradient-warm text-primary-foreground font-semibold text-base shadow-lg" disabled={loading || (signupForm.resident_type !== 'owner' && !ownerInfo)}>
                   {loading ? 'Creating account...' : 'Create Account'}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">

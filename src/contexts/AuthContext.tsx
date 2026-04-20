@@ -13,6 +13,7 @@ interface AuthContextType {
   user: User | null;
   userRole: AppRole | null;
   loading: boolean;
+  profileLoading: boolean;
   signOut: () => Promise<void>;
   isMasterAdmin: boolean;
   isAdmin: boolean;
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   userRole: null,
   loading: true,
+  profileLoading: false,
   signOut: async () => {},
   isMasterAdmin: false,
   isAdmin: false,
@@ -37,7 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   isResident: false,
   profileId: null,
   residentId: null,
-  isApproved: false,
+  isApproved: true, // default true to avoid flashing the pending screen during initial load
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -47,9 +49,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [residentId, setResidentId] = useState<string | null>(null);
-  const [isApproved, setIsApproved] = useState(false);
+  // Default to true so the "pending approval" screen never flashes before profile loads
+  const [isApproved, setIsApproved] = useState(true);
 
   const fetchUserRole = async (userId: string) => {
     const { data } = await supabase
@@ -58,7 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .eq('user_id', userId)
       .limit(1)
       .maybeSingle();
-    
+
     setUserRole(data?.role as AppRole ?? null);
   };
 
@@ -75,21 +79,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const loadAuthDetails = async (userId: string) => {
+    setProfileLoading(true);
+    try {
+      await Promise.all([fetchUserRole(userId), fetchProfile(userId)]);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserRole(session.user.id);
-            fetchProfile(session.user.id);
-          }, 0);
+          // Defer to next tick — async work outside of the listener
+          setTimeout(() => { loadAuthDetails(session.user.id); }, 0);
         } else {
           setUserRole(null);
           setProfileId(null);
           setResidentId(null);
-          setIsApproved(false);
+          setIsApproved(true);
+          setProfileLoading(false);
         }
         setLoading(false);
       }
@@ -99,8 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserRole(session.user.id);
-        fetchProfile(session.user.id);
+        loadAuthDetails(session.user.id);
       }
       setLoading(false);
     });
@@ -115,7 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserRole(null);
     setProfileId(null);
     setResidentId(null);
-    setIsApproved(false);
+    setIsApproved(true);
   };
 
   const isMasterAdmin = userRole === 'master_admin';
@@ -125,7 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isResident = userRole === 'resident' || (!userRole && !!session);
 
   return (
-    <AuthContext.Provider value={{ session, user, userRole, loading, signOut, isMasterAdmin, isAdmin, isCoordinator, isSupervisor, isResident, profileId, residentId, isApproved }}>
+    <AuthContext.Provider value={{ session, user, userRole, loading, profileLoading, signOut, isMasterAdmin, isAdmin, isCoordinator, isSupervisor, isResident, profileId, residentId, isApproved }}>
       {children}
     </AuthContext.Provider>
   );

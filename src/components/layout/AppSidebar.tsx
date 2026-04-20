@@ -16,6 +16,7 @@ import {
   X,
   Clock,
   Shield,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +44,7 @@ const AppSidebar = () => {
     );
     if (isMasterAdmin) {
       navItems.push({ label: t('settings'), icon: Settings, path: '/settings' });
+      navItems.push({ label: t('deleted_history'), icon: Trash2, path: '/deleted-history' });
     }
   } else if (isSupervisor) {
     navItems.push(
