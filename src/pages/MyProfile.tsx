@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw } from 'lucide-react';
+import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw, Download } from 'lucide-react';
 import { hardRefreshApp } from '@/utils/hardRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -15,13 +15,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { downloadReceipt } from '@/utils/generateReceipt';
-import { supabase as sb } from '@/integrations/supabase/client';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 const statusIcon: Record<string, any> = { paid: CheckCircle2, partial: Clock, pending: Clock, overdue: AlertTriangle };
 
 const RELATIONS = ['Self', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Other'];
 const VEHICLE_TYPES = ['Car', 'Bike', 'Scooter', 'Bicycle', 'Auto', 'Other'];
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+const isInStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  (navigator as any).standalone === true;
 
 const MyProfile = () => {
   const { user, residentId } = useAuth();
@@ -32,6 +40,43 @@ const MyProfile = () => {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ full_name: '', mobile: '' });
   const [maintenance, setMaintenance] = useState<any[]>([]);
+
+  // PWA install button
+  const [deferredInstall, setDeferredInstall] = useState<BeforeInstallPromptEvent | null>(null);
+  const [standalone, setStandalone] = useState(isInStandalone());
+  const [installing, setInstalling] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setDeferredInstall(e as BeforeInstallPromptEvent); };
+    const installed = () => { setStandalone(true); setDeferredInstall(null); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installed);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installed);
+    };
+  }, []);
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const canInstall = !standalone && (deferredInstall || isIOS);
+
+  const handleInstallApp = async () => {
+    if (deferredInstall) {
+      setInstalling(true);
+      try {
+        await deferredInstall.prompt();
+        const { outcome } = await deferredInstall.userChoice;
+        if (outcome === 'accepted') {
+          toast.success(lang === 'hi' ? 'ऐप इंस्टॉल हो रहा है…' : 'App installing…');
+        }
+      } finally {
+        setInstalling(false);
+        setDeferredInstall(null);
+      }
+    } else if (isIOS) {
+      toast.info(t('install_ios_msg') || 'On iOS: tap Share → Add to Home Screen.');
+    }
+  };
 
   // Family members
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
@@ -97,6 +142,11 @@ const MyProfile = () => {
 
   useEffect(() => { fetchFamily(); fetchVehicles(); fetchTenants(); }, [residentId]);
 
+  // Determine read-only status: family/tenant cannot edit anything
+  const isOwner = resident?.resident_type === 'owner';
+  const isFamilyOrTenant = resident && (resident.resident_type === 'member' || resident.resident_type === 'tenant');
+  const canEditUnit = isOwner; // only owner can add family/vehicle/tenant
+
   // Fetch house owner for tenants/family members
   useEffect(() => {
     if (!resident || resident.resident_type === 'owner') return;
@@ -105,7 +155,7 @@ const MyProfile = () => {
         const { data } = await supabase.from('residents').select('name, mobile, house_no, lane_no').eq('id', resident.owner_id).maybeSingle();
         setHouseOwner(data);
       } else {
-        // Find owner by same house_no + lane_no
+        // Fallback: find owner by same house_no + lane_no
         const { data } = await supabase.from('residents').select('name, mobile, house_no, lane_no').eq('house_no', resident.house_no).eq('lane_no', resident.lane_no).eq('resident_type', 'owner').maybeSingle();
         setHouseOwner(data);
       }
@@ -168,12 +218,10 @@ const MyProfile = () => {
   };
 
   // Tenant CRUD (owner only)
-  const isOwner = resident?.resident_type === 'owner';
   const openAddTenant = () => { setEditingTenantId(null); setTenantForm({ name: '', mobile: '' }); setTenantDialog(true); };
-  const openEditTenant = (t: any) => { setEditingTenantId(t.id); setTenantForm({ name: t.name, mobile: t.mobile }); setTenantDialog(true); };
+  const openEditTenant = (tn: any) => { setEditingTenantId(tn.id); setTenantForm({ name: tn.name, mobile: tn.mobile }); setTenantDialog(true); };
   const handleSaveTenant = async () => {
     if (!tenantForm.name || !tenantForm.mobile || !residentId || !resident) { toast.error(t('please_fill_required')); return; }
-    // Only allow one tenant
     if (!editingTenantId && tenants.length >= 1) { toast.error('Only one tenant per house is allowed'); return; }
     const payload = {
       name: tenantForm.name, mobile: tenantForm.mobile,
@@ -204,7 +252,6 @@ const MyProfile = () => {
   const totalDue = maintenance.reduce((s, m) => s + Number(m.due_amount || 0), 0);
 
   const handleDownloadReceipt = async (m: any) => {
-    // Try fetching receipt from DB first (may have master admin edits)
     const { data: receipt } = await supabase.from('maintenance_receipts').select('*').eq('maintenance_collection_id', m.id).maybeSingle();
     const r: any = receipt || {};
     downloadReceipt({
@@ -247,7 +294,6 @@ const MyProfile = () => {
           <div className="grid gap-4">
             <div className="grid gap-2"><Label>{t('full_name')}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
             <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
-            <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={form.mobile} readOnly className="bg-muted" /></div>
             <div className="flex gap-2">
               <Button onClick={handleSave} className="gradient-warm text-primary-foreground"><Save className="h-4 w-4 mr-2" />{t('save')}</Button>
               <Button variant="outline" onClick={() => setEditing(false)}>{t('cancel')}</Button>
@@ -259,10 +305,7 @@ const MyProfile = () => {
               <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Phone className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('mobile')}</p><p className="font-medium">{form.mobile || t('not_set')}</p></div></div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Home className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{resident?.house_no || t('not_set')}</p></div></div>
               {resident && (
-                <>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Home className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{resident.house_no}</p></div></div>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Users className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('family_members')}</p><p className="font-medium">{resident.family_members || 1}</p></div></div>
-                </>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Users className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('family_members')}</p><p className="font-medium">{resident.family_members || 1}</p></div></div>
               )}
             </div>
             <Button onClick={() => setEditing(true)} variant="outline">{t('edit_profile')}</Button>
@@ -270,31 +313,58 @@ const MyProfile = () => {
         )}
       </Card>
 
-      {/* Hard Refresh — for all users */}
-      <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-warm shrink-0">
-            <RefreshCw className="h-5 w-5 text-primary-foreground" />
+      {/* Install App — visible only when NOT installed (web/browser users) */}
+      {canInstall && (
+        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-warm shrink-0">
+              <Download className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-bold font-display">{lang === 'hi' ? 'ऐप इंस्टॉल करें' : 'Install App'}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                {lang === 'hi'
+                  ? 'तेज़ी से एक्सेस के लिए अपने डिवाइस पर ऐप इंस्टॉल करें। एक टैप से होम स्क्रीन पर जुड़ जाएगा।'
+                  : 'Install the app on your device for faster access. One tap adds it to your home screen.'}
+              </p>
+              <Button size="sm" className="mt-3 h-9 gap-1.5 gradient-warm text-primary-foreground" onClick={handleInstallApp} disabled={installing}>
+                <Download className="h-4 w-4" />
+                {installing ? (lang === 'hi' ? 'इंस्टॉल हो रहा है…' : 'Installing…') : (lang === 'hi' ? 'इंस्टॉल करें' : 'Install Now')}
+              </Button>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-bold font-display">{t('hard_refresh')}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{t('hard_refresh_desc')}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-3 h-9 gap-1.5"
-              onClick={async () => {
-                if (!confirm(t('hard_refresh_confirm'))) return;
-                toast.success(t('hard_refreshing'), { description: t('hard_refresh_note') });
-                setTimeout(() => { void hardRefreshApp(); }, 400);
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-              {t('hard_refresh')}
-            </Button>
+        </Card>
+      )}
+
+      {/* Hard Refresh — visible only inside the installed PWA */}
+      {standalone && (
+        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-warm shrink-0">
+              <RefreshCw className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-bold font-display">{t('hard_refresh')}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{t('hard_refresh_desc')}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 h-9 gap-1.5"
+                onClick={async () => {
+                  if (!confirm(t('hard_refresh_confirm'))) return;
+                  toast.success(t('hard_refreshing'), { description: t('hard_refresh_note') });
+                  setTimeout(() => { void hardRefreshApp(); }, 400);
+                }}
+              >
+                <RefreshCw className="h-4 w-4" />
+                {t('hard_refresh')}
+              </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
+
+      {/* House Owner card — shown to family members & tenants */}
       {resident && resident.resident_type !== 'owner' && houseOwner && (
         <Card className="p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
           <div className="flex items-center gap-3 mb-4">
@@ -347,7 +417,6 @@ const MyProfile = () => {
                     <span className="font-medium">{tn.name}</span>
                     <Badge variant="outline" className="ml-2 text-xs">{t('tenant')}</Badge>
                     <span className="text-muted-foreground text-sm ml-2">{tn.mobile}</span>
-                    <span className="text-muted-foreground text-sm ml-2">{tn.mobile}</span>
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEditTenant(tn)}><Edit2 className="h-4 w-4" /></Button>
@@ -360,7 +429,7 @@ const MyProfile = () => {
         </Card>
       )}
 
-      {/* Family Members */}
+      {/* Family Members — visible for ALL residents (owner can edit, family/tenant read-only) */}
       {residentId && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -368,7 +437,7 @@ const MyProfile = () => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><Users className="h-5 w-5 text-primary-foreground" /></div>
               <div><h3 className="text-lg font-bold font-display">{t('family_member_details')}</h3><p className="text-sm text-muted-foreground">{t('manage_family_info')}</p></div>
             </div>
-            <Button size="sm" onClick={openAddFamily}><Plus className="h-4 w-4 mr-1" />{t('add')}</Button>
+            {canEditUnit && <Button size="sm" onClick={openAddFamily}><Plus className="h-4 w-4 mr-1" />{t('add')}</Button>}
           </div>
           {familyMembers.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">{t('no_family_members_added')}</p>
@@ -382,10 +451,12 @@ const MyProfile = () => {
                     {fm.age && <span className="text-muted-foreground text-sm ml-2">{t('age')}: {fm.age}</span>}
                     {fm.occupation && <span className="text-muted-foreground text-sm ml-2">• {fm.occupation}</span>}
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEditFamily(fm)}><Edit2 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteFamily(fm.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
+                  {canEditUnit && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEditFamily(fm)}><Edit2 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteFamily(fm.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -393,7 +464,7 @@ const MyProfile = () => {
         </Card>
       )}
 
-      {/* Vehicles */}
+      {/* Vehicles — visible for ALL residents (owner can edit, family/tenant read-only) */}
       {residentId && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -401,7 +472,7 @@ const MyProfile = () => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><Car className="h-5 w-5 text-primary-foreground" /></div>
               <div><h3 className="text-lg font-bold font-display">{t('vehicles')}</h3><p className="text-sm text-muted-foreground">{t('manage_vehicle_info')}</p></div>
             </div>
-            <Button size="sm" onClick={openAddVehicle}><Plus className="h-4 w-4 mr-1" />{t('add')}</Button>
+            {canEditUnit && <Button size="sm" onClick={openAddVehicle}><Plus className="h-4 w-4 mr-1" />{t('add')}</Button>}
           </div>
           {vehicles.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">{t('no_vehicles_added')}</p>
@@ -415,10 +486,12 @@ const MyProfile = () => {
                     {v.make_model && <span className="text-muted-foreground text-sm ml-2">{v.make_model}</span>}
                     {v.color && <span className="text-muted-foreground text-sm ml-2">• {v.color}</span>}
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEditVehicle(v)}><Edit2 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteVehicle(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
+                  {canEditUnit && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEditVehicle(v)}><Edit2 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteVehicle(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

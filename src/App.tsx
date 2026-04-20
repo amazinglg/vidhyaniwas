@@ -18,14 +18,30 @@ import MyComplaints from "@/pages/MyComplaints";
 import ChangePassword from "@/pages/ChangePassword";
 import PendingSignups from "@/pages/PendingSignups";
 import SocietyManagement from "@/pages/SocietyManagement";
+import DeletedHistory from "@/pages/DeletedHistory";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
+import { Building2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
+const SplashScreen = ({ message = 'Loading...' }: { message?: string }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
+    <div className="flex h-16 w-16 items-center justify-center rounded-2xl gradient-warm shadow-lg animate-pulse mb-4">
+      <Building2 className="h-8 w-8 text-primary-foreground" />
+    </div>
+    <h1 className="text-xl font-bold font-display">Shri Vidhya Niwas</h1>
+    <p className="text-sm text-muted-foreground mt-2">{message}</p>
+    <div className="mt-4 h-1 w-32 overflow-hidden rounded-full bg-muted">
+      <div className="h-full w-1/3 gradient-warm animate-[loading_1.2s_ease-in-out_infinite]" />
+    </div>
+    <style>{`@keyframes loading{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}`}</style>
+  </div>
+);
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading, isApproved } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
+  const { session, loading, isApproved, profileLoading } = useAuth();
+  if (loading || profileLoading) return <SplashScreen message="Verifying your account…" />;
   if (!session) return <Navigate to="/auth" replace />;
   if (!isApproved) {
     return (
@@ -44,35 +60,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <SplashScreen />;
   if (session) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <SplashScreen />;
   if (!isAdmin) return <Navigate to="/my-profile" replace />;
   return <>{children}</>;
 };
 
 const AdminOrSupervisorRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, isSupervisor, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <SplashScreen />;
   if (!isAdmin && !isSupervisor) return <Navigate to="/my-profile" replace />;
   return <>{children}</>;
 };
 
 const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isMasterAdmin, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <SplashScreen />;
   if (!isMasterAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 const ResidentOrAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, isResident, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <SplashScreen />;
   if (!isAdmin && !isResident) return <Navigate to="/my-profile" replace />;
   return <>{children}</>;
 };
@@ -106,6 +122,7 @@ const App = () => (
                       <Route path="/notices" element={<ResidentOrAdminRoute><Notices /></ResidentOrAdminRoute>} />
                       <Route path="/complaints" element={<AdminOrSupervisorRoute><Complaints /></AdminOrSupervisorRoute>} />
                       <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
+                      <Route path="/deleted-history" element={<MasterAdminRoute><DeletedHistory /></MasterAdminRoute>} />
                       <Route path="/my-profile" element={<MyProfile />} />
                       <Route path="/my-complaints" element={<MyComplaints />} />
                       <Route path="/change-password" element={<ChangePassword />} />
