@@ -166,30 +166,8 @@ const Maintenance = () => {
     });
     if (error) { toast.error(error.message); return; }
 
-    // Auto-download due clearance receipt with full breakdown
-    const resName = (duePaymentEntry.residents as any)?.name || '';
-    const houseNo = (duePaymentEntry.residents as any)?.house_no || '';
-    const laneNo = (duePaymentEntry.residents as any)?.lane_no || '';
-    downloadReceipt({
-      societyName: 'Shri Vidhya Niwas Colony',
-      receiptNo: duePaymentForm.receiptNo || 'N/A',
-      receiptDate: duePaymentForm.date,
-      residentName: resName,
-      houseNo,
-      laneNo,
-      month: MONTHS[dateObj.getMonth()],
-      year: dateObj.getFullYear(),
-      totalMaintenance: totalMaint,
-      amountPaid: payAmount,
-      dueAmount: remainingDue,
-      paymentMode: duePaymentForm.paymentMode,
-      notes: 'This is a digitally generated receipt and does not require a manual signature.',
-      isDueClearance: true,
-      previousPaid,
-      originalDue,
-      currentPayment: payAmount,
-      remainingDue,
-    });
+    // Receipt is auto-created by DB trigger; user must click download button to get the PDF.
+    // (No automatic PDF download — per user request #13)
 
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
     setDuePaymentDialog(false);
