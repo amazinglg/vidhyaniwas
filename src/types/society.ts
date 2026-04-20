@@ -1,6 +1,6 @@
 export type UserRole = 'master_admin' | 'president' | 'vice_president' | 'treasury_head' | 'secretary' | 'coordinator' | 'supervisor' | 'resident';
 
-export const ROLE_LABELS: Record<UserRole, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   master_admin: 'Master Administrator',
   president: 'Society President',
   vice_president: 'Society Vice President',
@@ -9,6 +9,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   coordinator: 'Coordinator',
   supervisor: 'Supervisor',
   resident: 'Resident',
+  helper: 'Helper',
 };
 
 export interface Resident {

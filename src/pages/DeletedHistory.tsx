@@ -20,7 +20,7 @@ const DeletedHistory = () => {
   const fetch = async () => {
     setLoading(true);
     // Trigger purge on every load (cheap, idempotent)
-    await supabase.rpc('purge_old_deleted_records').catch(() => {});
+    try { await supabase.rpc('purge_old_deleted_records'); } catch {}
     const { data } = await supabase.from('deleted_records').select('*').order('deleted_at', { ascending: false });
     setRecords(data || []);
     setLoading(false);

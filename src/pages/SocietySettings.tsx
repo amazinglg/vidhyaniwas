@@ -1,24 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ROLE_LABELS } from '@/types/society';
-import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus, Ban, ShieldCheck, Rocket } from 'lucide-react';
+import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus, Ban, ShieldCheck, Rocket, Search, Filter, AlertTriangle, HardHat, History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAllResidents } from '@/hooks/useSocietyData';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
+
+const ROLE_FILTER_OPTIONS = ['all', 'master_admin', 'president', 'vice_president', 'treasury_head', 'secretary', 'coordinator', 'supervisor', 'resident', 'helper'];
 
 const SocietySettings = () => {
   const { user, isMasterAdmin } = useAuth();
@@ -27,12 +32,25 @@ const SocietySettings = () => {
   const queryClient = useQueryClient();
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [helpers, setHelpers] = useState<any[]>([]);
   const [editResident, setEditResident] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', family_members: '1' });
 
   // Add user dialog
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [addUserForm, setAddUserForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', resident_type: 'owner' });
+
+  // Helper dialog
+  const [helperDialogOpen, setHelperDialogOpen] = useState(false);
+  const [editingHelper, setEditingHelper] = useState<any>(null);
+  const [helperForm, setHelperForm] = useState({ name: '', mobile: '', role_title: 'Helper', notes: '' });
+
+  // Search & filter for users
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+
+  // Duplicate guard state
+  const [duplicateAlert, setDuplicateAlert] = useState<{ open: boolean; existing: { name: string; house: string } | null; payload: any | null }>({ open: false, existing: null, payload: null });
 
   const [editingSociety, setEditingSociety] = useState(false);
   const [societyForm, setSocietyForm] = useState({
@@ -42,8 +60,26 @@ const SocietySettings = () => {
     monthlyMaintenance: '₹3,000 per house',
     adminName: 'Labhansh Garg',
   });
+  const [societyRowId, setSocietyRowId] = useState<string | null>(null);
 
-  useEffect(() => { fetchUsersAndRoles(); }, []);
+  useEffect(() => { fetchUsersAndRoles(); fetchHelpers(); fetchSocietyInfo(); }, []);
+
+  const fetchSocietyInfo = async () => {
+    const { data } = await supabase.from('society_info').select('*').limit(1).maybeSingle();
+    if (data) {
+      setSocietyRowId(data.id);
+      setSocietyForm({
+        name: data.name, totalHouses: data.total_houses, lanes: data.lanes,
+        monthlyMaintenance: data.monthly_maintenance, adminName: data.admin_name,
+      });
+    }
+  };
+
+  // Realtime sync for society_info — keeps everyone in sync, fixes "auto-revert" bug
+  useEffect(() => {
+    const channel = supabase.channel('society-info-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'society_info' }, fetchSocietyInfo).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const fetchUsersAndRoles = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*');
@@ -52,10 +88,16 @@ const SocietySettings = () => {
     setRoles(userRoles || []);
   };
 
-  // Realtime sync for profiles
+  const fetchHelpers = async () => {
+    const { data } = await supabase.from('helpers').select('*').order('created_at', { ascending: false });
+    setHelpers(data || []);
+  };
+
+  // Realtime sync for profiles + helpers
   useEffect(() => {
-    const channel = supabase.channel('settings-profiles-realtime')
+    const channel = supabase.channel('settings-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { fetchUsersAndRoles(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'helpers' }, () => { fetchHelpers(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
@@ -81,7 +123,6 @@ const SocietySettings = () => {
     const { error } = await supabase.from('profiles').update({ is_blocked: newBlocked } as any).eq('user_id', matchedUser.user_id);
     if (error) { toast.error(error.message); return; }
     if (newBlocked) {
-      // Force-logout the blocked user from any active session by triggering a force password reset (invalidates session)
       await supabase.functions.invoke('force-reset-password', { body: { target_user_id: matchedUser.user_id } }).catch(() => {});
     }
     toast.success(newBlocked ? 'User blocked' : 'User unblocked');
@@ -113,18 +154,35 @@ const SocietySettings = () => {
     toast.success(t('resident_removed'));
   };
 
-  const handleAddUser = async () => {
-    if (!addUserForm.name || !addUserForm.mobile || !addUserForm.house_no) {
+  // Add User: handles helpers separately + duplicate check + master override
+  const performAddUser = async (force: boolean) => {
+    const isHelper = addUserForm.resident_type === 'helper';
+
+    if (isHelper) {
+      // Helpers go to a separate table
+      const { error } = await supabase.from('helpers').insert({
+        name: addUserForm.name,
+        mobile: addUserForm.mobile || null,
+        role_title: 'Helper',
+      });
+      if (error) { toast.error(error.message); return; }
+      toast.success('Helper added');
+      fetchHelpers();
+      setAddUserOpen(false);
+      setAddUserForm({ name: '', house_no: '', lane_no: '', mobile: '', resident_type: 'owner' });
+      setDuplicateAlert({ open: false, existing: null, payload: null });
+      return;
+    }
+
+    if (!addUserForm.house_no) {
       toast.error(t('please_fill_required'));
       return;
     }
 
-    // Block duplicate house owner
+    // Owner duplicate-per-house check
     if (addUserForm.resident_type === 'owner') {
       const { data: existingOwners } = await supabase.from('residents').select('id')
-        .eq('house_no', addUserForm.house_no)
-        .eq('lane_no', addUserForm.lane_no)
-        .eq('resident_type', 'owner');
+        .eq('house_no', addUserForm.house_no).eq('lane_no', addUserForm.lane_no).eq('resident_type', 'owner');
       if (existingOwners && existingOwners.length > 0) {
         toast.error('A house owner already exists for this house number. Use member or tenant instead.');
         return;
@@ -134,10 +192,7 @@ const SocietySettings = () => {
     let ownerId: string | null = null;
     if (addUserForm.resident_type === 'member' || addUserForm.resident_type === 'tenant') {
       const { data: owners } = await supabase.from('residents').select('id')
-        .eq('house_no', addUserForm.house_no)
-        .eq('lane_no', addUserForm.lane_no)
-        .eq('resident_type', 'owner')
-        .limit(1);
+        .eq('house_no', addUserForm.house_no).eq('lane_no', addUserForm.lane_no).eq('resident_type', 'owner').limit(1);
       if (!owners || owners.length === 0) {
         toast.error('No house owner found for this house. Register an owner first.');
         return;
@@ -145,32 +200,108 @@ const SocietySettings = () => {
       ownerId = owners[0].id;
     }
 
-    const { error } = await supabase.from('residents').insert({
+    // Duplicate check by mobile (skipped if force=true and master admin)
+    if (!force) {
+      const { data: dup } = await supabase.rpc('check_duplicate_resident', { _mobile: addUserForm.mobile });
+      const dupRow = Array.isArray(dup) ? dup[0] : dup;
+      if (dupRow?.exists_in_residents) {
+        setDuplicateAlert({
+          open: true,
+          existing: { name: dupRow.existing_name || 'Unknown', house: dupRow.existing_house || '' },
+          payload: { ...addUserForm, owner_id: ownerId },
+        });
+        return;
+      }
+    }
+
+    const payload: any = {
       name: addUserForm.name,
       house_no: addUserForm.house_no,
       lane_no: addUserForm.lane_no,
       mobile: addUserForm.mobile,
       resident_type: addUserForm.resident_type,
       owner_id: ownerId,
-    });
-    if (error) { toast.error(error.message); return; }
+    };
+
+    const { error } = await supabase.from('residents').insert(payload);
+    if (error) {
+      // Catch unique constraint violation
+      if (error.code === '23505') {
+        toast.error('A resident with this mobile already exists. Master admin can override.');
+        return;
+      }
+      toast.error(error.message);
+      return;
+    }
     toast.success('User added');
     queryClient.invalidateQueries({ queryKey: ['residents'] });
     queryClient.invalidateQueries({ queryKey: ['all_residents'] });
     setAddUserOpen(false);
     setAddUserForm({ name: '', house_no: '', lane_no: '', mobile: '', resident_type: 'owner' });
+    setDuplicateAlert({ open: false, existing: null, payload: null });
   };
 
-  const handleSaveSocietyInfo = () => {
-    localStorage.setItem('society_info', JSON.stringify(societyForm));
+  const handleAddUser = async () => {
+    if (!addUserForm.name || !addUserForm.mobile) {
+      toast.error(t('please_fill_required'));
+      return;
+    }
+    await performAddUser(false);
+  };
+
+  // Helper CRUD
+  const openAddHelper = () => { setEditingHelper(null); setHelperForm({ name: '', mobile: '', role_title: 'Helper', notes: '' }); setHelperDialogOpen(true); };
+  const openEditHelper = (h: any) => { setEditingHelper(h); setHelperForm({ name: h.name, mobile: h.mobile || '', role_title: h.role_title, notes: h.notes || '' }); setHelperDialogOpen(true); };
+  const handleSaveHelper = async () => {
+    if (!helperForm.name) { toast.error(t('please_fill_required')); return; }
+    const payload = { name: helperForm.name, mobile: helperForm.mobile || null, role_title: helperForm.role_title, notes: helperForm.notes || null };
+    if (editingHelper) {
+      const { error } = await supabase.from('helpers').update(payload).eq('id', editingHelper.id);
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { error } = await supabase.from('helpers').insert(payload);
+      if (error) { toast.error(error.message); return; }
+    }
+    toast.success(editingHelper ? 'Helper updated' : 'Helper added');
+    setHelperDialogOpen(false);
+    fetchHelpers();
+  };
+  const handleDeleteHelper = async (id: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    const { error } = await supabase.from('helpers').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Helper removed');
+    fetchHelpers();
+  };
+
+  const handleSaveSocietyInfo = async () => {
+    const payload = {
+      name: societyForm.name, total_houses: societyForm.totalHouses, lanes: societyForm.lanes,
+      monthly_maintenance: societyForm.monthlyMaintenance, admin_name: societyForm.adminName,
+      updated_by: user?.id,
+    };
+    if (societyRowId) {
+      const { error } = await supabase.from('society_info').update(payload).eq('id', societyRowId);
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { error } = await supabase.from('society_info').insert(payload);
+      if (error) { toast.error(error.message); return; }
+    }
     setEditingSociety(false);
     toast.success(t('society_info_updated'));
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem('society_info');
-    if (saved) { try { setSocietyForm(JSON.parse(saved)); } catch {} }
-  }, []);
+  // Filtered + searched user list
+  const filteredResidents = useMemo(() => {
+    return residents.filter((r: any) => {
+      const matchedUser = users.find((u: any) => u.mobile === r.mobile);
+      const role = matchedUser ? getUserRole(matchedUser.user_id) : (r.pending_role || 'resident');
+      const q = search.trim().toLowerCase();
+      const matchesSearch = !q || r.name?.toLowerCase().includes(q) || r.mobile?.includes(q) || r.house_no?.toLowerCase().includes(q);
+      const matchesRole = roleFilter === 'all' || roleFilter === role;
+      return matchesSearch && matchesRole;
+    });
+  }, [residents, users, roles, search, roleFilter]);
 
   return (
     <div className="space-y-6">
@@ -180,14 +311,15 @@ const SocietySettings = () => {
       </div>
 
       <Tabs defaultValue="society" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-2" />{t('society_info')}</TabsTrigger>
-          <TabsTrigger value="users"><Users className="h-4 w-4 mr-2" />{t('manage_users')}</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('society_info')}</span><span className="sm:hidden">Society</span></TabsTrigger>
+          <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('manage_users')}</span><span className="sm:hidden">Users</span></TabsTrigger>
+          <TabsTrigger value="helpers"><HardHat className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">Helpers</span><span className="sm:hidden">Helpers</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="society" className="mt-6">
           <Card className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
               <div className="flex items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-xl gradient-warm shadow-lg">
                   <Building2 className="h-7 w-7 text-primary-foreground" />
@@ -214,7 +346,7 @@ const SocietySettings = () => {
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveSocietyInfo} className="gradient-warm text-primary-foreground"><Save className="h-4 w-4 mr-2" />{t('save_changes')}</Button>
-                  <Button variant="outline" onClick={() => setEditingSociety(false)}>{t('cancel')}</Button>
+                  <Button variant="outline" onClick={() => { setEditingSociety(false); fetchSocietyInfo(); }}>{t('cancel')}</Button>
                 </div>
               </div>
             ) : (
@@ -228,48 +360,78 @@ const SocietySettings = () => {
           </Card>
 
           {isMasterAdmin && (
-            <Card className="p-6 mt-6 border-destructive/30 bg-destructive/5">
-              <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-                    <Rocket className="h-6 w-6" />
+            <>
+              <Card className="p-6 mt-6 border-destructive/30 bg-destructive/5">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                      <Rocket className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold font-display">Release Updates</h3>
+                      <p className="text-sm text-muted-foreground max-w-xl mt-1">
+                        Force every installed PWA and browser session to immediately reload and reinstall the latest published version. Use this only after publishing new changes.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold font-display">Release Updates</h3>
-                    <p className="text-sm text-muted-foreground max-w-xl mt-1">
-                      Force every installed PWA and browser session to immediately reload and reinstall the latest published version. Use this only after publishing new changes.
-                    </p>
-                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      if (!confirm('This will force-refresh the app for ALL users right now. Continue?')) return;
+                      const { error } = await supabase.from('app_releases').insert({
+                        released_by: user?.id ?? null,
+                        note: 'Manual release triggered from Settings',
+                      });
+                      if (error) { toast.error('Failed to broadcast release: ' + error.message); return; }
+                      toast.success('Release broadcast sent. All users will update shortly.');
+                    }}
+                  >
+                    <Rocket className="h-4 w-4 mr-2" /> Release Updates
+                  </Button>
                 </div>
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    if (!confirm('This will force-refresh the app for ALL users right now. Continue?')) return;
-                    const { error } = await supabase.from('app_releases').insert({
-                      released_by: user?.id ?? null,
-                      note: 'Manual release triggered from Settings',
-                    });
-                    if (error) {
-                      toast.error('Failed to broadcast release: ' + error.message);
-                      return;
-                    }
-                    toast.success('Release broadcast sent. All users will update shortly.');
-                  }}
-                >
-                  <Rocket className="h-4 w-4 mr-2" />
-                  Release Updates
-                </Button>
-              </div>
-            </Card>
+              </Card>
+
+              <Card className="p-6 mt-6 border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/10">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                      <History className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold font-display">Deleted History</h3>
+                      <p className="text-sm text-muted-foreground max-w-xl mt-1">
+                        View and restore deleted maintenance and expense entries. Items older than 30 days are auto-purged.
+                      </p>
+                    </div>
+                  </div>
+                  <Button asChild variant="outline">
+                    <Link to="/deleted-history"><History className="h-4 w-4 mr-2" /> Open Deleted History</Link>
+                  </Button>
+                </div>
+              </Card>
+            </>
           )}
         </TabsContent>
 
         <TabsContent value="users" className="mt-6 space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input className="pl-10" placeholder="Search by name, mobile, or house no…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full sm:w-52"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ROLE_FILTER_OPTIONS.map((r) => (
+                  <SelectItem key={r} value={r}>{r === 'all' ? 'All roles' : (ROLE_LABELS[r as any] || r)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button onClick={() => setAddUserOpen(true)} className="gradient-warm text-primary-foreground">
               <Plus className="h-4 w-4 mr-2" />{t('add_user')}
             </Button>
           </div>
+
           <Card className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -284,7 +446,7 @@ const SocietySettings = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {residents.map((r: any) => {
+                {filteredResidents.map((r: any) => {
                   const matchedUser = users.find((u: any) => u.mobile === r.mobile);
                   const currentRole = matchedUser ? getUserRole(matchedUser.user_id) : (r.pending_role || 'resident');
                   return (
@@ -346,6 +508,48 @@ const SocietySettings = () => {
                     </TableRow>
                   );
                 })}
+                {filteredResidents.length === 0 && (
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No users match the filter.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+        {/* HELPERS TAB */}
+        <TabsContent value="helpers" className="mt-6 space-y-4">
+          <div className="flex justify-between items-center gap-3 flex-wrap">
+            <p className="text-sm text-muted-foreground">Helpers are not residents. They don't have login or maintenance dues.</p>
+            <Button onClick={openAddHelper} className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 mr-2" />Add Helper</Button>
+          </div>
+          <Card className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Mobile</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {helpers.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No helpers added yet.</TableCell></TableRow>
+                ) : helpers.map(h => (
+                  <TableRow key={h.id}>
+                    <TableCell className="font-medium">{h.name}</TableCell>
+                    <TableCell>{h.role_title}</TableCell>
+                    <TableCell>{h.mobile || '-'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-xs truncate">{h.notes || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEditHelper(h)}><Edit2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteHelper(h.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </Card>
@@ -363,36 +567,67 @@ const SocietySettings = () => {
               <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={editForm.lane_no} onChange={(e) => setEditForm({ ...editForm, lane_no: e.target.value })} /></div>
             </div>
             <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={editForm.mobile} onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
-            
             <Button onClick={handleSaveResident} className="w-full gradient-warm text-primary-foreground">{t('save_changes')}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Add User Dialog */}
-      <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+      {/* Add User Dialog (with Helper option) */}
+      <Dialog open={addUserOpen} onOpenChange={(o) => { setAddUserOpen(o); if (!o) setDuplicateAlert({ open: false, existing: null, payload: null }); }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle className="font-display">{t('add_user')}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>{t('resident_type')}</Label>
+              <Label>User Type</Label>
               <Select value={addUserForm.resident_type} onValueChange={(v) => setAddUserForm({ ...addUserForm, resident_type: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="owner">{t('house_owner')}</SelectItem>
                   <SelectItem value="member">{t('family_member')}</SelectItem>
                   <SelectItem value="tenant">{t('tenant')}</SelectItem>
+                  <SelectItem value="helper">Helper</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2"><Label>{t('full_name')} *</Label><Input value={addUserForm.name} onChange={(e) => setAddUserForm({ ...addUserForm, name: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2"><Label>{t('house_no')} *</Label><Input value={addUserForm.house_no} onChange={(e) => setAddUserForm({ ...addUserForm, house_no: e.target.value })} /></div>
-              <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={addUserForm.lane_no} onChange={(e) => setAddUserForm({ ...addUserForm, lane_no: e.target.value })} /></div>
-            </div>
-            <div className="grid gap-2"><Label>{t('mobile')} *</Label><Input value={addUserForm.mobile} onChange={(e) => setAddUserForm({ ...addUserForm, mobile: e.target.value })} /></div>
-            
+
+            {addUserForm.resident_type !== 'helper' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>{t('house_no')} *</Label><Input value={addUserForm.house_no} onChange={(e) => setAddUserForm({ ...addUserForm, house_no: e.target.value })} /></div>
+                <div className="grid gap-2"><Label>{t('lane_no')}</Label><Input value={addUserForm.lane_no} onChange={(e) => setAddUserForm({ ...addUserForm, lane_no: e.target.value })} /></div>
+              </div>
+            )}
+            <div className="grid gap-2"><Label>{t('mobile')} {addUserForm.resident_type !== 'helper' && '*'}</Label><Input value={addUserForm.mobile} onChange={(e) => setAddUserForm({ ...addUserForm, mobile: e.target.value })} /></div>
+
+            {duplicateAlert.open && duplicateAlert.existing && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>{duplicateAlert.existing.name}</strong> ({duplicateAlert.existing.house}) already exists with this mobile.
+                  {isMasterAdmin && (
+                    <div className="mt-2">
+                      <Button size="sm" variant="destructive" onClick={() => performAddUser(true)}>Continue anyway (creates duplicate)</Button>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Button onClick={handleAddUser} className="w-full gradient-warm text-primary-foreground">{t('add_user')}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Helper Dialog */}
+      <Dialog open={helperDialogOpen} onOpenChange={setHelperDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="font-display">{editingHelper ? 'Edit Helper' : 'Add Helper'}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2"><Label>Name *</Label><Input value={helperForm.name} onChange={(e) => setHelperForm({ ...helperForm, name: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>Role / Title</Label><Input value={helperForm.role_title} onChange={(e) => setHelperForm({ ...helperForm, role_title: e.target.value })} placeholder="e.g. Cleaner, Gardener, Security" /></div>
+            <div className="grid gap-2"><Label>Mobile</Label><Input value={helperForm.mobile} onChange={(e) => setHelperForm({ ...helperForm, mobile: e.target.value })} /></div>
+            <div className="grid gap-2"><Label>Notes</Label><Input value={helperForm.notes} onChange={(e) => setHelperForm({ ...helperForm, notes: e.target.value })} /></div>
+            <Button onClick={handleSaveHelper} className="w-full gradient-warm text-primary-foreground">{editingHelper ? 'Update' : 'Add'} Helper</Button>
           </div>
         </DialogContent>
       </Dialog>
