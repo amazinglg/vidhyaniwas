@@ -124,6 +124,33 @@ export type Database = {
           },
         ]
       }
+      deleted_records: {
+        Row: {
+          deleted_at: string
+          deleted_by: string | null
+          id: string
+          original_id: string
+          payload: Json
+          source_table: string
+        }
+        Insert: {
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          original_id: string
+          payload: Json
+          source_table: string
+        }
+        Update: {
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          original_id?: string
+          payload?: Json
+          source_table?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -209,6 +236,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      helpers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          mobile: string | null
+          name: string
+          notes: string | null
+          photo_url: string | null
+          role_title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          mobile?: string | null
+          name: string
+          notes?: string | null
+          photo_url?: string | null
+          role_title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          mobile?: string | null
+          name?: string
+          notes?: string | null
+          photo_url?: string | null
+          role_title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       maintenance_collections: {
         Row: {
@@ -542,6 +608,42 @@ export type Database = {
           },
         ]
       }
+      society_info: {
+        Row: {
+          admin_name: string
+          id: string
+          lanes: string
+          monthly_maintenance: string
+          name: string
+          singleton: boolean
+          total_houses: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          admin_name?: string
+          id?: string
+          lanes?: string
+          monthly_maintenance?: string
+          name?: string
+          singleton?: boolean
+          total_houses?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          admin_name?: string
+          id?: string
+          lanes?: string
+          monthly_maintenance?: string
+          name?: string
+          singleton?: boolean
+          total_houses?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       society_management: {
         Row: {
           created_at: string
@@ -642,6 +744,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_duplicate_resident: {
+        Args: { _mobile: string }
+        Returns: {
+          existing_house: string
+          existing_name: string
+          exists_in_helpers: boolean
+          exists_in_residents: boolean
+        }[]
+      }
       get_email_by_mobile: { Args: { _mobile: string }; Returns: string }
       has_role: {
         Args: {
@@ -653,6 +764,17 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_coordinator: { Args: { _user_id: string }; Returns: boolean }
       is_supervisor: { Args: { _user_id: string }; Returns: boolean }
+      purge_old_deleted_records: { Args: never; Returns: undefined }
+      restore_deleted_record: { Args: { _id: string }; Returns: undefined }
+      signup_lookup_owner: {
+        Args: { _owner_mobile: string }
+        Returns: {
+          house_no: string
+          lane_no: string
+          owner_id: string
+          owner_name: string
+        }[]
+      }
     }
     Enums: {
       app_role:
