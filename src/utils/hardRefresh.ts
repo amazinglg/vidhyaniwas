@@ -61,7 +61,7 @@ export const hardRefreshApp = async (): Promise<void> => {
     }
   } catch {}
 
-  // 6. Cache-busting hard reload to fetch fresh index.html and assets
-  const url = window.location.pathname + '?v=' + Date.now();
+  // 6. Cache-busting hard reload — always land on /my-profile so users never see a blank page
+  const url = '/my-profile?v=' + Date.now();
   window.location.replace(url);
 };
