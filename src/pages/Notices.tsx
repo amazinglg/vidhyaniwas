@@ -15,6 +15,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 
 const priorityStyles: Record<string, string> = {
   low: 'bg-muted text-muted-foreground',
@@ -28,6 +29,10 @@ const Notices = () => {
   const { isAdmin } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const { markAllRead } = useUnreadNotices();
+
+  // Mark all notices as read when this page is opened
+  useEffect(() => { markAllRead(); }, [markAllRead, notices.length]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ title: '', content: '', priority: 'medium' });
   const [sendTo, setSendTo] = useState('all');

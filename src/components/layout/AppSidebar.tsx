@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import {
   LayoutDashboard,
   Users,
@@ -28,6 +29,7 @@ const AppSidebar = () => {
   const location = useLocation();
   const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor } = useAuth();
   const { t } = useLanguage();
+  const { unreadCount } = useUnreadNotices();
 
   const navItems = [];
 
@@ -72,7 +74,7 @@ const AppSidebar = () => {
 
   const sidebarContent = (
     <>
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
+      <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg gradient-warm">
           <Building2 className="h-5 w-5 text-primary-foreground" />
         </div>
@@ -106,7 +108,15 @@ const AppSidebar = () => {
               title={collapsed ? item.label : undefined}
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span className="flex-1">{item.label}</span>}
+              {item.path === '/notices' && unreadCount > 0 && (
+                <span className={cn(
+                  "flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground",
+                  collapsed && "absolute top-1 right-1 h-4 min-w-4 px-1"
+                )}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -125,7 +135,9 @@ const AppSidebar = () => {
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed top-4 left-4 z-50 md:hidden flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar text-sidebar-foreground shadow-lg"
+        className="fixed left-3 z-50 md:hidden flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar text-sidebar-foreground shadow-lg"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
+        aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
       </button>
