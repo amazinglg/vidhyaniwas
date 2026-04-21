@@ -74,7 +74,7 @@ const AppSidebar = () => {
 
   const sidebarContent = (
     <>
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
+      <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg gradient-warm">
           <Building2 className="h-5 w-5 text-primary-foreground" />
         </div>
