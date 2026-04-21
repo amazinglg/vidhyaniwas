@@ -60,11 +60,6 @@ const TopBar = () => {
             {t('welcome')}, {displayName}
           </h2>
         </div>
-        {userRole && (
-          <Badge className={`text-xs shrink-0 ${ROLE_COLORS[userRole] || 'bg-muted text-muted-foreground'}`}>
-            {ROLE_LABELS[userRole] || userRole}
-          </Badge>
-        )}
       </div>
       <div className="flex items-center gap-1 md:gap-2 shrink-0">
         {canInstall && (
