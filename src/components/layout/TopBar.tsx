@@ -55,6 +55,9 @@ const TopBar = () => {
       className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur-lg px-4 md:px-6"
     >
       <div className="flex items-center gap-2 md:gap-3 ml-12 md:ml-0 min-w-0 flex-1">
+        <span className="font-display font-bold text-lg md:text-xl tracking-[0.15em] bg-gradient-to-br from-primary via-accent to-primary bg-clip-text text-transparent shrink-0 drop-shadow-sm">
+          SVN
+        </span>
         <div className="hidden sm:block min-w-0">
           <h2 className="text-base md:text-lg font-semibold font-display text-foreground truncate max-w-[160px] md:max-w-none">
             {t('welcome')}, {displayName}
