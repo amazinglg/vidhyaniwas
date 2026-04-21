@@ -25,7 +25,7 @@ export const useUnreadNotices = () => {
     refresh();
 
     const channel = supabase
-      .channel('unread-notices-tracker')
+      .channel(`unread-notices-${user.id}-${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'notices' }, () => refresh())
       .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'notification_reads', filter: `user_id=eq.${user.id}` }, () => refresh())
       .subscribe();
