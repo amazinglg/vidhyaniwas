@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Cast supabase to any for tables not yet in generated types
+const sb = supabase as any;
+
 export const useUnreadNotices = () => {
   const { user, session } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -10,7 +13,7 @@ export const useUnreadNotices = () => {
     if (!user) { setUnreadCount(0); return; }
     const [{ data: notices }, { data: reads }] = await Promise.all([
       supabase.from('notices').select('id').eq('is_active', true),
-      supabase.from('notification_reads').select('notice_id').eq('user_id', user.id),
+      sb.from('notification_reads').select('notice_id').eq('user_id', user.id),
     ]);
     const readIds = new Set((reads || []).map((r: any) => r.notice_id));
     const unread = (notices || []).filter((n: any) => !readIds.has(n.id)).length;
@@ -23,8 +26,8 @@ export const useUnreadNotices = () => {
 
     const channel = supabase
       .channel('unread-notices-tracker')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, () => refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_reads', filter: `user_id=eq.${user.id}` }, () => refresh())
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'notices' }, () => refresh())
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'notification_reads', filter: `user_id=eq.${user.id}` }, () => refresh())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -33,9 +36,9 @@ export const useUnreadNotices = () => {
   const markAllRead = useCallback(async () => {
     if (!user) return;
     const { data: notices } = await supabase.from('notices').select('id').eq('is_active', true);
-    if (!notices || notices.length === 0) return;
+    if (!notices || notices.length === 0) { setUnreadCount(0); return; }
     const rows = notices.map((n: any) => ({ user_id: user.id, notice_id: n.id }));
-    await supabase.from('notification_reads').upsert(rows, { onConflict: 'user_id,notice_id', ignoreDuplicates: true });
+    await sb.from('notification_reads').upsert(rows, { onConflict: 'user_id,notice_id', ignoreDuplicates: true });
     setUnreadCount(0);
   }, [user]);
 
