@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, MessageSquareWarning, XCircle } from 'lucide-react';
+import { Plus, MessageSquareWarning, XCircle, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { ComplaintImageUploader } from '@/components/ComplaintImageUploader';
+import { ComplaintAttachmentsView } from '@/components/ComplaintAttachmentsView';
 
 const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
@@ -25,7 +27,7 @@ const MyComplaints = () => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', category: 'General' });
+  const [form, setForm] = useState<{ title: string; description: string; category: string; attachments: string[] }>({ title: '', description: '', category: 'General', attachments: [] });
   const [residentId, setResidentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,11 +63,12 @@ const MyComplaints = () => {
       description: form.description || null,
       category: form.category,
       created_by: user?.id,
+      attachments: form.attachments,
     });
     if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ['my_complaints'] });
     setDialogOpen(false);
-    setForm({ title: '', description: '', category: 'General' });
+    setForm({ title: '', description: '', category: 'General', attachments: [] });
     toast.success(t('complaint_submitted'));
   };
 
