@@ -55,11 +55,9 @@ export const ComplaintImageUploader = ({ userId, value, onChange, max = 3 }: Pro
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        {value.map((path) => {
-          const { data } = supabase.storage.from('complaint-attachments').getPublicUrl(path);
-          // Bucket is private; use signed url
-          return <ThumbPreview key={path} path={path} onRemove={() => remove(path)} />;
-        })}
+        {value.map((path) => (
+          <ThumbPreview key={path} path={path} onRemove={() => remove(path)} />
+        ))}
         {value.length < max && (
           <label className="flex items-center justify-center w-20 h-20 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted transition">
             {uploading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : <ImagePlus className="h-5 w-5 text-muted-foreground" />}
