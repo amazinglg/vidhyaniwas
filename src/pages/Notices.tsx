@@ -91,7 +91,7 @@ const Notices = () => {
         </div>
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button className="gradient-warm text-primary-foreground shadow-lg"><Plus className="h-4 w-4 mr-2" /> {t('new_notice')}</Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm" className="gradient-warm text-primary-foreground shadow-lg shrink-0 h-9 px-2 sm:px-3"><Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">{t('new_notice')}</span></Button></DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-display">{t('create_notice')}</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
