@@ -84,10 +84,10 @@ const Notices = () => {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">{t('notices')}</h1>
-          <p className="text-muted-foreground mt-1">{t('stay_updated')}</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground truncate">{t('notices')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm truncate">{t('stay_updated')}</p>
         </div>
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
