@@ -7,30 +7,8 @@ import { toast } from 'sonner';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 
-const ROLE_LABELS: Record<string, string> = {
-  master_admin: 'Master Administrator',
-  president: 'Society President',
-  vice_president: 'Society Vice President',
-  treasury_head: 'Society Treasury Head',
-  secretary: 'Society Secretary',
-  coordinator: 'Coordinator',
-  resident: 'Resident',
-  supervisor: 'Supervisor',
-};
-
-const ROLE_COLORS: Record<string, string> = {
-  master_admin: 'gradient-warm text-primary-foreground',
-  president: 'gradient-cool text-primary-foreground',
-  vice_president: 'bg-accent text-accent-foreground',
-  treasury_head: 'gradient-sunset text-primary-foreground',
-  secretary: 'gradient-cool text-primary-foreground',
-  coordinator: 'bg-warning text-warning-foreground',
-  resident: 'bg-muted text-muted-foreground',
-  supervisor: 'bg-info text-info-foreground',
-};
-
 const TopBar = () => {
-  const { user, userRole, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
   const { unreadCount } = useUnreadNotices();
