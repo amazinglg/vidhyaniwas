@@ -72,6 +72,7 @@ export type Database = {
         Row: {
           admin_comment: string | null
           assigned_to: string | null
+          attachments: string[] | null
           category: string
           comments: Json | null
           created_at: string
@@ -87,6 +88,7 @@ export type Database = {
         Insert: {
           admin_comment?: string | null
           assigned_to?: string | null
+          attachments?: string[] | null
           category?: string
           comments?: Json | null
           created_at?: string
@@ -102,6 +104,7 @@ export type Database = {
         Update: {
           admin_comment?: string | null
           assigned_to?: string | null
+          attachments?: string[] | null
           category?: string
           comments?: Json | null
           created_at?: string

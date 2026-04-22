@@ -16,6 +16,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { ComplaintImageUploader } from '@/components/ComplaintImageUploader';
+import { ComplaintAttachmentsView } from '@/components/ComplaintAttachmentsView';
 
 const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
@@ -41,7 +43,7 @@ const Complaints = () => {
   const [pendingStatus, setPendingStatus] = useState<{ id: string; status: string } | null>(null);
   const [statusComment, setStatusComment] = useState('');
   const [raiseDialogOpen, setRaiseDialogOpen] = useState(false);
-  const [raiseForm, setRaiseForm] = useState({ title: '', description: '', category: 'General', residentId: residentId || '' });
+  const [raiseForm, setRaiseForm] = useState<{ title: string; description: string; category: string; residentId: string; attachments: string[] }>({ title: '', description: '', category: 'General', residentId: residentId || '', attachments: [] });
 
   const canManage = isAdmin || isSupervisor;
 
@@ -108,11 +110,12 @@ const Complaints = () => {
       description: raiseForm.description || null,
       category: raiseForm.category,
       created_by: user?.id,
+      attachments: raiseForm.attachments,
     });
     if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ['complaints'] });
     setRaiseDialogOpen(false);
-    setRaiseForm({ title: '', description: '', category: 'General', residentId: residentId || '' });
+    setRaiseForm({ title: '', description: '', category: 'General', residentId: residentId || '', attachments: [] });
     toast.success(t('complaint_submitted'));
   };
 
@@ -153,6 +156,10 @@ const Complaints = () => {
                 <div className="grid gap-2"><Label>{t('title')} *</Label><Input value={raiseForm.title} onChange={(e) => setRaiseForm({ ...raiseForm, title: e.target.value })} /></div>
                 <div className="grid gap-2"><Label>{t('description')}</Label><Textarea value={raiseForm.description} onChange={(e) => setRaiseForm({ ...raiseForm, description: e.target.value })} rows={3} /></div>
                 <div className="grid gap-2"><Label>{t('category')}</Label><Input value={raiseForm.category} onChange={(e) => setRaiseForm({ ...raiseForm, category: e.target.value })} /></div>
+                <div className="grid gap-2">
+                  <Label>Photos (optional)</Label>
+                  {user && <ComplaintImageUploader userId={user.id} value={raiseForm.attachments} onChange={(a) => setRaiseForm({ ...raiseForm, attachments: a })} max={3} />}
+                </div>
                 <Button onClick={handleRaiseComplaint} className="w-full mt-2 gradient-warm text-primary-foreground">{t('submit')}</Button>
               </div>
             </DialogContent>
@@ -303,6 +310,7 @@ const Complaints = () => {
               <div className="p-3 rounded-lg bg-muted">
                 <p className="font-semibold">{selectedComplaint.title}</p>
                 <p className="text-sm text-muted-foreground mt-1">{selectedComplaint.description}</p>
+                <ComplaintAttachmentsView paths={selectedComplaint.attachments || []} />
               </div>
 
               {/* Comment history */}

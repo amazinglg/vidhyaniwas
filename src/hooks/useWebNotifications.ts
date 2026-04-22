@@ -78,24 +78,64 @@ export const useWebNotifications = () => {
   }, [session]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || !user) return;
+
+    // Look up the current user's role + resident_id once for filtering
+    let isAdminUser = false;
+    let myResidentId: string | null = null;
+    void (async () => {
+      const [{ data: roleRow }, { data: profile }] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle(),
+        supabase.from('profiles').select('resident_id').eq('user_id', user.id).maybeSingle(),
+      ]);
+      const adminRoles = ['master_admin', 'president', 'vice_president', 'treasury_head', 'secretary'];
+      isAdminUser = roleRow?.role ? adminRoles.includes(roleRow.role) : false;
+      myResidentId = profile?.resident_id || null;
+    })();
+
+    const notify = (title: string, body: string) => {
+      toast.info(title, { description: body });
+      void showBrowserNotification(title, body);
+    };
 
     const channel = supabase
-      .channel('notices-realtime-notifications')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notices' },
-        (payload) => {
-          const notice = payload.new as { title: string; content: string; created_by: string | null };
-          if (notice.created_by === user?.id) return;
-
-          toast.info(`📢 ${notice.title}`, { description: notice.content?.substring(0, 100) });
-          void showBrowserNotification(
-            `📢 ${notice.title}`,
-            notice.content?.substring(0, 150) || 'A new notice has been published.'
-          );
+      .channel('society-realtime-notifications')
+      // 1. New notices
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notices' }, (payload) => {
+        const n = payload.new as { title: string; content: string; created_by: string | null };
+        if (n.created_by === user.id) return;
+        notify(`📢 ${n.title}`, n.content?.substring(0, 150) || 'A new notice has been published.');
+      })
+      // 2. New maintenance entry — notify the resident it belongs to
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'maintenance_collections' }, (payload) => {
+        const m = payload.new as { resident_id: string; month: string; year: number; total_maintenance: number };
+        if (myResidentId && m.resident_id === myResidentId) {
+          notify('💰 Maintenance entry added', `${m.month} ${m.year} • ₹${m.total_maintenance}`);
         }
-      )
+      })
+      // 3. New pending signup — notify admins
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload) => {
+        const p = payload.new as { is_approved: boolean; full_name: string; mobile: string };
+        if (isAdminUser && !p.is_approved) {
+          notify('👤 New signup pending', `${p.full_name || p.mobile} is awaiting approval.`);
+        }
+      })
+      // 4. New complaint — notify admins/supervisors
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'complaints' }, (payload) => {
+        const c = payload.new as { title: string; created_by: string | null };
+        if (c.created_by === user.id) return;
+        if (isAdminUser) {
+          notify('📝 New complaint raised', c.title);
+        }
+      })
+      // 5. Complaint resolved — notify the resident who raised it
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'complaints' }, (payload) => {
+        const before = payload.old as { status: string };
+        const after = payload.new as { status: string; resident_id: string; title: string };
+        if (before.status !== 'resolved' && after.status === 'resolved' && myResidentId === after.resident_id) {
+          notify('✅ Complaint resolved', after.title);
+        }
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };

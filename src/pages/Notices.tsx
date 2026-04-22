@@ -38,12 +38,19 @@ const Notices = () => {
   const [sendTo, setSendTo] = useState('all');
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
+  const [userRoles, setUserRoles] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isAdmin) return;
     const fetchUsers = async () => {
-      const { data } = await supabase.from('profiles').select('user_id, full_name, mobile').eq('is_approved', true);
+      const { data } = await supabase.from('profiles').select('user_id, full_name, mobile, house_no, lane_no').eq('is_approved', true);
       setAllUsers(data || []);
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role');
+      const map: Record<string, string> = {};
+      (roles || []).forEach((r: any) => { map[r.user_id] = r.role; });
+      setUserRoles(map);
     };
     fetchUsers();
   }, [isAdmin]);
@@ -123,14 +130,57 @@ const Notices = () => {
                 {sendTo === 'specific' && (
                   <div className="grid gap-2">
                     <Label>{t('select_users')}</Label>
-                    <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
-                      {allUsers.map(u => (
-                        <label key={u.user_id} className="flex items-center gap-2 p-1 hover:bg-muted rounded cursor-pointer text-sm">
-                          <Checkbox checked={selectedUserIds.includes(u.user_id)} onCheckedChange={() => toggleUser(u.user_id)} />
-                          <span>{u.full_name || u.mobile}</span>
-                        </label>
-                      ))}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Search name / mobile / house"
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        className="h-9 text-sm col-span-2"
+                      />
+                      <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                        <SelectTrigger className="h-9 text-sm col-span-2"><SelectValue placeholder="All roles" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All roles</SelectItem>
+                          <SelectItem value="master_admin">Master Admin</SelectItem>
+                          <SelectItem value="president">President</SelectItem>
+                          <SelectItem value="vice_president">Vice President</SelectItem>
+                          <SelectItem value="treasury_head">Treasury Head</SelectItem>
+                          <SelectItem value="secretary">Secretary</SelectItem>
+                          <SelectItem value="coordinator">Coordinator</SelectItem>
+                          <SelectItem value="supervisor">Supervisor</SelectItem>
+                          <SelectItem value="resident">Resident</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
+                    {(() => {
+                      const q = userSearch.trim().toLowerCase();
+                      const filtered = allUsers.filter(u => {
+                        const matchesRole = userRoleFilter === 'all' || userRoles[u.user_id] === userRoleFilter;
+                        if (!matchesRole) return false;
+                        if (!q) return true;
+                        return (u.full_name || '').toLowerCase().includes(q)
+                          || (u.mobile || '').toLowerCase().includes(q)
+                          || (u.house_no || '').toLowerCase().includes(q);
+                      });
+                      return (
+                        <>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{filtered.length} matches • {selectedUserIds.length} selected</span>
+                            <button type="button" className="underline" onClick={() => setSelectedUserIds(filtered.map(u => u.user_id))}>Select all visible</button>
+                          </div>
+                          <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                            {filtered.length === 0 ? (
+                              <p className="text-xs text-muted-foreground text-center py-2">No users match</p>
+                            ) : filtered.map(u => (
+                              <label key={u.user_id} className="flex items-center gap-2 p-1 hover:bg-muted rounded cursor-pointer text-sm">
+                                <Checkbox checked={selectedUserIds.includes(u.user_id)} onCheckedChange={() => toggleUser(u.user_id)} />
+                                <span className="flex-1 truncate">{u.full_name || u.mobile} {u.house_no && <span className="text-xs text-muted-foreground">· {u.house_no}</span>}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
                 <Button onClick={handleAdd} className="w-full mt-2 gradient-warm text-primary-foreground">{t('publish_notice')}</Button>

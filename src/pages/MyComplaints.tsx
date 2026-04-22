@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, MessageSquareWarning, XCircle } from 'lucide-react';
+import { Plus, MessageSquareWarning, XCircle, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { ComplaintImageUploader } from '@/components/ComplaintImageUploader';
+import { ComplaintAttachmentsView } from '@/components/ComplaintAttachmentsView';
 
 const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
@@ -25,7 +27,7 @@ const MyComplaints = () => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', category: 'General' });
+  const [form, setForm] = useState<{ title: string; description: string; category: string; attachments: string[] }>({ title: '', description: '', category: 'General', attachments: [] });
   const [residentId, setResidentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,11 +63,12 @@ const MyComplaints = () => {
       description: form.description || null,
       category: form.category,
       created_by: user?.id,
+      attachments: form.attachments,
     });
     if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ['my_complaints'] });
     setDialogOpen(false);
-    setForm({ title: '', description: '', category: 'General' });
+    setForm({ title: '', description: '', category: 'General', attachments: [] });
     toast.success(t('complaint_submitted'));
   };
 
@@ -94,6 +97,10 @@ const MyComplaints = () => {
               <div className="grid gap-2"><Label>{t('title')} *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
               <div className="grid gap-2"><Label>{t('description')}</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
               <div className="grid gap-2"><Label>{t('category')}</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
+              <div className="grid gap-2">
+                <Label>Photos (optional)</Label>
+                {user && <ComplaintImageUploader userId={user.id} value={form.attachments} onChange={(a) => setForm({ ...form, attachments: a })} max={3} />}
+              </div>
               <Button onClick={handleAdd} className="w-full mt-2 gradient-warm text-primary-foreground">{t('submit')}</Button>
             </div>
           </DialogContent>
@@ -117,6 +124,13 @@ const MyComplaints = () => {
                 <Badge variant="outline">{c.category}</Badge>
               </div>
               {c.description && <p className="text-sm text-muted-foreground">{c.description}</p>}
+              {c.assigned_to && (
+                <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <UserCheck className="h-3.5 w-3.5 text-primary" />
+                  <span>Assigned to <span className="font-medium text-foreground">{c.assigned_to}</span></span>
+                </div>
+              )}
+              <ComplaintAttachmentsView paths={c.attachments || []} />
               {c.admin_comment && (
                 <div className="mt-3 p-3 rounded-lg bg-info/10 border border-info/20">
                   <p className="text-xs font-medium text-info mb-1">{t('admin_response')}</p>
