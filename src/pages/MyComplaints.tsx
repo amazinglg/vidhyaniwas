@@ -17,7 +17,6 @@ const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
   in_progress: 'gradient-warm text-primary-foreground',
   resolved: 'bg-success text-success-foreground',
-  closed: 'bg-muted text-muted-foreground',
   withdrawn: 'bg-muted text-muted-foreground',
 };
 
