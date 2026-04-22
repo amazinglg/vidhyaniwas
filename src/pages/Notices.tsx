@@ -38,12 +38,19 @@ const Notices = () => {
   const [sendTo, setSendTo] = useState('all');
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
+  const [userRoles, setUserRoles] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isAdmin) return;
     const fetchUsers = async () => {
-      const { data } = await supabase.from('profiles').select('user_id, full_name, mobile').eq('is_approved', true);
+      const { data } = await supabase.from('profiles').select('user_id, full_name, mobile, house_no, lane_no').eq('is_approved', true);
       setAllUsers(data || []);
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role');
+      const map: Record<string, string> = {};
+      (roles || []).forEach((r: any) => { map[r.user_id] = r.role; });
+      setUserRoles(map);
     };
     fetchUsers();
   }, [isAdmin]);
