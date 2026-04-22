@@ -25,6 +25,7 @@ const Residents = () => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [laneFilter, setLaneFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', family_members: '1', resident_type: 'owner' });
@@ -56,11 +57,16 @@ const Residents = () => {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  const filtered = owners.filter((r: any) =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.house_no.toLowerCase().includes(search.toLowerCase()) ||
-    r.mobile.includes(search)
-  );
+  const uniqueLanes = Array.from(new Set(owners.map((r: any) => r.lane_no).filter(Boolean))).sort((a: any, b: any) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+
+  const filtered = owners.filter((r: any) => {
+    const matchesSearch =
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.house_no.toLowerCase().includes(search.toLowerCase()) ||
+      r.mobile.includes(search);
+    const matchesLane = laneFilter === 'all' || r.lane_no === laneFilter;
+    return matchesSearch && matchesLane;
+  });
 
   const openAdd = () => {
     setEditingId(null);
@@ -254,9 +260,22 @@ const Residents = () => {
       </div>
 
       <Card className="p-3 md:p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-10" placeholder={t('search_residents')} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input className="pl-10" placeholder={t('search_residents')} value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <Select value={laneFilter} onValueChange={setLaneFilter}>
+            <SelectTrigger className="sm:w-44">
+              <SelectValue placeholder={t('lane') + ': ' + t('all') } />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('all')} {t('lane').toLowerCase()}s</SelectItem>
+              {uniqueLanes.map((ln: any) => (
+                <SelectItem key={String(ln)} value={String(ln)}>{t('lane')} {ln}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 

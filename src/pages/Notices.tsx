@@ -84,14 +84,14 @@ const Notices = () => {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">{t('notices')}</h1>
-          <p className="text-muted-foreground mt-1">{t('stay_updated')}</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground truncate">{t('notices')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm truncate">{t('stay_updated')}</p>
         </div>
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button className="gradient-warm text-primary-foreground shadow-lg"><Plus className="h-4 w-4 mr-2" /> {t('new_notice')}</Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm" className="gradient-warm text-primary-foreground shadow-lg shrink-0 h-9 px-2 sm:px-3"><Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">{t('new_notice')}</span></Button></DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-display">{t('create_notice')}</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">

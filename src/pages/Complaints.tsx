@@ -21,7 +21,7 @@ const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
   in_progress: 'gradient-warm text-primary-foreground',
   resolved: 'bg-success text-success-foreground',
-  closed: 'bg-muted text-muted-foreground',
+  withdrawn: 'bg-muted text-muted-foreground',
 };
 
 interface CommentEntry {
@@ -160,8 +160,8 @@ const Complaints = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {['open', 'in_progress', 'resolved', 'closed'].map(status => {
+      <div className="grid grid-cols-3 gap-3">
+        {['open', 'in_progress', 'resolved'].map(status => {
           const count = complaints.filter((c: any) => c.status === status).length;
           return (
             <Card key={status} className="p-3 md:p-4 text-center">
@@ -202,7 +202,6 @@ const Complaints = () => {
                     <SelectItem value="open">{t('open')}</SelectItem>
                     <SelectItem value="in_progress">{t('in_progress')}</SelectItem>
                     <SelectItem value="resolved">{t('resolved')}</SelectItem>
-                    <SelectItem value="closed">{t('closed')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button variant="ghost" size="sm" onClick={() => { setSelectedComplaint(c); setComment(''); }}>
@@ -257,7 +256,6 @@ const Complaints = () => {
                           <SelectItem value="open">{t('open')}</SelectItem>
                           <SelectItem value="in_progress">{t('in_progress')}</SelectItem>
                           <SelectItem value="resolved">{t('resolved')}</SelectItem>
-                          <SelectItem value="closed">{t('closed')}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button variant="ghost" size="icon" onClick={() => { setSelectedComplaint(c); setComment(''); }}>

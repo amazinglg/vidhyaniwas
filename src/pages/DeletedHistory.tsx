@@ -13,6 +13,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const DeletedHistory = () => {
   const { t } = useLanguage();
   const [records, setRecords] = useState<any[]>([]);
+  const [deleterMap, setDeleterMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'maintenance_collections' | 'expenses'>('maintenance_collections');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -22,7 +23,20 @@ const DeletedHistory = () => {
     // Trigger purge on every load (cheap, idempotent)
     try { await supabase.rpc('purge_old_deleted_records'); } catch {}
     const { data } = await supabase.from('deleted_records').select('*').order('deleted_at', { ascending: false });
-    setRecords(data || []);
+    const recs = data || [];
+    setRecords(recs);
+
+    // Resolve deleter names
+    const userIds = Array.from(new Set(recs.map((r: any) => r.deleted_by).filter(Boolean)));
+    if (userIds.length) {
+      const { data: profs } = await supabase.from('profiles').select('user_id, full_name, mobile').in('user_id', userIds);
+      const map: Record<string, string> = {};
+      (profs || []).forEach((p: any) => { map[p.user_id] = p.full_name || p.mobile || 'Unknown'; });
+      setDeleterMap(map);
+    } else {
+      setDeleterMap({});
+    }
+
     setLoading(false);
     setSelected(new Set());
   };
@@ -140,6 +154,7 @@ const DeletedHistory = () => {
                         <Checkbox checked={selected.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} />
                       </TableHead>
                       <TableHead>Record</TableHead>
+                      <TableHead>Deleted by</TableHead>
                       <TableHead>Deleted</TableHead>
                       <TableHead>Auto-purge in</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -152,6 +167,9 @@ const DeletedHistory = () => {
                           <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggleOne(r.id)} />
                         </TableCell>
                         <TableCell>{renderPayload(r.source_table, r.payload)}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.deleted_by ? (deleterMap[r.deleted_by] || <span className="text-muted-foreground italic">Loading…</span>) : <span className="text-muted-foreground">System</span>}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {new Date(r.deleted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </TableCell>
