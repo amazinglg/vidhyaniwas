@@ -1,9 +1,8 @@
 import { Bell, LogOut, KeyRound, Languages, UserCircle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
@@ -55,9 +54,13 @@ const TopBar = () => {
       className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur-lg px-4 md:px-6"
     >
       <div className="flex items-center gap-2 md:gap-3 ml-12 md:ml-0 min-w-0 flex-1">
-        <span className="font-display font-bold text-lg md:text-xl tracking-[0.15em] bg-gradient-to-br from-primary via-accent to-primary bg-clip-text text-transparent shrink-0 drop-shadow-sm">
+        <Link
+          to="/"
+          aria-label="Go to Dashboard"
+          className="font-display font-bold text-lg md:text-xl tracking-[0.15em] bg-gradient-to-br from-primary via-accent to-primary bg-clip-text text-transparent shrink-0 drop-shadow-sm hover:opacity-80 transition-opacity cursor-pointer"
+        >
           SVN
-        </span>
+        </Link>
         <div className="hidden sm:block min-w-0">
           <h2 className="text-base md:text-lg font-semibold font-display text-foreground truncate max-w-[160px] md:max-w-none">
             {t('welcome')}, {displayName}
