@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,12 +81,11 @@ export const ComplaintImageUploader = ({ userId, value, onChange, max = 3 }: Pro
 
 const ThumbPreview = ({ path, onRemove }: { path: string; onRemove: () => void }) => {
   const [url, setUrl] = useState<string>('');
-  useState(() => {
+  useEffect(() => {
     supabase.storage.from('complaint-attachments').createSignedUrl(path, 3600).then(({ data }) => {
       if (data?.signedUrl) setUrl(data.signedUrl);
     });
-    return undefined;
-  });
+  }, [path]);
   return (
     <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted">
       {url ? <img src={url} alt="attachment" className="w-full h-full object-cover" /> : <div className="w-full h-full animate-pulse bg-muted" />}
