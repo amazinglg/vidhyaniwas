@@ -553,6 +553,12 @@ const Maintenance = () => {
         tableName="maintenance_collections"
         recordId={historyRecordId || ''}
       />
+      <BulkMaintenanceDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        residents={residents}
+        defaultAmount={storedDefault}
+      />
     </div>
   );
 };
