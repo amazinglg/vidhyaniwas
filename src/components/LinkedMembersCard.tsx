@@ -22,7 +22,7 @@ const LinkedMembersCard = ({ ownerResidentId, ownerHouseNo, ownerLaneNo }: Props
 
   const fetchLinked = async () => {
     setLoading(true);
-    // Find residents in the same house/lane OR owner_id = me, excluding the owner himself
+    // 1) Residents linked by owner_id OR same house/lane (family members & tenants), excluding owner
     const { data: linkedResidents } = await supabase
       .from('residents')
       .select('id, name, mobile, resident_type, owner_id, house_no, lane_no')
@@ -34,11 +34,42 @@ const LinkedMembersCard = ({ ownerResidentId, ownerHouseNo, ownerLaneNo }: Props
     if (residentIds.length) {
       const { data: profs } = await supabase
         .from('profiles')
-        .select('id, user_id, full_name, mobile, is_approved, resident_id')
+        .select('id, user_id, full_name, mobile, is_approved, resident_id, house_no, lane_no')
         .in('resident_id', residentIds);
       profileMap = Object.fromEntries((profs || []).map((p) => [p.resident_id!, p]));
     }
-    const merged = (linkedResidents || []).map((r) => ({ ...r, profile: profileMap[r.id] || null }));
+    const merged: any[] = (linkedResidents || []).map((r) => ({
+      ...r,
+      profile: profileMap[r.id] || null,
+    }));
+
+    // 2) Profiles that signed up with the owner's house/lane but aren't linked to a resident row yet
+    //    (covers family members who registered using the same house number — pending approval)
+    const { data: houseProfiles } = await supabase
+      .from('profiles')
+      .select('id, user_id, full_name, mobile, is_approved, resident_id, house_no, lane_no')
+      .eq('house_no', ownerHouseNo)
+      .eq('lane_no', ownerLaneNo);
+
+    const ownerMobiles = new Set(merged.map((m) => m.mobile));
+    (houseProfiles || []).forEach((p) => {
+      // Skip the owner themselves and anyone already represented by a resident row
+      if (p.resident_id === ownerResidentId) return;
+      if (p.resident_id && residentIds.includes(p.resident_id)) return;
+      if (p.mobile && ownerMobiles.has(p.mobile)) return;
+      merged.push({
+        id: `profile-${p.id}`,
+        name: p.full_name || '(Unnamed)',
+        mobile: p.mobile,
+        resident_type: 'member',
+        owner_id: ownerResidentId,
+        house_no: p.house_no,
+        lane_no: p.lane_no,
+        profile: p,
+        _profileOnly: true,
+      });
+    });
+
     setMembers(merged);
     setLoading(false);
   };
