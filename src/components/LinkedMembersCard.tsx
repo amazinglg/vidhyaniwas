@@ -97,13 +97,13 @@ const LinkedMembersCard = ({ ownerResidentId, ownerHouseNo, ownerLaneNo }: Props
 
   const handleUnlink = async (m: any) => {
     if (!confirm(lang === 'hi' ? 'क्या आप वाकई इस सदस्य को अनलिंक करना चाहते हैं?' : 'Unlink this member from your house?')) return;
-    // For tenants: remove resident record. For members with profiles: mark profile unapproved & clear resident_id.
-    if (m.resident_type === 'tenant') {
+    if (m._profileOnly && m.profile) {
+      await supabase.from('profiles').update({ is_approved: false, house_no: null, lane_no: null }).eq('id', m.profile.id);
+    } else if (m.resident_type === 'tenant') {
       await supabase.from('residents').delete().eq('id', m.id);
     } else if (m.profile) {
       await supabase.from('profiles').update({ is_approved: false, resident_id: null }).eq('id', m.profile.id);
     } else {
-      // Family member without profile — just clear owner_id link if set
       await supabase.from('residents').update({ owner_id: null }).eq('id', m.id);
     }
     toast.success(lang === 'hi' ? 'अनलिंक किया गया' : 'Unlinked');
