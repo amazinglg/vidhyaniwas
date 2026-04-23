@@ -7,8 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw, Download } from 'lucide-react';
+import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw, Download, Smartphone } from 'lucide-react';
 import { hardRefreshApp } from '@/utils/hardRefresh';
+import LinkedMembersCard from '@/components/LinkedMembersCard';
+
+const APK_DOWNLOAD_URL = (import.meta.env.VITE_APK_URL as string) || '/downloads/vidhyaniwas.apk';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
