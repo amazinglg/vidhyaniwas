@@ -423,6 +423,11 @@ const MyProfile = () => {
         </Card>
       )}
 
+      {/* Linked Members (owners only) */}
+      {residentId && isOwner && resident && (
+        <LinkedMembersCard ownerResidentId={residentId} ownerHouseNo={resident.house_no} ownerLaneNo={resident.lane_no} />
+      )}
+
       {/* Tenant Management (owners only) */}
       {residentId && isOwner && (
         <Card className="p-6">
