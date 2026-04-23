@@ -267,6 +267,11 @@ const Maintenance = () => {
                   <Settings2 className="h-4 w-4 mr-1" /> {t('amount')}
                 </Button>
               )}
+              {canBulk && (
+                <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
+                  <Layers className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Bulk Entry</span><span className="sm:hidden">Bulk</span>
+                </Button>
+              )}
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild><Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">{t('record_payment')}</span><span className="sm:hidden">{t('add')}</span></Button></DialogTrigger>
                 <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
