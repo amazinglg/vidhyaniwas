@@ -339,6 +339,29 @@ const MyProfile = () => {
         </Card>
       )}
 
+      {/* Download Android APK — separate from PWA install */}
+      <Card className="p-5 border-primary/20 bg-gradient-to-br from-accent/10 to-primary/5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-warm shrink-0">
+            <Smartphone className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-bold font-display">{lang === 'hi' ? 'ऐप डाउनलोड करें (.apk)' : 'Download App (.apk)'}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+              {lang === 'hi'
+                ? 'Android के लिए नेटिव APK फ़ाइल डाउनलोड करें। PWA की तरह ही सभी फ़ीचर्स और ऑटो-अपडेट के साथ।'
+                : 'Download the native Android APK file. Same features and auto-updates as the PWA.'}
+            </p>
+            <Button asChild size="sm" variant="outline" className="mt-3 h-9 gap-1.5">
+              <a href={APK_DOWNLOAD_URL} download>
+                <Download className="h-4 w-4" />
+                {lang === 'hi' ? 'APK डाउनलोड' : 'Download APK'}
+              </a>
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       {/* Hard Refresh — visible only inside the installed PWA */}
       {standalone && (
         <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
