@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon, History, FileDown } from 'lucide-react';
+import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon, History, FileDown, Layers } from 'lucide-react';
+import BulkMaintenanceDialog from '@/components/BulkMaintenanceDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -36,8 +37,10 @@ const getStoredDefault = (): number => {
 const Maintenance = () => {
   const { data: collections = [], isLoading } = useMaintenanceCollections();
   const { data: residents = [] } = useResidents();
-  const { isAdmin, isCoordinator, isResident, isMasterAdmin } = useAuth();
+  const { isAdmin, isCoordinator, isResident, isMasterAdmin, userRole } = useAuth();
   const { t } = useLanguage();
+  const canBulk = isMasterAdmin || userRole === 'treasury_head';
+  const [bulkOpen, setBulkOpen] = useState(false);
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
