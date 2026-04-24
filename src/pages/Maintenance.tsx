@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter, IndianRupee, CheckCircle2, AlertTriangle, Clock, Edit2, Trash2, Eye, EyeOff, Settings2, Download, BanknoteIcon, History, FileDown, Layers } from 'lucide-react';
 import BulkMaintenanceDialog from '@/components/BulkMaintenanceDialog';
+import BulkDeleteMaintenanceDialog from '@/components/BulkDeleteMaintenanceDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +42,20 @@ const Maintenance = () => {
   const { t } = useLanguage();
   const canBulk = isMasterAdmin || userRole === 'treasury_head';
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [supervisorResidentIds, setSupervisorResidentIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
+
+  // Fetch supervisor residents to exclude them from maintenance lists
+  useEffect(() => {
+    void (async () => {
+      const { data: roles } = await supabase.from('user_roles').select('user_id').eq('role', 'supervisor');
+      const userIds = (roles || []).map((r: any) => r.user_id);
+      if (userIds.length === 0) { setSupervisorResidentIds([]); return; }
+      const { data: profs } = await supabase.from('profiles').select('resident_id').in('user_id', userIds);
+      setSupervisorResidentIds((profs || []).map((p: any) => p.resident_id).filter(Boolean));
+    })();
+  }, []);
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get('filter');
@@ -72,13 +86,20 @@ const Maintenance = () => {
   const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
 
   const filtered = useMemo(() => collections.filter((c: any) => {
+    if (supervisorResidentIds.includes(c.resident_id)) return false;
     const name = (c.residents as any)?.name || '';
     const houseNo = (c.residents as any)?.house_no || '';
     const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || houseNo.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || c.status === filterStatus;
     const matchMonth = filterMonth === 'all' || c.month === filterMonth;
     return matchSearch && matchStatus && matchMonth;
-  }), [collections, search, filterStatus, filterMonth]);
+  }), [collections, search, filterStatus, filterMonth, supervisorResidentIds]);
+
+  // Residents list for the "record payment" dropdown — also exclude supervisors
+  const eligibleResidents = useMemo(
+    () => residents.filter((r: any) => !supervisorResidentIds.includes(r.id)),
+    [residents, supervisorResidentIds]
+  );
 
   const totalCollected = filtered.reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
   const totalPending = filtered.reduce((s: number, c: any) => s + Number(c.due_amount || 0), 0);
@@ -268,9 +289,14 @@ const Maintenance = () => {
                 </Button>
               )}
               {canBulk && (
-                <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
-                  <Layers className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Bulk Entry</span><span className="sm:hidden">Bulk</span>
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
+                    <Layers className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Bulk Entry</span><span className="sm:hidden">Bulk</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setBulkDeleteOpen(true)} className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Bulk Delete</span><span className="sm:hidden">Del</span>
+                  </Button>
+                </>
               )}
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild><Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">{t('record_payment')}</span><span className="sm:hidden">{t('add')}</span></Button></DialogTrigger>
@@ -281,7 +307,7 @@ const Maintenance = () => {
                       <Label>{t('resident')} *</Label>
                       <Select value={form.residentId} onValueChange={(v) => setForm({ ...form, residentId: v })}>
                         <SelectTrigger><SelectValue placeholder={t('select_resident')} /></SelectTrigger>
-                        <SelectContent>{residents.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
+                        <SelectContent>{eligibleResidents.map((r: any) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -556,8 +582,13 @@ const Maintenance = () => {
       <BulkMaintenanceDialog
         open={bulkOpen}
         onOpenChange={setBulkOpen}
-        residents={residents}
+        residents={eligibleResidents}
         defaultAmount={storedDefault}
+      />
+      <BulkDeleteMaintenanceDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        collections={filtered}
       />
     </div>
   );

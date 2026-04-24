@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown, IndianRupee, Pencil } from 'lucide-react';
+import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown, IndianRupee, Pencil, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import ResidentDetailModal from '@/components/ResidentDetailModal';
 import TenantModal from '@/components/TenantModal';
 import { downloadReceipt } from '@/utils/generateReceipt';
+import BulkUpdateAmountDialog from '@/components/BulkUpdateAmountDialog';
 
 const Residents = () => {
   const { data: allResidents = [], isLoading } = useAllResidents();
@@ -35,6 +36,7 @@ const Residents = () => {
   const [tenantResident, setTenantResident] = useState<any>(null);
   const [maintAmountDialog, setMaintAmountDialog] = useState<{ open: boolean; resident: any | null; value: string }>({ open: false, resident: null, value: '' });
   const canViewDetails = isAdmin || isCoordinator;
+  const [bulkAmountOpen, setBulkAmountOpen] = useState(false);
 
   // Filter to show owners only in main list
   const owners = allResidents.filter((r: any) => r.resident_type === 'owner');
@@ -223,9 +225,14 @@ const Residents = () => {
         </div>
         <div className="flex gap-2">
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={downloadCSV}>
-              <Download className="h-4 w-4 mr-1" /> CSV
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={downloadCSV}>
+                <Download className="h-4 w-4 mr-1" /> CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setBulkAmountOpen(true)}>
+                <Layers className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Bulk Amount</span><span className="sm:hidden">Bulk ₹</span>
+              </Button>
+            </>
           )}
           {!readOnly && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -422,6 +429,12 @@ const Residents = () => {
         resident={selectedResident}
         open={!!selectedResident}
         onClose={() => setSelectedResident(null)}
+      />
+
+      <BulkUpdateAmountDialog
+        open={bulkAmountOpen}
+        onOpenChange={setBulkAmountOpen}
+        residents={owners}
       />
 
       <TenantModal

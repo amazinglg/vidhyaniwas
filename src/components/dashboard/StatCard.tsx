@@ -26,15 +26,15 @@ const iconStyles = {
 };
 
 const StatCard = ({ title, value, subtitle, icon: Icon, variant = 'default' }: StatCardProps) => (
-  <div className={cn('rounded-xl border p-3 md:p-5 transition-all hover:shadow-lg hover:-translate-y-0.5', variantStyles[variant])}>
-    <div className="flex items-start justify-between">
+  <div className={cn('rounded-2xl border p-4 md:p-5 transition-all hover:shadow-lg hover:-translate-y-0.5', variantStyles[variant])}>
+    <div className="flex items-start justify-between gap-2">
       <div className="min-w-0 flex-1">
-        <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">{title}</p>
-        <p className="text-lg md:text-2xl font-bold font-display mt-0.5 md:mt-1 text-foreground truncate">{value}</p>
-        {subtitle && <p className="text-xs text-muted-foreground mt-0.5 md:mt-1 truncate">{subtitle}</p>}
+        <p className="text-[11px] md:text-sm font-medium text-muted-foreground truncate uppercase tracking-wide">{title}</p>
+        <p className="text-xl md:text-2xl font-bold font-display mt-1 text-foreground truncate">{value}</p>
+        {subtitle && <p className="text-xs text-muted-foreground mt-1 truncate">{subtitle}</p>}
       </div>
-      <div className={cn('flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-xl shadow-md shrink-0 ml-2', iconStyles[variant])}>
-        <Icon className="h-4 w-4 md:h-5 md:w-5" />
+      <div className={cn('flex h-10 w-10 md:h-11 md:w-11 items-center justify-center rounded-xl shadow-md shrink-0', iconStyles[variant])}>
+        <Icon className="h-5 w-5" />
       </div>
     </div>
   </div>
