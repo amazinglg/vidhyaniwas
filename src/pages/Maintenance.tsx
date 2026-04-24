@@ -42,7 +42,20 @@ const Maintenance = () => {
   const { t } = useLanguage();
   const canBulk = isMasterAdmin || userRole === 'treasury_head';
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [supervisorResidentIds, setSupervisorResidentIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
+
+  // Fetch supervisor residents to exclude them from maintenance lists
+  useEffect(() => {
+    void (async () => {
+      const { data: roles } = await supabase.from('user_roles').select('user_id').eq('role', 'supervisor');
+      const userIds = (roles || []).map((r: any) => r.user_id);
+      if (userIds.length === 0) { setSupervisorResidentIds([]); return; }
+      const { data: profs } = await supabase.from('profiles').select('resident_id').in('user_id', userIds);
+      setSupervisorResidentIds((profs || []).map((p: any) => p.resident_id).filter(Boolean));
+    })();
+  }, []);
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get('filter');
