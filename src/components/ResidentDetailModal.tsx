@@ -21,24 +21,51 @@ const ResidentDetailModal = ({ resident, open, onClose }: Props) => {
   const [maintenance, setMaintenance] = useState<any[]>([]);
   const [complaints, setComplaints] = useState<any[]>([]);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [linkedMembers, setLinkedMembers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
 
   useEffect(() => {
     if (!resident?.id || !open) return;
     const fetchAll = async () => {
-      const [mRes, cRes, fRes, vRes] = await Promise.all([
+      const [mRes, cRes, fRes, vRes, linkedRes, profilesRes] = await Promise.all([
         supabase.from('maintenance_collections').select('*').eq('resident_id', resident.id).order('created_at', { ascending: false }),
         supabase.from('complaints').select('*').eq('resident_id', resident.id).order('created_at', { ascending: false }),
         supabase.from('family_member_details').select('*').eq('resident_id', resident.id).order('created_at'),
         supabase.from('vehicles').select('*').eq('resident_id', resident.id).order('created_at'),
+        // Linked residents that signed up under this house owner
+        supabase.from('residents').select('id, name, mobile, resident_type, house_no, lane_no')
+          .or(`owner_id.eq.${resident.id},and(house_no.eq.${resident.house_no},lane_no.eq.${resident.lane_no})`)
+          .neq('id', resident.id),
+        // Profiles that registered using this house/lane (covers signups not yet linked to a resident row)
+        supabase.from('profiles').select('id, user_id, full_name, mobile, is_approved, resident_id, house_no, lane_no')
+          .eq('house_no', resident.house_no || '').eq('lane_no', resident.lane_no || ''),
       ]);
       setMaintenance(mRes.data || []);
       setComplaints(cRes.data || []);
       setFamilyMembers(fRes.data || []);
       setVehicles(vRes.data || []);
+
+      const linked = (linkedRes.data || []).filter((r: any) => r.id !== resident.id);
+      const linkedIds = new Set(linked.map((r: any) => r.id));
+      const linkedMobiles = new Set(linked.map((r: any) => r.mobile));
+      const profileExtras = (profilesRes.data || [])
+        .filter((p: any) => p.user_id && p.mobile !== resident.mobile)
+        .filter((p: any) => !p.resident_id || !linkedIds.has(p.resident_id))
+        .filter((p: any) => !p.mobile || !linkedMobiles.has(p.mobile))
+        .map((p: any) => ({
+          id: `profile-${p.id}`,
+          name: p.full_name || '(Unnamed)',
+          mobile: p.mobile,
+          resident_type: p.is_approved ? 'member' : 'pending',
+          house_no: p.house_no,
+          lane_no: p.lane_no,
+          _profileOnly: true,
+          _approved: p.is_approved,
+        }));
+      setLinkedMembers([...linked, ...profileExtras]);
     };
     fetchAll();
-  }, [resident?.id, open]);
+  }, [resident?.id, resident?.house_no, resident?.lane_no, resident?.mobile, open]);
 
   if (!resident) return null;
 
@@ -115,10 +142,33 @@ const ResidentDetailModal = ({ resident, open, onClose }: Props) => {
         {/* Family Members */}
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-3"><Users className="h-4 w-4 text-primary" />{t('family_member_details')}</h3>
-          {familyMembers.length === 0 ? (
+
+          {/* Signed-up linked members (members & tenants who registered) */}
+          {linkedMembers.length > 0 && (
+            <div className="space-y-2 mb-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Signed-up under this house</p>
+              {linkedMembers.map((lm: any) => (
+                <div key={lm.id} className="flex items-center justify-between p-2 rounded border bg-primary/5 text-sm">
+                  <div className="min-w-0">
+                    <span className="font-medium truncate">{lm.name}</span>
+                    <span className="text-muted-foreground ml-2 capitalize text-xs">({lm.resident_type})</span>
+                    {lm._profileOnly && !lm._approved && (
+                      <Badge variant="secondary" className="ml-2 text-[10px]">Pending</Badge>
+                    )}
+                  </div>
+                  {lm.mobile && <span className="text-xs text-muted-foreground">{lm.mobile}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {familyMembers.length === 0 && linkedMembers.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('no_family_members_added')}</p>
-          ) : (
+          ) : familyMembers.length > 0 ? (
             <div className="space-y-2">
+              {linkedMembers.length > 0 && (
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Manually added</p>
+              )}
               {familyMembers.map(fm => (
                 <div key={fm.id} className="flex items-center justify-between p-2 rounded border bg-muted/30 text-sm">
                   <div>
@@ -132,7 +182,7 @@ const ResidentDetailModal = ({ resident, open, onClose }: Props) => {
                 </div>
               ))}
             </div>
-          )}
+          ) : null}
         </Card>
 
         {/* Vehicles */}
