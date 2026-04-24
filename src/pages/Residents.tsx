@@ -437,6 +437,7 @@ const Residents = () => {
         residents={owners}
       />
 
+      <TenantModal
         owner={tenantResident}
         open={!!tenantResident}
         onClose={() => setTenantResident(null)}
