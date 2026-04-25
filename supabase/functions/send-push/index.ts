@@ -19,7 +19,8 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 type Audience =
   | { kind: 'all' }
   | { kind: 'admins' }
-  | { kind: 'users'; userIds: string[] };
+  | { kind: 'users'; userIds: string[] }
+  | { kind: 'residents'; residentIds: string[] };
 
 interface PushBody {
   title: string;
@@ -74,6 +75,12 @@ Deno.serve(async (req) => {
     let targetUserIds: string[] = [];
     if (body.audience.kind === 'users') {
       targetUserIds = body.audience.userIds.filter(Boolean);
+    } else if (body.audience.kind === 'residents') {
+      const ids = body.audience.residentIds.filter(Boolean);
+      if (ids.length) {
+        const { data } = await admin.from('profiles').select('user_id').in('resident_id', ids);
+        targetUserIds = (data || []).map((r) => r.user_id);
+      }
     } else if (body.audience.kind === 'admins') {
       const { data } = await admin
         .from('user_roles')

@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 type Audience =
   | { kind: 'all' }
   | { kind: 'admins' }
-  | { kind: 'users'; userIds: string[] };
+  | { kind: 'users'; userIds: string[] }
+  | { kind: 'residents'; residentIds: string[] };
 
 export interface TriggerPushArgs {
   title: string;
