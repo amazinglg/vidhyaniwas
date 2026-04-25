@@ -20,6 +20,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
 import AuditHistoryDialog from '@/components/AuditHistoryDialog';
+import MaintenanceConflictDialog, { ConflictReason } from '@/components/MaintenanceConflictDialog';
+import { findExistingMainEntryForFY, MAX_DUE_PER_FY } from '@/utils/maintenanceFY';
 import { downloadReceipt } from '@/utils/generateReceipt';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -81,6 +83,9 @@ const Maintenance = () => {
   const [duePaymentEntry, setDuePaymentEntry] = useState<any>(null);
   const [duePaymentForm, setDuePaymentForm] = useState({ amount: '', date: new Date().toISOString().split('T')[0], paymentMode: 'upi', receiptNo: '' });
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<ConflictReason | null>(null);
+  const [pendingPayload, setPendingPayload] = useState<any>(null);
+  const [pendingExistingId, setPendingExistingId] = useState<string | null>(null);
   const readOnly = isResident || isCoordinator;
 
   const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
