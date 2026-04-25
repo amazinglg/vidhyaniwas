@@ -17,22 +17,15 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw-custom.ts",
       registerType: "autoUpdate",
       devOptions: {
         enabled: false,
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        navigateFallbackDenylist: [/^\/~oauth/],
-        clientsClaim: true,
-        skipWaiting: true,
-        cleanupOutdatedCaches: true,
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/rwpyrhttzfzumylqmcce\.supabase\.co\/.*/i,
-            handler: "NetworkOnly",
-          },
-        ],
       },
       manifest: {
         name: "Shri Vidhya Niwas Colony App",
