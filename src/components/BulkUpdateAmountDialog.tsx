@@ -112,7 +112,7 @@ const BulkUpdateAmountDialog = ({ open, onOpenChange, residents }: Props) => {
           <div className="grid gap-1.5">
             <Label>New Annual Amount (₹) *</Label>
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 9000" />
-            <p className="text-xs text-muted-foreground">Applies to selected residents. Already-paid entries for this year won't be changed.</p>
+            <p className="text-xs text-muted-foreground">Existing entries are <strong>updated</strong> (no duplicates). Amounts &gt; ₹10,000 require confirmation.</p>
           </div>
           <div className="grid gap-1.5">
             <Label>Search residents</Label>
@@ -149,6 +149,27 @@ const BulkUpdateAmountDialog = ({ open, onOpenChange, residents }: Props) => {
           {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Apply to {selectedIds.length} Resident(s)
         </Button>
+
+        {conflicts && (
+          <Dialog open={!!conflicts} onOpenChange={(v) => { if (!v) setConflicts(null); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-display">Amount exceeds ₹10,000 cap</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-2 text-sm">
+                <p>The amount <strong>₹{pendingAmount.toLocaleString('en-IN')}</strong> exceeds the ₹10,000 annual cap for {conflicts.length} resident(s).</p>
+                <p className="text-xs text-muted-foreground">Choose <strong>Ignore</strong> to cancel, or <strong>Continue</strong> to override the cap and apply.</p>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={() => setConflicts(null)} disabled={submitting}>Ignore</Button>
+                <Button onClick={() => performUpdates(pendingAmount)} disabled={submitting} className="gradient-warm text-primary-foreground">
+                  {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Continue & Override
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </DialogContent>
     </Dialog>
   );
