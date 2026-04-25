@@ -82,6 +82,16 @@ const Complaints = () => {
     if (pendingStatus.status === 'resolved') update.resolved_at = new Date().toISOString().split('T')[0];
     const { error } = await supabase.from('complaints').update(update).eq('id', pendingStatus.id);
     if (error) { toast.error(error.message); return; }
+    if (pendingStatus.status === 'resolved' && complaint?.resident_id) {
+      void triggerPush({
+        title: '✅ Complaint resolved',
+        body: complaint.title || 'Your complaint has been resolved',
+        url: '/my-complaints',
+        tag: `complaint-${pendingStatus.id}`,
+        audience: { kind: 'residents', residentIds: [complaint.resident_id] },
+        excludeUserId: user?.id,
+      });
+    }
     queryClient.invalidateQueries({ queryKey: ['complaints'] });
     toast.success(t('status_updated'));
     setPendingStatus(null);
