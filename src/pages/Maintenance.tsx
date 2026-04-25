@@ -41,7 +41,7 @@ const getStoredDefault = (): number => {
 const Maintenance = () => {
   const { data: collections = [], isLoading } = useMaintenanceCollections();
   const { data: residents = [] } = useResidents();
-  const { isAdmin, isCoordinator, isResident, isMasterAdmin, userRole } = useAuth();
+  const { isAdmin, isCoordinator, isResident, isMasterAdmin, userRole, user } = useAuth();
   const { t } = useLanguage();
   const canBulk = isMasterAdmin || userRole === 'treasury_head';
   const [bulkOpen, setBulkOpen] = useState(false);
