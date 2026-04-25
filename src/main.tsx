@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initNativeRuntime } from "./lib/nativeRuntime";
+
+// Native (Capacitor) runtime — no-op on web.
+void initNativeRuntime();
 
 // PWA: Guard against service worker in iframes/preview
 const isInIframe = (() => {
