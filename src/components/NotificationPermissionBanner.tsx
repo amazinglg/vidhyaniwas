@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestNotificationPermission } from '@/hooks/useWebNotifications';
+import { subscribeToWebPush } from '@/lib/webPush';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DISMISSED_KEY = 'notification_prompt_dismissed';
 
