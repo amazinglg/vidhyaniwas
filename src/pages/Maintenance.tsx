@@ -137,6 +137,20 @@ const Maintenance = () => {
     setDuePaymentDialog(true);
   };
 
+  const commitManualEntry = async (payload: any, mode: 'insert' | 'update', updateId?: string | null) => {
+    if (mode === 'update' && updateId) {
+      const { error } = await supabase.from('maintenance_collections').update(payload).eq('id', updateId);
+      if (error) { toast.error(error.message); return false; }
+    } else {
+      const { error } = await supabase.from('maintenance_collections').insert(payload);
+      if (error) { toast.error(error.message); return false; }
+    }
+    toast.success(t('payment_recorded'));
+    queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
+    setDialogOpen(false);
+    return true;
+  };
+
   const handleSave = async () => {
     if (!form.residentId || !form.amount) { toast.error(t('please_fill_required')); return; }
     const amt = Number(form.amount);
@@ -153,18 +167,52 @@ const Maintenance = () => {
       payment_mode: form.paymentMode, receipt_no: form.receiptNo || null,
       due_date: form.dueDate || null,
     };
+
     if (editingId) {
-      const { error } = await supabase.from('maintenance_collections').update(payload).eq('id', editingId);
-      if (error) { toast.error(error.message); return; }
-      toast.success(t('payment_recorded'));
-    } else {
-      const { error } = await supabase.from('maintenance_collections').insert(payload);
-      if (error) { toast.error(error.message); return; }
-      toast.success(t('payment_recorded'));
+      // Editing an existing row — no FY/duplicate check needed.
+      await commitManualEntry(payload, 'update', editingId);
+      return;
     }
-    queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
-    setDialogOpen(false);
+
+    // Manual ADD: enforce one main entry + ≤10,000 due per FY
+    const { fy, existing, totalDue } = await findExistingMainEntryForFY(form.residentId, form.date);
+    const projectedDue = totalDue - Number(existing?.due_amount || 0) + dueAmount;
+    const duplicate = !!existing;
+    const breaches = projectedDue > MAX_DUE_PER_FY;
+
+    if (duplicate || breaches) {
+      const reason: ConflictReason = duplicate && breaches
+        ? { kind: 'both', fyLabel: fy.label, existingAmount: Number(existing.total_maintenance || 0), currentDue: totalDue, addingAmount: dueAmount }
+        : duplicate
+          ? { kind: 'duplicate', fyLabel: fy.label, existingAmount: Number(existing.total_maintenance || 0) }
+          : { kind: 'limit', fyLabel: fy.label, currentDue: totalDue, addingAmount: dueAmount };
+      setPendingPayload(payload);
+      // If duplicate → "Continue" updates the existing row; if only limit breach → "Continue" inserts new.
+      setPendingExistingId(duplicate ? existing.id : null);
+      setConflict(reason);
+      return;
+    }
+
+    await commitManualEntry(payload, 'insert');
   };
+
+  const onConflictIgnore = () => {
+    setConflict(null);
+    setPendingPayload(null);
+    setPendingExistingId(null);
+  };
+
+  const onConflictContinue = async () => {
+    const payload = pendingPayload;
+    const updateId = pendingExistingId;
+    setConflict(null);
+    setPendingPayload(null);
+    setPendingExistingId(null);
+    if (!payload) return;
+    if (updateId) await commitManualEntry(payload, 'update', updateId);
+    else await commitManualEntry(payload, 'insert');
+  };
+
 
   const handleDuePayment = async () => {
     if (!duePaymentEntry || !duePaymentForm.amount) { toast.error(t('please_fill_required')); return; }
