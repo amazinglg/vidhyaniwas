@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { subscribeToWebPush } from '@/lib/webPush';
 
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) return 'denied';
