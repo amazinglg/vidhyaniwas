@@ -71,6 +71,20 @@ const Notices = () => {
         target_type: sendTo,
         target_user_ids: sendTo === 'specific' ? selectedUserIds : [],
       });
+
+      // Background push (works when app is closed)
+      const audience =
+        sendTo === 'admins' ? { kind: 'admins' as const } :
+        sendTo === 'specific' ? { kind: 'users' as const, userIds: selectedUserIds } :
+        { kind: 'all' as const };
+      void triggerPush({
+        title: `📢 ${form.title}`,
+        body: form.content.substring(0, 150),
+        url: '/notices',
+        tag: `notice-${noticeData.id}`,
+        audience,
+        excludeUserId: user?.id,
+      });
     }
 
     queryClient.invalidateQueries({ queryKey: ['notices'] });
