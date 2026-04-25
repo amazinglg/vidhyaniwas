@@ -643,6 +643,13 @@ const Maintenance = () => {
         onOpenChange={setBulkDeleteOpen}
         collections={filtered}
       />
+      <MaintenanceConflictDialog
+        open={!!conflict}
+        onOpenChange={(v) => { if (!v) onConflictIgnore(); }}
+        reason={conflict}
+        onIgnore={onConflictIgnore}
+        onContinue={onConflictContinue}
+      />
     </div>
   );
 };
