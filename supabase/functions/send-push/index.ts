@@ -2,7 +2,7 @@
 // Invoked by the client whenever a notice/maintenance/complaint event happens
 // that should reach users even when their app is closed.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import webpush from 'npm:web-push@3.6.7';
+import webpush from 'https://esm.sh/web-push@3.6.7?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
