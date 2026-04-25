@@ -113,6 +113,14 @@ const Complaints = () => {
       attachments: raiseForm.attachments,
     });
     if (error) { toast.error(error.message); return; }
+    void triggerPush({
+      title: '📝 New complaint raised',
+      body: raiseForm.title,
+      url: '/complaints',
+      tag: 'new-complaint',
+      audience: { kind: 'admins' },
+      excludeUserId: user?.id,
+    });
     queryClient.invalidateQueries({ queryKey: ['complaints'] });
     setRaiseDialogOpen(false);
     setRaiseForm({ title: '', description: '', category: 'General', residentId: residentId || '', attachments: [] });
