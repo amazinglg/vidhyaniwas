@@ -40,36 +40,36 @@ const BulkUpdateAmountDialog = ({ open, onOpenChange, residents }: Props) => {
 
   const selectedIds = Object.keys(selected).filter((k) => selected[k]);
 
-  const handleApply = async () => {
-    const amt = Number(amount);
-    if (!amt || amt < 0) { toast.error('Enter a valid amount'); return; }
-    if (selectedIds.length === 0) { toast.error('Select at least one resident'); return; }
-    setSubmitting(true);
+  const [conflicts, setConflicts] = useState<Array<{ id: string; name: string; reason: string }> | null>(null);
+  const [pendingAmount, setPendingAmount] = useState(0);
 
+  const performUpdates = async (amt: number) => {
+    setSubmitting(true);
     const { error } = await supabase.from('residents').update({ maintenance_amount: amt }).in('id', selectedIds);
     if (error) { setSubmitting(false); toast.error(error.message); return; }
 
-    // Sync the Annual maintenance_collections row for each selected resident (current year)
     const year = new Date().getFullYear();
+    let updated = 0, created = 0;
     for (const rid of selectedIds) {
       const { data: existing } = await supabase
         .from('maintenance_collections')
         .select('*').eq('resident_id', rid).eq('year', year).eq('month', 'Annual').maybeSingle();
       if (existing) {
-        if (existing.status !== 'paid' && Number(existing.due_amount || 0) > 0) {
-          const paid = Number(existing.amount || 0);
-          const newDue = Math.max(amt - paid, 0);
-          await supabase.from('maintenance_collections').update({
-            total_maintenance: amt,
-            due_amount: newDue,
-            status: paid >= amt ? 'paid' : (paid > 0 ? 'partial' : 'pending'),
-          }).eq('id', existing.id);
-        }
+        // Always update — never create a duplicate
+        const paid = Number(existing.amount || 0);
+        const newDue = Math.max(amt - paid, 0);
+        await supabase.from('maintenance_collections').update({
+          total_maintenance: amt,
+          due_amount: newDue,
+          status: paid >= amt ? 'paid' : (paid > 0 ? 'partial' : 'pending'),
+        }).eq('id', existing.id);
+        updated++;
       } else if (amt > 0) {
         await supabase.from('maintenance_collections').insert({
           resident_id: rid, year, month: 'Annual',
           total_maintenance: amt, amount: 0, due_amount: amt, status: 'pending',
         });
+        created++;
       }
     }
 
@@ -77,10 +77,29 @@ const BulkUpdateAmountDialog = ({ open, onOpenChange, residents }: Props) => {
     queryClient.invalidateQueries({ queryKey: ['residents'] });
     queryClient.invalidateQueries({ queryKey: ['all_residents'] });
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
-    toast.success(`Updated ${selectedIds.length} resident(s)`);
+    toast.success(`${updated} updated, ${created} created`);
     setSelected({});
     setAmount('');
+    setConflicts(null);
     onOpenChange(false);
+  };
+
+  const handleApply = async () => {
+    const amt = Number(amount);
+    if (!amt || amt < 0) { toast.error('Enter a valid amount'); return; }
+    if (selectedIds.length === 0) { toast.error('Select at least one resident'); return; }
+
+    // Pre-flight: detect ≤10,000 cap breaches.
+    if (amt > 10000) {
+      const list = selectedIds.map((rid) => {
+        const r = residents.find((x) => x.id === rid);
+        return { id: rid, name: r?.name || '—', reason: `New amount ₹${amt.toLocaleString('en-IN')} exceeds ₹10,000 cap` };
+      });
+      setPendingAmount(amt);
+      setConflicts(list);
+      return;
+    }
+    await performUpdates(amt);
   };
 
   return (
