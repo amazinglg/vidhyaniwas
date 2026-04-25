@@ -14,6 +14,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ComplaintImageUploader } from '@/components/ComplaintImageUploader';
 import { ComplaintAttachmentsView } from '@/components/ComplaintAttachmentsView';
+import { triggerPush } from '@/lib/triggerPush';
 
 const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
@@ -66,6 +67,14 @@ const MyComplaints = () => {
       attachments: form.attachments,
     });
     if (error) { toast.error(error.message); return; }
+    void triggerPush({
+      title: '📝 New complaint raised',
+      body: form.title,
+      url: '/complaints',
+      tag: 'new-complaint',
+      audience: { kind: 'admins' },
+      excludeUserId: user?.id,
+    });
     queryClient.invalidateQueries({ queryKey: ['my_complaints'] });
     setDialogOpen(false);
     setForm({ title: '', description: '', category: 'General', attachments: [] });

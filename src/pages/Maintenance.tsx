@@ -23,6 +23,7 @@ import AuditHistoryDialog from '@/components/AuditHistoryDialog';
 import MaintenanceConflictDialog, { ConflictReason } from '@/components/MaintenanceConflictDialog';
 import { findExistingMainEntryForFY, MAX_DUE_PER_FY } from '@/utils/maintenanceFY';
 import { downloadReceipt } from '@/utils/generateReceipt';
+import { triggerPush } from '@/lib/triggerPush';
 import { Textarea } from '@/components/ui/textarea';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
@@ -40,7 +41,7 @@ const getStoredDefault = (): number => {
 const Maintenance = () => {
   const { data: collections = [], isLoading } = useMaintenanceCollections();
   const { data: residents = [] } = useResidents();
-  const { isAdmin, isCoordinator, isResident, isMasterAdmin, userRole } = useAuth();
+  const { isAdmin, isCoordinator, isResident, isMasterAdmin, userRole, user } = useAuth();
   const { t } = useLanguage();
   const canBulk = isMasterAdmin || userRole === 'treasury_head';
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -144,6 +145,16 @@ const Maintenance = () => {
     } else {
       const { error } = await supabase.from('maintenance_collections').insert(payload);
       if (error) { toast.error(error.message); return false; }
+    }
+    if (payload.resident_id) {
+      void triggerPush({
+        title: '💰 Maintenance entry added',
+        body: `${payload.month} ${payload.year} • ₹${payload.total_maintenance ?? payload.amount ?? ''}`,
+        url: '/maintenance',
+        tag: `maint-${payload.resident_id}`,
+        audience: { kind: 'residents', residentIds: [payload.resident_id] },
+        excludeUserId: user?.id,
+      });
     }
     toast.success(t('payment_recorded'));
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });

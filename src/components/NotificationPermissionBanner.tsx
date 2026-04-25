@@ -2,26 +2,30 @@ import { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestNotificationPermission } from '@/hooks/useWebNotifications';
+import { subscribeToWebPush } from '@/lib/webPush';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DISMISSED_KEY = 'notification_prompt_dismissed';
 
 const NotificationPermissionBanner = () => {
   const [visible, setVisible] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!('Notification' in window)) return;
-    // If already granted or the user explicitly dismissed, hide
     if (Notification.permission === 'granted') return;
     if (Notification.permission === 'denied') return;
     const dismissed = sessionStorage.getItem(DISMISSED_KEY);
     if (dismissed) return;
-    // Show after a short delay so it doesn't flash on fast loads
     const t = setTimeout(() => setVisible(true), 1500);
     return () => clearTimeout(t);
   }, []);
 
   const handleEnable = async () => {
     const result = await requestNotificationPermission();
+    if (result === 'granted' && user?.id) {
+      void subscribeToWebPush(user.id);
+    }
     if (result === 'granted' || result === 'denied') {
       setVisible(false);
     }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { subscribeToWebPush } from '@/lib/webPush';
 
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) return 'denied';
@@ -73,9 +74,14 @@ export const useWebNotifications = () => {
   useEffect(() => {
     if (!session || hasRequested.current) return;
     hasRequested.current = true;
-    const timer = setTimeout(() => { requestNotificationPermission(); }, 2000);
+    const timer = setTimeout(async () => {
+      const result = await requestNotificationPermission();
+      if (result === 'granted' && user?.id) {
+        void subscribeToWebPush(user.id);
+      }
+    }, 2000);
     return () => clearTimeout(timer);
-  }, [session]);
+  }, [session, user?.id]);
 
   useEffect(() => {
     if (!session || !user) return;

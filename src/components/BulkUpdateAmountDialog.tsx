@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
+import { triggerPush } from '@/lib/triggerPush';
 
 interface Props {
   open: boolean;
@@ -78,6 +79,15 @@ const BulkUpdateAmountDialog = ({ open, onOpenChange, residents }: Props) => {
     queryClient.invalidateQueries({ queryKey: ['all_residents'] });
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
     toast.success(`${updated} updated, ${created} created`);
+    if (selectedIds.length) {
+      void triggerPush({
+        title: '💰 Maintenance amount updated',
+        body: `Your annual maintenance has been set to ₹${amt.toLocaleString('en-IN')}.`,
+        url: '/maintenance',
+        tag: 'bulk-amount',
+        audience: { kind: 'residents', residentIds: selectedIds },
+      });
+    }
     setSelected({});
     setAmount('');
     setConflicts(null);

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useNotices } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
+import { triggerPush } from '@/lib/triggerPush';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -26,7 +27,7 @@ const priorityStyles: Record<string, string> = {
 
 const Notices = () => {
   const { data: notices = [], isLoading } = useNotices();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const { markAllRead } = useUnreadNotices();
@@ -70,6 +71,20 @@ const Notices = () => {
         notice_id: noticeData.id,
         target_type: sendTo,
         target_user_ids: sendTo === 'specific' ? selectedUserIds : [],
+      });
+
+      // Background push (works when app is closed)
+      const audience =
+        sendTo === 'admins' ? { kind: 'admins' as const } :
+        sendTo === 'specific' ? { kind: 'users' as const, userIds: selectedUserIds } :
+        { kind: 'all' as const };
+      void triggerPush({
+        title: `📢 ${form.title}`,
+        body: form.content.substring(0, 150),
+        url: '/notices',
+        tag: `notice-${noticeData.id}`,
+        audience,
+        excludeUserId: user?.id,
       });
     }
 

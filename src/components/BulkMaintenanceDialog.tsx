@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { findExistingMainEntryForFY, MAX_DUE_PER_FY } from '@/utils/maintenanceFY';
+import { triggerPush } from '@/lib/triggerPush';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -143,6 +144,21 @@ const BulkMaintenanceDialog = ({ open, onOpenChange, residents, defaultAmount }:
     setSubmitting(false);
     toast.success(`${inserted} created, ${updated} updated`);
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
+
+    // Background push to all touched residents
+    const residentIds = Array.from(new Set(
+      (plans || []).map((p) => p.payload?.resident_id).filter(Boolean)
+    )) as string[];
+    if (residentIds.length) {
+      void triggerPush({
+        title: '💰 Maintenance updated',
+        body: 'A new maintenance entry has been recorded for your unit.',
+        url: '/maintenance',
+        tag: 'bulk-maint',
+        audience: { kind: 'residents', residentIds },
+      });
+    }
+
     setSelected({});
     setPlans(null);
     onOpenChange(false);

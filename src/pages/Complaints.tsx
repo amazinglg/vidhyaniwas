@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useComplaints, useAllResidents } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
+import { triggerPush } from '@/lib/triggerPush';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -81,6 +82,16 @@ const Complaints = () => {
     if (pendingStatus.status === 'resolved') update.resolved_at = new Date().toISOString().split('T')[0];
     const { error } = await supabase.from('complaints').update(update).eq('id', pendingStatus.id);
     if (error) { toast.error(error.message); return; }
+    if (pendingStatus.status === 'resolved' && complaint?.resident_id) {
+      void triggerPush({
+        title: '✅ Complaint resolved',
+        body: complaint.title || 'Your complaint has been resolved',
+        url: '/my-complaints',
+        tag: `complaint-${pendingStatus.id}`,
+        audience: { kind: 'residents', residentIds: [complaint.resident_id] },
+        excludeUserId: user?.id,
+      });
+    }
     queryClient.invalidateQueries({ queryKey: ['complaints'] });
     toast.success(t('status_updated'));
     setPendingStatus(null);
@@ -113,6 +124,14 @@ const Complaints = () => {
       attachments: raiseForm.attachments,
     });
     if (error) { toast.error(error.message); return; }
+    void triggerPush({
+      title: '📝 New complaint raised',
+      body: raiseForm.title,
+      url: '/complaints',
+      tag: 'new-complaint',
+      audience: { kind: 'admins' },
+      excludeUserId: user?.id,
+    });
     queryClient.invalidateQueries({ queryKey: ['complaints'] });
     setRaiseDialogOpen(false);
     setRaiseForm({ title: '', description: '', category: 'General', residentId: residentId || '', attachments: [] });
