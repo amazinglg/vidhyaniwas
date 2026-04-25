@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useComplaints, useAllResidents } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
+import { triggerPush } from '@/lib/triggerPush';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
