@@ -3,7 +3,7 @@ import AppSidebar from './AppSidebar';
 import TopBar from './TopBar';
 import { useWebNotifications } from '@/hooks/useWebNotifications';
 import { useForcedReleaseSync } from '@/hooks/useForcedReleaseSync';
-import NotificationPermissionBanner from '@/components/NotificationPermissionBanner';
+import NotificationWelcomeModal from '@/components/NotificationWelcomeModal';
 import InstallAppBanner from '@/components/InstallAppBanner';
 import PwaUpdatePrompt from '@/components/PwaUpdatePrompt';
 
@@ -22,7 +22,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <main className="p-4 md:p-6">{children}</main>
       </div>
       <PwaUpdatePrompt />
-      <NotificationPermissionBanner />
+      <NotificationWelcomeModal />
       <InstallAppBanner />
     </div>
   );
