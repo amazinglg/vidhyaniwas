@@ -24,27 +24,14 @@ if (isPreviewHost || isInIframe) {
     registrations.forEach((r) => r.unregister());
   });
 } else {
-  // Production: register SW with aggressive auto-update
+  // Production: register SW. Updates are surfaced via the in-app toast in
+  // useForcedReleaseSync — we no longer auto-reload on focus, so drafts stay safe.
   import("virtual:pwa-register").then(({ registerSW }) => {
-    const updateSW = registerSW({
+    registerSW({
       immediate: true,
-      onNeedRefresh() {
-        // New version installed in background — apply immediately
-        updateSW(true);
-      },
-      onRegisteredSW(_swUrl, registration) {
-        if (!registration) return;
-        // Check for updates every 30 seconds
-        setInterval(() => {
-          registration.update().catch(() => {});
-        }, 30 * 1000);
-        // Check on focus / visibility change
-        const checkUpdate = () => registration.update().catch(() => {});
-        window.addEventListener("focus", checkUpdate);
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") checkUpdate();
-        });
-      },
+      // Do NOT auto-apply updates here. The release-sync hook prompts the user.
+      onNeedRefresh() {},
+      onOfflineReady() {},
     });
   });
 }
