@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Megaphone, Trash2, Bell } from 'lucide-react';
+import { Plus, Megaphone, Trash2, Bell, Pencil, FileText, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -25,6 +25,18 @@ const priorityStyles: Record<string, string> = {
   urgent: 'bg-destructive text-destructive-foreground',
 };
 
+type EditingNotice = {
+  id?: string;
+  title: string;
+  content: string;
+  priority: string;
+  is_draft?: boolean;
+  audience_type?: string;
+  audience_user_ids?: string[];
+};
+
+const emptyForm: EditingNotice = { title: '', content: '', priority: 'medium' };
+
 const Notices = () => {
   const { data: notices = [], isLoading } = useNotices();
   const { isAdmin, user } = useAuth();
@@ -32,16 +44,18 @@ const Notices = () => {
   const queryClient = useQueryClient();
   const { markAllRead } = useUnreadNotices();
 
-  // Mark all notices as read when this page is opened
   useEffect(() => { markAllRead(); }, [markAllRead, notices.length]);
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', content: '', priority: 'medium' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<EditingNotice>(emptyForm);
   const [sendTo, setSendTo] = useState('all');
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
   const [userRoles, setUserRoles] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -60,40 +74,101 @@ const Notices = () => {
     setSelectedUserIds(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
   };
 
-  const handleAdd = async () => {
-    if (!form.title || !form.content) { toast.error(t('please_fill_required')); return; }
-    const { data: noticeData, error } = await supabase.from('notices').insert({ title: form.title, content: form.content, priority: form.priority }).select().single();
-    if (error) { toast.error(error.message); return; }
-
-    // Create notification record
-    if (noticeData) {
-      await supabase.from('notifications').insert({
-        notice_id: noticeData.id,
-        target_type: sendTo,
-        target_user_ids: sendTo === 'specific' ? selectedUserIds : [],
-      });
-
-      // Background push (works when app is closed)
-      const audience =
-        sendTo === 'admins' ? { kind: 'admins' as const } :
-        sendTo === 'specific' ? { kind: 'users' as const, userIds: selectedUserIds } :
-        { kind: 'all' as const };
-      void triggerPush({
-        title: `📢 ${form.title}`,
-        body: form.content.substring(0, 150),
-        url: '/notices',
-        tag: `notice-${noticeData.id}`,
-        audience,
-        excludeUserId: user?.id,
-      });
-    }
-
-    queryClient.invalidateQueries({ queryKey: ['notices'] });
-    setDialogOpen(false);
-    setForm({ title: '', content: '', priority: 'medium' });
+  const resetForm = () => {
+    setForm(emptyForm);
     setSendTo('all');
     setSelectedUserIds([]);
-    toast.success(t('notice_published'));
+    setEditingId(null);
+    setUserSearch('');
+    setUserRoleFilter('all');
+  };
+
+  const openNew = () => {
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const openEdit = (n: any) => {
+    setForm({
+      id: n.id,
+      title: n.title,
+      content: n.content,
+      priority: n.priority,
+      is_draft: n.is_draft,
+    });
+    setEditingId(n.id);
+    setSendTo(n.audience_type || 'all');
+    setSelectedUserIds(n.audience_user_ids || []);
+    setDialogOpen(true);
+  };
+
+  const persist = async (asDraft: boolean) => {
+    if (!form.title || !form.content) { toast.error(t('please_fill_required')); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        title: form.title,
+        content: form.content,
+        priority: form.priority,
+        is_draft: asDraft,
+        audience_type: sendTo,
+        audience_user_ids: sendTo === 'specific' ? selectedUserIds : [],
+      };
+
+      let noticeId = editingId;
+      const wasDraft = form.is_draft ?? false;
+
+      if (editingId) {
+        const { error } = await supabase.from('notices').update(payload).eq('id', editingId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from('notices').insert(payload).select().single();
+        if (error) throw error;
+        noticeId = data.id;
+      }
+
+      // Only fan out push + create notifications row when publishing (not for drafts)
+      const isNewlyPublished = !asDraft && (!editingId || wasDraft);
+      if (isNewlyPublished && noticeId) {
+        // Reset existing notifications row(s) to reflect latest audience
+        await supabase.from('notifications').delete().eq('notice_id', noticeId);
+        await supabase.from('notifications').insert({
+          notice_id: noticeId,
+          target_type: sendTo,
+          target_user_ids: sendTo === 'specific' ? selectedUserIds : [],
+        });
+
+        const audience =
+          sendTo === 'admins' ? { kind: 'admins' as const } :
+          sendTo === 'specific' ? { kind: 'users' as const, userIds: selectedUserIds } :
+          { kind: 'all' as const };
+        void triggerPush({
+          title: `📢 ${form.title}`,
+          body: form.content.substring(0, 150),
+          url: '/notices',
+          tag: `notice-${noticeId}`,
+          audience,
+          excludeUserId: user?.id,
+        });
+      } else if (!asDraft && editingId && !wasDraft) {
+        // Edited an already-published notice → keep notifications row in sync with new audience
+        await supabase.from('notifications').delete().eq('notice_id', editingId);
+        await supabase.from('notifications').insert({
+          notice_id: editingId,
+          target_type: sendTo,
+          target_user_ids: sendTo === 'specific' ? selectedUserIds : [],
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['notices'] });
+      setDialogOpen(false);
+      resetForm();
+      toast.success(asDraft ? 'Draft saved' : (editingId && !wasDraft ? 'Notice updated' : t('notice_published')));
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -112,10 +187,18 @@ const Notices = () => {
           <p className="text-muted-foreground mt-1 text-sm truncate">{t('stay_updated')}</p>
         </div>
         {isAdmin && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button size="sm" className="gradient-warm text-primary-foreground shadow-lg shrink-0 h-9 px-2 sm:px-3"><Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">{t('new_notice')}</span></Button></DialogTrigger>
+          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew} size="sm" className="gradient-warm text-primary-foreground shadow-lg shrink-0 h-9 px-2 sm:px-3">
+                <Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">{t('new_notice')}</span>
+              </Button>
+            </DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle className="font-display">{t('create_notice')}</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle className="font-display">
+                  {editingId ? (form.is_draft ? 'Edit draft' : 'Edit notice') : t('create_notice')}
+                </DialogTitle>
+              </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2"><Label>{t('title')} *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
                 <div className="grid gap-2"><Label>{t('content')} *</Label><Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={4} /></div>
@@ -198,7 +281,23 @@ const Notices = () => {
                     })()}
                   </div>
                 )}
-                <Button onClick={handleAdd} className="w-full mt-2 gradient-warm text-primary-foreground">{t('publish_notice')}</Button>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Button
+                    onClick={() => persist(true)}
+                    disabled={saving}
+                    variant="outline"
+                  >
+                    <FileText className="h-4 w-4 mr-2" /> Save draft
+                  </Button>
+                  <Button
+                    onClick={() => persist(false)}
+                    disabled={saving}
+                    className="gradient-warm text-primary-foreground"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    {editingId && !form.is_draft ? 'Update' : 'Send'}
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -211,23 +310,36 @@ const Notices = () => {
         ) : notices.length === 0 ? (
           <Card className="p-8 text-center text-muted-foreground">{t('no_notices')}</Card>
         ) : notices.map((n: any) => (
-          <Card key={n.id} className="p-5 hover:shadow-md transition-all animate-fade-in border-l-4 border-l-primary">
+          <Card key={n.id} className={`p-5 hover:shadow-md transition-all animate-fade-in border-l-4 ${n.is_draft ? 'border-l-muted-foreground opacity-80' : 'border-l-primary'}`}>
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl gradient-warm shadow">
-                <Megaphone className="h-5 w-5 text-primary-foreground" />
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow ${n.is_draft ? 'bg-muted' : 'gradient-warm'}`}>
+                {n.is_draft
+                  ? <FileText className="h-5 w-5 text-muted-foreground" />
+                  : <Megaphone className="h-5 w-5 text-primary-foreground" />}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h3 className="font-semibold font-display text-foreground">{n.title}</h3>
                   <Badge className={priorityStyles[n.priority] || 'bg-muted'}>{t(n.priority)}</Badge>
+                  {n.is_draft && <Badge variant="outline">Draft</Badge>}
+                  {!n.is_draft && isAdmin && n.audience_type && (
+                    <Badge variant="outline" className="text-xs">
+                      {n.audience_type === 'all' ? 'All' : n.audience_type === 'admins' ? 'Admins' : `${(n.audience_user_ids || []).length} users`}
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{n.content}</p>
+                <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{n.content}</p>
                 <div className="flex items-center justify-between mt-3">
                   <p className="text-xs text-muted-foreground">{new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   {isAdmin && (
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(n.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(n)} title="Edit">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(n.id)} title="Delete">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

@@ -427,31 +427,40 @@ export type Database = {
       }
       notices: {
         Row: {
+          audience_type: string
+          audience_user_ids: string[]
           content: string
           created_at: string
           created_by: string | null
           id: string
           is_active: boolean
+          is_draft: boolean
           priority: string
           title: string
           updated_at: string
         }
         Insert: {
+          audience_type?: string
+          audience_user_ids?: string[]
           content: string
           created_at?: string
           created_by?: string | null
           id?: string
           is_active?: boolean
+          is_draft?: boolean
           priority?: string
           title: string
           updated_at?: string
         }
         Update: {
+          audience_type?: string
+          audience_user_ids?: string[]
           content?: string
           created_at?: string
           created_by?: string | null
           id?: string
           is_active?: boolean
+          is_draft?: boolean
           priority?: string
           title?: string
           updated_at?: string
