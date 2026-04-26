@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw, Download, Smartphone } from 'lucide-react';
 import { hardRefreshApp } from '@/utils/hardRefresh';
 import LinkedMembersCard from '@/components/LinkedMembersCard';
+import NotificationSettingsCard from '@/components/NotificationSettingsCard';
 
 const APK_DOWNLOAD_URL = (import.meta.env.VITE_APK_URL as string) || '/downloads/vidhyaniwas.apk';
 import { useAuth } from '@/contexts/AuthContext';
@@ -315,6 +316,9 @@ const MyProfile = () => {
           </div>
         )}
       </Card>
+
+      {/* Notification settings — enable/disable push on this device */}
+      <NotificationSettingsCard />
 
       {/* Install App — visible only when NOT installed (web/browser users) */}
       {canInstall && (
