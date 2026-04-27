@@ -23,9 +23,13 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const AppSidebar = () => {
+interface AppSidebarProps {
+  mobileOpen: boolean;
+  setMobileOpen: (v: boolean) => void;
+}
+
+const AppSidebar = ({ mobileOpen, setMobileOpen }: AppSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor } = useAuth();
   const { t } = useLanguage();
