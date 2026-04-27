@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw, Download, Smartphone } from 'lucide-react';
+import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw, Download, Smartphone, Bell, BellOff, AlertCircle, HelpCircle } from 'lucide-react';
 import { hardRefreshApp } from '@/utils/hardRefresh';
 import LinkedMembersCard from '@/components/LinkedMembersCard';
-import NotificationSettingsCard from '@/components/NotificationSettingsCard';
+import AppSettingsCard from '@/components/AppSettingsCard';
 
 const APK_DOWNLOAD_URL = (import.meta.env.VITE_APK_URL as string) || '/downloads/vidhyaniwas.apk';
 import { useAuth } from '@/contexts/AuthContext';
@@ -317,87 +317,19 @@ const MyProfile = () => {
         )}
       </Card>
 
-      {/* Notification settings — enable/disable push on this device */}
-      <NotificationSettingsCard />
-
-      {/* Install App — visible only when NOT installed (web/browser users) */}
-      {canInstall && (
-        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-warm shrink-0">
-              <Download className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold font-display">{lang === 'hi' ? 'ऐप इंस्टॉल करें' : 'Install App'}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                {lang === 'hi'
-                  ? 'तेज़ी से एक्सेस के लिए अपने डिवाइस पर ऐप इंस्टॉल करें। एक टैप से होम स्क्रीन पर जुड़ जाएगा।'
-                  : 'Install the app on your device for faster access. One tap adds it to your home screen.'}
-              </p>
-              <Button size="sm" className="mt-3 h-9 gap-1.5 gradient-warm text-primary-foreground" onClick={handleInstallApp} disabled={installing}>
-                <Download className="h-4 w-4" />
-                {installing ? (lang === 'hi' ? 'इंस्टॉल हो रहा है…' : 'Installing…') : (lang === 'hi' ? 'इंस्टॉल करें' : 'Install Now')}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Download Android APK — restricted to Master Admin while in development */}
-      {profile?.mobile === '9826016419' && (
-        <Card className="p-5 border-primary/20 bg-gradient-to-br from-accent/10 to-primary/5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-warm shrink-0">
-              <Smartphone className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold font-display">
-                {lang === 'hi' ? 'ऐप डाउनलोड करें (.apk)' : 'Download App (.apk)'}
-                <Badge variant="secondary" className="ml-2 text-[10px]">Master Admin</Badge>
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                {lang === 'hi'
-                  ? 'Android के लिए नेटिव APK फ़ाइल डाउनलोड करें। PWA की तरह ही सभी फ़ीचर्स और ऑटो-अपडेट के साथ।'
-                  : 'Download the native Android APK file. Same features and auto-updates as the PWA.'}
-              </p>
-              <Button asChild size="sm" variant="outline" className="mt-3 h-9 gap-1.5">
-                <a href={APK_DOWNLOAD_URL} download>
-                  <Download className="h-4 w-4" />
-                  {lang === 'hi' ? 'APK डाउनलोड' : 'Download APK'}
-                </a>
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Hard Refresh — visible only inside the installed PWA */}
-      {standalone && (
-        <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-warm shrink-0">
-              <RefreshCw className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold font-display">{t('hard_refresh')}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{t('hard_refresh_desc')}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-3 h-9 gap-1.5"
-                onClick={async () => {
-                  if (!confirm(t('hard_refresh_confirm'))) return;
-                  toast.success(t('hard_refreshing'), { description: t('hard_refresh_note') });
-                  setTimeout(() => { void hardRefreshApp(); }, 400);
-                }}
-              >
-                <RefreshCw className="h-4 w-4" />
-                {t('hard_refresh')}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* App Settings — consolidated card (notifications + install + refresh + APK) */}
+      <AppSettingsCard
+        canInstall={!!canInstall}
+        installing={installing}
+        isIOS={isIOS}
+        standalone={standalone}
+        onInstall={handleInstallApp}
+        userId={user?.id}
+        isMasterAdmin={profile?.mobile === '9826016419'}
+        apkUrl={APK_DOWNLOAD_URL}
+        lang={lang}
+        t={t}
+      />
 
       {/* House Owner card — shown to family members & tenants */}
       {resident && resident.resident_type !== 'owner' && houseOwner && (

@@ -1,128 +1,76 @@
+# Plan: 7 Fixes & Improvements
 
+## 1. Easier PWA install on iPhone
+iOS doesn't allow programmatic install — only Safari → Share → Add to Home Screen works (it's an Apple restriction). What we **can** do is make the path foolproof:
 
-# Implementation Plan: 10 Fixes and Features
+- Build a new **`IosInstallGuideDialog`** with a 3-step illustrated walkthrough (Share icon → "Add to Home Screen" → Add), plus a "Open in Safari" warning if user is in Chrome/in-app browser on iOS (since install only works in Safari).
+- Auto-detect non-Safari iOS browsers (Chrome iOS, Instagram/FB in-app webview) and show a banner: "To install, open this page in Safari" with a copy-link button.
+- Replace the current `toast.info` iOS fallback in `TopBar` and `MyProfile` with this dialog.
+- Add a small "?" help icon next to install buttons that always opens the guide.
 
-## Overview
-This plan addresses 10 items: sync fixes, UI additions, sign-up flow changes, dashboard personalization, a new Society Management tab, a new Pending Signup tab, and misc cleanups.
+## 2. iOS sticky top bar
+On iOS PWA, the top bar isn't sticking properly because the hamburger button uses `position: fixed` while the rest of the bar uses `position: sticky` — these compete on iOS Safari/PWA.
 
----
+Fix in `TopBar.tsx` + `AppSidebar.tsx`:
+- Move the mobile hamburger **into** the `TopBar` header (so it scrolls/sticks together with the rest of the controls).
+- Add `iOS-friendly` classes: keep `sticky top-0`, add `transform: translateZ(0)` and explicit `paddingTop: env(safe-area-inset-top)` to the header so iOS notch is respected and the whole bar stays pinned.
+- Remove the standalone `fixed` hamburger from `AppSidebar`.
 
-## Phase 1: Database Changes
+## 3. Hide yearly maintenance amount from non-admins (Residents tab)
+In `Residents.tsx` (both mobile card view and desktop table):
+- Wrap the "Maintenance (₹/yr)" cell/row in `{isAdmin && (...)}`.
+- Hide the "Maintenance (₹/yr)" `<TableHead>` for non-admins and adjust the column count.
 
-**Migration SQL:**
-- Create `society_management` table (id, name, role_title, photo_url, display_order, created_at, updated_at) with RLS for admin CRUD and authenticated read
-- Add `status` column to `complaints` table to support `withdrawn` value (already exists as text, no change needed)
-- Update `assign_default_role()` trigger function: if the signing-up user's mobile matches an existing resident, auto-set `is_approved = true` (skip pending approval)
+## 4. Auto-generate next FY pending entries
+Add a Postgres scheduled job (pg_cron) that runs on **April 1 at 00:05 IST** every year, plus a safety check on app load:
 
----
+- Create SQL function `generate_new_fy_dues()` that:
+  - Iterates all active owner residents.
+  - For each, computes carry-over dues from previous FY (sum of `due_amount` where `paid_date < new FY start` AND `status != 'paid'`).
+  - Inserts a new `maintenance_collections` row for the new FY: `month='Annual'`, `year=<new FY start year>`, `total_maintenance = resident.maintenance_amount + carry_over_dues`, `due_amount = same`, `status='pending'`.
+  - Skips residents who already have an Annual entry for the new FY (idempotent).
+- Schedule via `pg_cron` to run yearly on April 1.
+- Add a "Run FY rollover now" admin button in Settings as manual fallback (calls the same SQL function via RPC).
 
-## Phase 2: Sign-up & Sync Fixes (Items 1, 4, 9)
+## 5. Reorganize My Profile (cleaner placement)
+Currently 4 separate big cards (Notifications / Install / APK / Hard Refresh) stack vertically. Replace with a single compact **"App Settings" card** containing:
+- Notifications row: status pill + small "Enable" / "Disable" button.
+- Install App row (only when not installed): small "Install" button + "?" iOS help.
+- Hard Refresh row (only when standalone): small icon button.
+- APK Download row (master admin only, collapsed under "Advanced").
 
-**Auth.tsx:**
-- Remove the email field from sign-up form; auto-generate email as `{mobile}@society.local` (current pattern)
-- After successful sign-up, if mobile already exists in `residents` table, the trigger will auto-approve
+Layout: each row is a flex row (icon + label + small action button on the right), separated by dividers. This collapses 4 large cards into one tidy card (~40% less vertical space).
 
-**assign_default_role trigger update:**
-- Check if mobile exists in `residents` table; if yes, set `is_approved = true` on the profile
-- This ensures pre-existing residents don't need manual approval
+## 6. Fix Dashboard StatCard truncation (mobile)
+At 363px width, titles like "TOTAL RESIDENTS" and values like "₹12,665" get cut off. In `StatCard.tsx`:
+- Drop the icon to a smaller size on mobile (`h-9 w-9`) to free horizontal space.
+- Make title smaller (`text-[10px]`) and allow 2 lines (`line-clamp-2`, remove `truncate`).
+- Make value `text-base` on mobile, scale `clamp` for long currency values; remove `truncate` and use `break-words` so `₹12,665` shows fully.
+- Stack icon **below** title on very narrow screens (move icon to top-right corner as a small floating chip instead of a big square).
 
-**Sync fix (Item 1):**
-- In `SocietySettings.tsx`, after approving a user, also invalidate `residents` and `all_residents` query keys
-- Add realtime subscription to `profiles` table in the settings page to auto-refresh user list
+## 7. Enforce 10K/year limit on Residents tab
+The check exists in `Maintenance.tsx` and `BulkMaintenanceDialog.tsx` but not in:
+- `Residents.tsx` → `saveMaintAmount` (per-resident pencil edit)
+- `BulkUpdateAmountDialog.tsx` (bulk amount setter)
 
----
-
-## Phase 3: User Management & Resident Tab (Item 2)
-
-**SocietySettings.tsx - Manage Users tab:**
-- Add "Add User" button that opens a dialog with fields: Name, House No, Lane No, Mobile, Email, Resident Type (Owner/Member/Tenant/NA)
-- This inserts directly into `residents` table
-
-**Residents.tsx - Add Resident:**
-- Add `resident_type` selector (Owner/Member/Tenant) to the add/edit resident dialog
-
----
-
-## Phase 4: Pending Approvals (Items 3, 10)
-
-**Remove role column** from the pending signup table display (Item 3)
-
-**New Pending Signups tab in sidebar (Item 10):**
-- Create `src/pages/PendingSignups.tsx` — move the pending approvals UI from `SocietySettings.tsx` to this new page
-- Add route `/pending-signups` in `App.tsx`, protected by admin roles (not just master_admin)
-- Add sidebar nav item visible to admin roles (master_admin, president, VP, treasury_head, secretary)
-- Remove the "approvals" tab from `SocietySettings.tsx`
-- Settings tab remains visible only to master_admin
-
----
-
-## Phase 5: My Profile Enhancements (Items 4, 5)
-
-**Email editing (Item 4):**
-- Add email field to the profile edit form in `MyProfile.tsx`
-- Save email to the `profiles` table (add email column if needed, or use residents table)
-
-**Family/Tenant/Vehicle management for owners (Item 5):**
-- In `MyProfile.tsx`, if the logged-in user is a house owner, show sections to add/edit/remove:
-  - Family members (already exists)
-  - Tenants — add tenant management section; when a tenant is added, create a record in `residents` with `resident_type = 'tenant'` and `owner_id` pointing to the owner. This syncs with the tenant icon in Residents tab
-  - Vehicles (already exists)
-
-**Withdraw complaint (Item 5):**
-- In `MyComplaints.tsx`, add a "Withdraw" button on open complaints
-- Update complaint status to `withdrawn` and add RLS policy allowing residents to update their own complaints
+For both:
+- Compute projected total due: `new amount + existing unpaid dues from prior FYs` for that resident.
+- If `> 10000`: show a confirm dialog "This will breach the ₹10,000 / FY cap. Continue anyway?" with **Cancel** / **Override & Save** buttons.
+- Only proceed on override.
 
 ---
 
-## Phase 6: Dashboard for Non-Admin Users (Item 6)
+## Technical notes
 
-**Dashboard.tsx:**
-- Detect user role; if resident/coordinator/NA:
-  - Show personal maintenance summary: total paid, total pending, payment history
-  - Read-only view of their own maintenance records
-  - Hide society-wide financial stats and charts
-- If admin: show existing dashboard (unchanged)
-- Default year selection to current year (2026)
+**Files to edit:**
+- `src/components/IosInstallGuideDialog.tsx` (new)
+- `src/components/layout/TopBar.tsx` (move hamburger in, fix iOS sticky)
+- `src/components/layout/AppSidebar.tsx` (remove fixed hamburger, expose `onMenuClick`)
+- `src/pages/Residents.tsx` (hide ₹/yr for non-admin, add 10K confirm in `saveMaintAmount`)
+- `src/components/BulkUpdateAmountDialog.tsx` (add 10K confirm)
+- `src/pages/MyProfile.tsx` (consolidate 4 cards into one App Settings card)
+- `src/components/dashboard/StatCard.tsx` (mobile sizing/wrapping)
+- `supabase/migrations/<new>.sql` (FY rollover function + pg_cron schedule)
+- `src/pages/SocietySettings.tsx` (manual "Run FY rollover" button — master admin only)
 
----
-
-## Phase 7: Society Management Tab (Item 7)
-
-**Create `src/pages/SocietyManagement.tsx`:**
-- Table/card list showing society management members with name, role title, and photo
-- Admin can add/edit/delete members (upload photo to Supabase storage)
-- Read-only for other roles
-- Add sidebar nav item below "Manage Complaints" for admin roles
-
----
-
-## Phase 8: Year Selector Cleanup (Item 8)
-
-**Dashboard.tsx:**
-- Remove 2024 from the year dropdown
-- Default `selectedYear` to `'2026'` (current year)
-
----
-
-## Files to Create
-- `src/pages/PendingSignups.tsx`
-- `src/pages/SocietyManagement.tsx`
-- Migration SQL file
-
-## Files to Modify
-- `src/pages/Auth.tsx` — remove email, auto-approve logic
-- `src/pages/SocietySettings.tsx` — remove approvals tab, add user creation, sync fixes
-- `src/pages/Dashboard.tsx` — personalized view for residents, remove 2024, default 2026
-- `src/pages/MyProfile.tsx` — email editing, tenant management for owners
-- `src/pages/MyComplaints.tsx` — withdraw complaint button
-- `src/pages/Residents.tsx` — resident_type in add/edit dialog
-- `src/components/layout/AppSidebar.tsx` — add Society Management and Pending Signups nav items
-- `src/App.tsx` — add new routes
-- `src/contexts/LanguageContext.tsx` — new translation keys
-- `src/types/society.ts` — no changes needed
-- `supabase/functions/` — trigger function update via migration
-
-## Estimated Scope
-- 2 new pages, 1 migration, ~10 file edits
-- Medium-large change set, implementable in one pass
-
+**No breaking schema changes** — only one new SQL function and a cron entry.
