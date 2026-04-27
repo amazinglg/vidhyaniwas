@@ -490,6 +490,23 @@ const Residents = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 10K cap breach confirmation */}
+      <Dialog open={capDialog.open} onOpenChange={(o) => !o && setCapDialog({ open: false, amount: 0, projectedDue: 0 })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Exceeds ₹10,000 / FY cap</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p>This change will make the resident's projected total due <strong>₹{capDialog.projectedDue.toLocaleString('en-IN')}</strong> for this financial year, breaching the ₹10,000 cap.</p>
+            <p className="text-xs text-muted-foreground">Choose <strong>Cancel</strong> to abort, or <strong>Override & Save</strong> to apply anyway.</p>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setCapDialog({ open: false, amount: 0, projectedDue: 0 })}>Cancel</Button>
+            <Button onClick={() => doSaveMaintAmount(capDialog.amount)} className="gradient-warm text-primary-foreground">Override & Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
