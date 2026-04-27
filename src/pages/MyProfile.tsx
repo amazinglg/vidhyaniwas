@@ -10,10 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { UserCircle, Home, Phone, Users, Save, IndianRupee, CheckCircle2, Clock, AlertTriangle, Car, Plus, Edit2, Trash2, UsersRound, FileDown, Crown, RefreshCw, Download, Smartphone, Bell, BellOff, AlertCircle, HelpCircle } from 'lucide-react';
 import { hardRefreshApp } from '@/utils/hardRefresh';
 import LinkedMembersCard from '@/components/LinkedMembersCard';
-import IosInstallGuideDialog from '@/components/IosInstallGuideDialog';
-import { Badge as UIBadge } from '@/components/ui/badge';
-import { requestNotificationPermission } from '@/hooks/useWebNotifications';
-import { subscribeToWebPush } from '@/lib/webPush';
+import AppSettingsCard from '@/components/AppSettingsCard';
 
 const APK_DOWNLOAD_URL = (import.meta.env.VITE_APK_URL as string) || '/downloads/vidhyaniwas.apk';
 import { useAuth } from '@/contexts/AuthContext';
