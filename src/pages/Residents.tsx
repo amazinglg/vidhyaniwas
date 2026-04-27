@@ -368,16 +368,16 @@ const Residents = () => {
               <TableHead>{t('lane')}</TableHead>
               <TableHead>{t('contact')}</TableHead>
               <TableHead>{t('family')}</TableHead>
-              <TableHead>Maintenance (₹/yr)</TableHead>
+              {isAdmin && <TableHead>Maintenance (₹/yr)</TableHead>}
               <TableHead>{t('status')}</TableHead>
               {!readOnly && <TableHead className="text-right">{t('actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={readOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={isAdmin ? (readOnly ? 7 : 8) : (readOnly ? 6 : 7)} className="text-center py-8 text-muted-foreground">{t('loading')}</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={readOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">{t('no_residents_found')}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={isAdmin ? (readOnly ? 7 : 8) : (readOnly ? 6 : 7)} className="text-center py-8 text-muted-foreground">{t('no_residents_found')}</TableCell></TableRow>
             ) : filtered.map((r: any) => (
               <TableRow key={r.id} className="animate-fade-in">
                 <TableCell className="font-medium">
@@ -398,11 +398,11 @@ const Residents = () => {
                   </div>
                 </TableCell>
                 <TableCell>{r.family_members}</TableCell>
-                <TableCell>
-                  <span className="inline-flex items-center gap-1 font-medium">
-                    <IndianRupee className="h-3.5 w-3.5 text-muted-foreground" />
-                    {Number(r.maintenance_amount || 0).toLocaleString('en-IN')}
-                    {isAdmin && (
+                {isAdmin && (
+                  <TableCell>
+                    <span className="inline-flex items-center gap-1 font-medium">
+                      <IndianRupee className="h-3.5 w-3.5 text-muted-foreground" />
+                      {Number(r.maintenance_amount || 0).toLocaleString('en-IN')}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" onClick={() => openMaintAmount(r)}>
@@ -411,9 +411,9 @@ const Residents = () => {
                         </TooltipTrigger>
                         <TooltipContent>Edit maintenance amount</TooltipContent>
                       </Tooltip>
-                    )}
-                  </span>
-                </TableCell>
+                    </span>
+                  </TableCell>
+                )}
                 <TableCell><Badge variant={r.is_active ? 'default' : 'secondary'}>{r.is_active ? t('active') : t('inactive')}</Badge></TableCell>
                 {!readOnly && (
                   <TableCell className="text-right space-x-1">
