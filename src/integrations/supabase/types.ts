@@ -827,6 +827,14 @@ export type Database = {
           exists_in_residents: boolean
         }[]
       }
+      generate_new_fy_dues: {
+        Args: { _target_year?: number }
+        Returns: {
+          created: boolean
+          new_due: number
+          resident_id: string
+        }[]
+      }
       get_email_by_mobile: { Args: { _mobile: string }; Returns: string }
       has_role: {
         Args: {
