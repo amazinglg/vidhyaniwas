@@ -185,14 +185,20 @@ const BulkUpdateAmountDialog = ({ open, onOpenChange, residents }: Props) => {
                 <DialogTitle className="font-display">Amount exceeds ₹10,000 cap</DialogTitle>
               </DialogHeader>
               <div className="space-y-2 text-sm">
-                <p>The amount <strong>₹{pendingAmount.toLocaleString('en-IN')}</strong> exceeds the ₹10,000 annual cap for {conflicts.length} resident(s).</p>
-                <p className="text-xs text-muted-foreground">Choose <strong>Ignore</strong> to cancel, or <strong>Continue</strong> to override the cap and apply.</p>
+                <p>The amount <strong>₹{pendingAmount.toLocaleString('en-IN')}</strong> would breach the ₹10,000 / FY cap for <strong>{conflicts.length}</strong> resident(s) (carry-over included):</p>
+                <div className="max-h-40 overflow-y-auto border rounded-md p-2 text-xs space-y-1">
+                  {conflicts.slice(0, 20).map((c) => (
+                    <div key={c.id}><strong>{c.name}</strong> — <span className="text-muted-foreground">{c.reason}</span></div>
+                  ))}
+                  {conflicts.length > 20 && <p className="text-muted-foreground italic">…and {conflicts.length - 20} more</p>}
+                </div>
+                <p className="text-xs text-muted-foreground">Choose <strong>Cancel</strong> to abort, or <strong>Override & Continue</strong> to apply anyway.</p>
               </div>
               <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" onClick={() => setConflicts(null)} disabled={submitting}>Ignore</Button>
+                <Button variant="outline" onClick={() => setConflicts(null)} disabled={submitting}>Cancel</Button>
                 <Button onClick={() => performUpdates(pendingAmount)} disabled={submitting} className="gradient-warm text-primary-foreground">
                   {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Continue & Override
+                  Override & Continue
                 </Button>
               </div>
             </DialogContent>
