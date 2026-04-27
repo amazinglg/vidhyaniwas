@@ -99,14 +99,32 @@ const BulkUpdateAmountDialog = ({ open, onOpenChange, residents }: Props) => {
     if (!amt || amt < 0) { toast.error('Enter a valid amount'); return; }
     if (selectedIds.length === 0) { toast.error('Select at least one resident'); return; }
 
-    // Pre-flight: detect ≤10,000 cap breaches.
-    if (amt > 10000) {
-      const list = selectedIds.map((rid) => {
+    // Pre-flight: detect ≤10,000 cap breaches (new amount + prior unpaid carry-over).
+    const year = new Date().getFullYear();
+    const { data: priorUnpaid } = await supabase
+      .from('maintenance_collections')
+      .select('resident_id, due_amount')
+      .in('resident_id', selectedIds)
+      .lt('year', year)
+      .neq('status', 'paid');
+    const carryMap: Record<string, number> = {};
+    (priorUnpaid || []).forEach((row: any) => {
+      carryMap[row.resident_id] = (carryMap[row.resident_id] || 0) + Number(row.due_amount || 0);
+    });
+
+    const breaches = selectedIds
+      .map((rid) => {
+        const carry = carryMap[rid] || 0;
+        const projected = amt + carry;
+        if (projected <= 10000) return null;
         const r = residents.find((x) => x.id === rid);
-        return { id: rid, name: r?.name || '—', reason: `New amount ₹${amt.toLocaleString('en-IN')} exceeds ₹10,000 cap` };
-      });
+        return { id: rid, name: r?.name || '—', reason: `Projected total ₹${projected.toLocaleString('en-IN')} (₹${amt.toLocaleString('en-IN')} new + ₹${carry.toLocaleString('en-IN')} carry-over) exceeds ₹10,000 cap` };
+      })
+      .filter(Boolean) as Array<{ id: string; name: string; reason: string }>;
+
+    if (breaches.length > 0) {
       setPendingAmount(amt);
-      setConflicts(list);
+      setConflicts(breaches);
       return;
     }
     await performUpdates(amt);
