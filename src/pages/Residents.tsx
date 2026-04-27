@@ -331,12 +331,12 @@ const Residents = () => {
             </div>
             <div className="text-xs text-muted-foreground space-y-0.5">
               <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{r.mobile}</span>
-              <span className="flex items-center gap-1 text-foreground font-medium">
-                <IndianRupee className="h-3 w-3" />{Number(r.maintenance_amount || 0).toLocaleString('en-IN')} / yr
-                {isAdmin && (
+              {isAdmin && (
+                <span className="flex items-center gap-1 text-foreground font-medium">
+                  <IndianRupee className="h-3 w-3" />{Number(r.maintenance_amount || 0).toLocaleString('en-IN')} / yr
                   <button onClick={() => openMaintAmount(r)} className="ml-1 text-primary"><Pencil className="h-3 w-3" /></button>
-                )}
-              </span>
+                </span>
+              )}
             </div>
             {!readOnly && (
               <div className="flex gap-1 pt-1 border-t flex-wrap">
