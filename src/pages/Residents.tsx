@@ -154,11 +154,11 @@ const Residents = () => {
     setMaintAmountDialog({ open: true, resident: r, value: String(r.maintenance_amount || 0) });
   };
 
-  const saveMaintAmount = async () => {
+  const [capDialog, setCapDialog] = useState<{ open: boolean; amount: number; projectedDue: number }>({ open: false, amount: 0, projectedDue: 0 });
+
+  const doSaveMaintAmount = async (amount: number) => {
     const r = maintAmountDialog.resident;
     if (!r) return;
-    const amount = Number(maintAmountDialog.value || 0);
-    if (isNaN(amount) || amount < 0) { toast.error('Enter a valid amount'); return; }
 
     // 1. Update resident's maintenance_amount
     const { error: updErr } = await supabase.from('residents').update({ maintenance_amount: amount }).eq('id', r.id);
@@ -192,7 +192,29 @@ const Residents = () => {
     queryClient.invalidateQueries({ queryKey: ['residents'] });
     queryClient.invalidateQueries({ queryKey: ['maintenance_collections'] });
     setMaintAmountDialog({ open: false, resident: null, value: '' });
+    setCapDialog({ open: false, amount: 0, projectedDue: 0 });
   };
+
+  const saveMaintAmount = async () => {
+    const r = maintAmountDialog.resident;
+    if (!r) return;
+    const amount = Number(maintAmountDialog.value || 0);
+    if (isNaN(amount) || amount < 0) { toast.error('Enter a valid amount'); return; }
+
+    // Compute projected due across the FY (existing carry-over + new amount)
+    const year = new Date().getFullYear();
+    const { data: priorUnpaid } = await supabase.from('maintenance_collections')
+      .select('due_amount').eq('resident_id', r.id).lt('year', year).neq('status', 'paid');
+    const carry = (priorUnpaid || []).reduce((s: number, x: any) => s + Number(x.due_amount || 0), 0);
+    const projectedDue = amount + carry;
+
+    if (projectedDue > 10000) {
+      setCapDialog({ open: true, amount, projectedDue });
+      return;
+    }
+    await doSaveMaintAmount(amount);
+  };
+
 
   const handleDownloadResidentReceipts = async (r: any) => {
     const { data: receipts } = await supabase.from('maintenance_receipts').select('*').eq('resident_id', r.id).order('created_at', { ascending: false });
