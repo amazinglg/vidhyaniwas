@@ -102,9 +102,11 @@ const AppSettingsCard = ({ canInstall, installing, isIOS, standalone, onInstall,
             hint={status === 'denied' ? 'Blocked in browser settings — unblock & refresh' : status === 'unsupported' ? 'Install to home screen first' : status === 'subscribed' ? 'Receiving alerts on this device' : 'Get instant alerts for notices & dues'}
             action={status === 'subscribed' ? (
               <Button size="sm" variant="outline" onClick={disableNotif} disabled={working} className="h-8 text-xs">{working ? '…' : 'Turn off'}</Button>
-            ) : status === 'default' || status === 'granted-not-subscribed' ? (
-              <Button size="sm" onClick={enableNotif} disabled={working} className="h-8 text-xs gradient-warm text-primary-foreground">{working ? '…' : 'Enable'}</Button>
-            ) : null}
+            ) : status === 'denied' ? (
+              <Button size="sm" variant="outline" onClick={refresh} disabled={working} className="h-8 text-xs">Recheck</Button>
+            ) : status === 'unsupported' ? null : (
+              <Button size="sm" onClick={enableNotif} disabled={working || status === 'loading'} className="h-8 text-xs gradient-warm text-primary-foreground">{working ? '…' : status === 'loading' ? 'Enable' : 'Enable'}</Button>
+            )}
           />
 
           {canInstall && (
