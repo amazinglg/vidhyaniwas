@@ -347,33 +347,16 @@ const MyProfile = () => {
 
       {/* House Owner card — shown to family members & tenants */}
       {resident && resident.resident_type !== 'owner' && houseOwner && (
-        <Card className="p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 shadow-lg">
-              <Crown className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold font-display">{lang === 'hi' ? 'मकान मालिक' : 'House Owner'}</h3>
-              <p className="text-sm text-muted-foreground">{lang === 'hi' ? 'आपके घर के मालिक की जानकारी' : 'Your house owner details'}</p>
-            </div>
+        <Card className="px-5 py-2 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800">
+          <div className="flex items-center gap-2 pt-3 pb-2">
+            <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <h3 className="text-sm font-bold font-display uppercase tracking-wide">{lang === 'hi' ? 'मकान मालिक' : 'House Owner'}</h3>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
-              <UserCircle className="h-4 w-4 text-primary" />
-              <div><p className="text-xs text-muted-foreground">{t('name')}</p><p className="font-medium">{houseOwner.name}</p></div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
-              <Phone className="h-4 w-4 text-primary" />
-              <div><p className="text-xs text-muted-foreground">{t('mobile')}</p><p className="font-medium">{houseOwner.mobile}</p></div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
-              <Home className="h-4 w-4 text-primary" />
-              <div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{houseOwner.house_no}</p></div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-card border">
-              <Home className="h-4 w-4 text-primary" />
-              <div><p className="text-xs text-muted-foreground">{t('lane')}</p><p className="font-medium">{houseOwner.lane_no}</p></div>
-            </div>
+          <div className="grid grid-cols-2 gap-2 pb-3">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card border"><UserCircle className="h-3.5 w-3.5 text-primary shrink-0" /><div className="min-w-0"><p className="text-[10px] text-muted-foreground leading-none">{t('name')}</p><p className="text-xs font-medium truncate">{houseOwner.name}</p></div></div>
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card border"><Phone className="h-3.5 w-3.5 text-primary shrink-0" /><div className="min-w-0"><p className="text-[10px] text-muted-foreground leading-none">{t('mobile')}</p><p className="text-xs font-medium truncate">{houseOwner.mobile}</p></div></div>
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card border"><Home className="h-3.5 w-3.5 text-primary shrink-0" /><div className="min-w-0"><p className="text-[10px] text-muted-foreground leading-none">{t('house_no')}</p><p className="text-xs font-medium truncate">{houseOwner.house_no}</p></div></div>
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card border"><Home className="h-3.5 w-3.5 text-primary shrink-0" /><div className="min-w-0"><p className="text-[10px] text-muted-foreground leading-none">{t('lane')}</p><p className="text-xs font-medium truncate">{houseOwner.lane_no}</p></div></div>
           </div>
         </Card>
       )}
@@ -385,92 +368,106 @@ const MyProfile = () => {
 
       {/* Tenant Management (owners only) */}
       {residentId && isOwner && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><UsersRound className="h-5 w-5 text-primary-foreground" /></div>
-              <div><h3 className="text-lg font-bold font-display">{t('tenants')}</h3><p className="text-sm text-muted-foreground">{t('manage_tenant_info')}</p></div>
-            </div>
-            {tenants.length === 0 && <Button size="sm" onClick={openAddTenant}><Plus className="h-4 w-4 mr-1" />{t('add_tenant')}</Button>}
-          </div>
+        <Card className="px-5 py-2">
+          <SectionHeader
+            icon={UsersRound}
+            title={t('tenants')}
+            subtitle={t('manage_tenant_info')}
+            action={tenants.length === 0 && <Button size="sm" className="h-8 text-xs gradient-warm text-primary-foreground" onClick={openAddTenant}><Plus className="h-3.5 w-3.5 mr-1" />{t('add_tenant')}</Button>}
+          />
+          <div className="pb-3">
           {tenants.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">{t('no_tenants')}</p>
+            <p className="text-center text-xs text-muted-foreground py-3">{t('no_tenants')}</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {tenants.map(tn => (
-                <div key={tn.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div>
-                    <span className="font-medium">{tn.name}</span>
-                    <Badge variant="outline" className="ml-2 text-xs">{t('tenant')}</Badge>
-                    <span className="text-muted-foreground text-sm ml-2">{tn.mobile}</span>
+                <div key={tn.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-muted/30">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-medium truncate">{tn.name}</span>
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">{t('tenant')}</Badge>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{tn.mobile}</span>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEditTenant(tn)}><Edit2 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteTenant(tn.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  <div className="flex gap-0.5 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditTenant(tn)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteTenant(tn.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                   </div>
                 </div>
               ))}
             </div>
           )}
+          </div>
         </Card>
       )}
 
       {/* Family Members — visible for ALL residents (owner can edit, family/tenant read-only) */}
       {residentId && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><Users className="h-5 w-5 text-primary-foreground" /></div>
-              <div><h3 className="text-lg font-bold font-display">{t('family_member_details')}</h3><p className="text-sm text-muted-foreground">{t('manage_family_info')}</p></div>
-            </div>
-            {canEditUnit && <Button size="sm" onClick={openAddFamily}><Plus className="h-4 w-4 mr-1" />{t('add')}</Button>}
-          </div>
+        <Card className="px-5 py-2">
+          <SectionHeader
+            icon={Users}
+            title={t('family_member_details')}
+            subtitle={t('manage_family_info')}
+            action={canEditUnit && <Button size="sm" className="h-8 text-xs gradient-warm text-primary-foreground" onClick={openAddFamily}><Plus className="h-3.5 w-3.5 mr-1" />{t('add')}</Button>}
+          />
+          <div className="pb-3">
           {familyMembers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">{t('no_family_members_added')}</p>
+            <p className="text-center text-xs text-muted-foreground py-3">{t('no_family_members_added')}</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {familyMembers.map(fm => (
-                <div key={fm.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div>
-                    <span className="font-medium">{fm.name}</span>
-                    <Badge variant="outline" className="ml-2 text-xs">{fm.relation}</Badge>
-                    {fm.age && <span className="text-muted-foreground text-sm ml-2">{t('age')}: {fm.age}</span>}
-                    {fm.occupation && <span className="text-muted-foreground text-sm ml-2">• {fm.occupation}</span>}
+                <div key={fm.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-muted/30">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-medium truncate">{fm.name}</span>
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">{fm.relation}</Badge>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {fm.age && <span>{t('age')}: {fm.age}</span>}
+                      {fm.age && fm.occupation && <span> • </span>}
+                      {fm.occupation && <span>{fm.occupation}</span>}
+                    </div>
                   </div>
                   {canEditUnit && (
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEditFamily(fm)}><Edit2 className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteFamily(fm.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <div className="flex gap-0.5 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditFamily(fm)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteFamily(fm.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                     </div>
                   )}
                 </div>
               ))}
             </div>
           )}
+          </div>
         </Card>
       )}
 
       {/* Vehicles — visible for ALL residents (owner can edit, family/tenant read-only) */}
       {residentId && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-warm"><Car className="h-5 w-5 text-primary-foreground" /></div>
-              <div><h3 className="text-lg font-bold font-display">{t('vehicles')}</h3><p className="text-sm text-muted-foreground">{t('manage_vehicle_info')}</p></div>
-            </div>
-            {canEditUnit && <Button size="sm" onClick={openAddVehicle}><Plus className="h-4 w-4 mr-1" />{t('add')}</Button>}
-          </div>
+        <Card className="px-5 py-2">
+          <SectionHeader
+            icon={Car}
+            title={t('vehicles')}
+            subtitle={t('manage_vehicle_info')}
+            action={canEditUnit && <Button size="sm" className="h-8 text-xs gradient-warm text-primary-foreground" onClick={openAddVehicle}><Plus className="h-3.5 w-3.5 mr-1" />{t('add')}</Button>}
+          />
+          <div className="pb-3">
           {vehicles.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">{t('no_vehicles_added')}</p>
+            <p className="text-center text-xs text-muted-foreground py-3">{t('no_vehicles_added')}</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {vehicles.map(v => (
-                <div key={v.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div>
-                    <Badge variant="secondary" className="mr-2">{v.vehicle_type}</Badge>
-                    <span className="font-medium">{v.registration_no}</span>
-                    {v.make_model && <span className="text-muted-foreground text-sm ml-2">{v.make_model}</span>}
-                    {v.color && <span className="text-muted-foreground text-sm ml-2">• {v.color}</span>}
+                <div key={v.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-muted/30">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">{v.vehicle_type}</Badge>
+                      <span className="text-sm font-medium truncate">{v.registration_no}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {v.make_model && <span>{v.make_model}</span>}
+                      {v.make_model && v.color && <span> • </span>}
+                      {v.color && <span>{v.color}</span>}
+                    </div>
                   </div>
                   {canEditUnit && (
                     <div className="flex gap-1">
