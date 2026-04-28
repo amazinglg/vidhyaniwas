@@ -533,23 +533,23 @@ const MyProfile = () => {
                   </TableBody>
                 </Table>
               </div>
-              <div className="md:hidden space-y-3">
+              <div className="md:hidden space-y-2 pb-3">
                 {maintenance.map((m) => {
                   const StatusIcon = statusIcon[m.status] || Clock;
                   return (
-                    <div key={m.id} className="p-4 rounded-lg border bg-card space-y-2">
+                    <div key={m.id} className="p-2.5 rounded-lg border bg-muted/30 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">{m.month} {m.year}</span>
-                        <Badge variant={statusBadge[m.status] || 'outline'} className="gap-1"><StatusIcon className="h-3 w-3" />{t(m.status)}</Badge>
+                        <span className="text-sm font-medium">{m.month} {m.year}</span>
+                        <Badge variant={statusBadge[m.status] || 'outline'} className="gap-1 text-[10px] h-5"><StatusIcon className="h-3 w-3" />{t(m.status)}</Badge>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div><p className="text-muted-foreground text-xs">{t('total_maintenance')}</p><p className="font-medium">₹{Number(m.total_maintenance || 0).toLocaleString()}</p></div>
-                        <div><p className="text-muted-foreground text-xs">{t('paid')}</p><p className="font-medium text-green-600">₹{Number(m.amount || 0).toLocaleString()}</p></div>
-                        <div><p className="text-muted-foreground text-xs">{t('due')}</p><p className="font-medium text-orange-600">₹{Number(m.due_amount || 0).toLocaleString()}</p></div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div><p className="text-muted-foreground text-[10px] uppercase tracking-wide">{t('total')}</p><p className="text-xs font-medium">₹{Number(m.total_maintenance || 0).toLocaleString()}</p></div>
+                        <div><p className="text-muted-foreground text-[10px] uppercase tracking-wide">{t('paid')}</p><p className="text-xs font-medium text-green-600">₹{Number(m.amount || 0).toLocaleString()}</p></div>
+                        <div><p className="text-muted-foreground text-[10px] uppercase tracking-wide">{t('due')}</p><p className="text-xs font-medium text-orange-600">₹{Number(m.due_amount || 0).toLocaleString()}</p></div>
                       </div>
-                      <div className="text-xs text-muted-foreground">{m.paid_date || '-'} • {m.payment_mode || '-'}</div>
-                      <div className="flex justify-end pt-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleDownloadReceipt(m)}>
+                      <div className="flex items-center justify-between pt-0.5">
+                        <span className="text-[11px] text-muted-foreground">{m.paid_date || '-'} • {m.payment_mode || '-'}</span>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleDownloadReceipt(m)}>
                           <FileDown className="h-3.5 w-3.5 text-primary mr-1" /> Receipt
                         </Button>
                       </div>
