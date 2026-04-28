@@ -82,10 +82,12 @@ Deno.serve(async (req) => {
         targetUserIds = (data || []).map((r) => r.user_id);
       }
     } else if (body.audience.kind === 'admins') {
+      // "admins" audience also includes supervisors so that ops staff (e.g. complaint
+      // supervisor) get push notifications for new complaints.
       const { data } = await admin
         .from('user_roles')
         .select('user_id, role')
-        .in('role', ['master_admin', 'president', 'vice_president', 'treasury_head', 'secretary']);
+        .in('role', ['master_admin', 'president', 'vice_president', 'treasury_head', 'secretary', 'supervisor']);
       targetUserIds = (data || []).map((r) => r.user_id);
     } else {
       // 'all' — every approved profile
