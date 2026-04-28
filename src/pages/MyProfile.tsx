@@ -276,43 +276,57 @@ const MyProfile = () => {
     });
   };
 
+  // Compact section header to match AppSettingsCard style
+  const SectionHeader = ({ icon: Icon, title, subtitle, action }: any) => (
+    <div className="flex items-center justify-between pt-3 pb-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon className="h-4 w-4 text-primary shrink-0" />
+        <h3 className="text-sm font-bold font-display uppercase tracking-wide truncate">{title}</h3>
+        {subtitle && <span className="text-[11px] text-muted-foreground truncate hidden sm:inline">• {subtitle}</span>}
+      </div>
+      {action}
+    </div>
+  );
+
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-4 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold font-display text-foreground">{t('my_profile')}</h1>
-        <p className="text-muted-foreground mt-1">{t('view_update_info')}</p>
+        <h1 className="text-2xl font-bold font-display text-foreground">{t('my_profile')}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">{t('view_update_info')}</p>
       </div>
 
-      {/* Profile Card */}
-      <Card className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl gradient-warm shadow-lg">
-            <UserCircle className="h-8 w-8 text-primary-foreground" />
+      {/* Profile Card — compact */}
+      <Card className="px-5 py-2 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+        <div className="flex items-center gap-3 pt-3 pb-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl gradient-warm shadow-md shrink-0">
+            <UserCircle className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold font-display">{form.full_name || 'Your Name'}</h2>
-            {resident && <p className="text-muted-foreground">{t('house')} {resident.house_no} • {t('lane')} {resident.lane_no}</p>}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-bold font-display truncate">{form.full_name || 'Your Name'}</h2>
+            {resident && <p className="text-[11px] text-muted-foreground truncate">{t('house')} {resident.house_no} • {t('lane')} {resident.lane_no}</p>}
           </div>
+          {!editing && (
+            <Button onClick={() => setEditing(true)} variant="outline" size="sm" className="h-8 text-xs shrink-0">
+              <Edit2 className="h-3.5 w-3.5 mr-1" />{t('edit')}
+            </Button>
+          )}
         </div>
         {editing ? (
-          <div className="grid gap-4">
-            <div className="grid gap-2"><Label>{t('full_name')}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
-            <div className="grid gap-2"><Label>{t('mobile')}</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
+          <div className="grid gap-3 pb-3">
+            <div className="grid gap-1.5"><Label className="text-xs">{t('full_name')}</Label><Input className="h-9" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+            <div className="grid gap-1.5"><Label className="text-xs">{t('mobile')}</Label><Input className="h-9" value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></div>
             <div className="flex gap-2">
-              <Button onClick={handleSave} className="gradient-warm text-primary-foreground"><Save className="h-4 w-4 mr-2" />{t('save')}</Button>
-              <Button variant="outline" onClick={() => setEditing(false)}>{t('cancel')}</Button>
+              <Button size="sm" onClick={handleSave} className="h-8 text-xs gradient-warm text-primary-foreground"><Save className="h-3.5 w-3.5 mr-1" />{t('save')}</Button>
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setEditing(false)}>{t('cancel')}</Button>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Phone className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('mobile')}</p><p className="font-medium">{form.mobile || t('not_set')}</p></div></div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Home className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('house_no')}</p><p className="font-medium">{resident?.house_no || t('not_set')}</p></div></div>
-              {resident && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-card border"><Users className="h-4 w-4 text-primary" /><div><p className="text-xs text-muted-foreground">{t('family_members')}</p><p className="font-medium">{resident.family_members || 1}</p></div></div>
-              )}
-            </div>
-            <Button onClick={() => setEditing(true)} variant="outline">{t('edit_profile')}</Button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-3">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card border"><Phone className="h-3.5 w-3.5 text-primary shrink-0" /><div className="min-w-0"><p className="text-[10px] text-muted-foreground leading-none">{t('mobile')}</p><p className="text-xs font-medium truncate">{form.mobile || t('not_set')}</p></div></div>
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card border"><Home className="h-3.5 w-3.5 text-primary shrink-0" /><div className="min-w-0"><p className="text-[10px] text-muted-foreground leading-none">{t('house_no')}</p><p className="text-xs font-medium truncate">{resident?.house_no || t('not_set')}</p></div></div>
+            {resident && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-card border"><Users className="h-3.5 w-3.5 text-primary shrink-0" /><div className="min-w-0"><p className="text-[10px] text-muted-foreground leading-none">{t('family_members')}</p><p className="text-xs font-medium truncate">{resident.family_members || 1}</p></div></div>
+            )}
           </div>
         )}
       </Card>
