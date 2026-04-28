@@ -82,10 +82,17 @@ const Complaints = () => {
     if (pendingStatus.status === 'resolved') update.resolved_at = new Date().toISOString().split('T')[0];
     const { error } = await supabase.from('complaints').update(update).eq('id', pendingStatus.id);
     if (error) { toast.error(error.message); return; }
-    if (pendingStatus.status === 'resolved' && complaint?.resident_id) {
+    if (complaint?.resident_id && pendingStatus.status !== complaint.status) {
+      const labels: Record<string, { emoji: string; verb: string }> = {
+        open: { emoji: '🔄', verb: 'reopened' },
+        in_progress: { emoji: '🔧', verb: 'is in progress' },
+        resolved: { emoji: '✅', verb: 'resolved' },
+        withdrawn: { emoji: '🚫', verb: 'withdrawn' },
+      };
+      const meta = labels[pendingStatus.status] || { emoji: '🔔', verb: `set to ${pendingStatus.status}` };
       void triggerPush({
-        title: '✅ Complaint resolved',
-        body: complaint.title || 'Your complaint has been resolved',
+        title: `${meta.emoji} Complaint ${meta.verb}`,
+        body: complaint.title || 'Your complaint status was updated',
         url: '/my-complaints',
         tag: `complaint-${pendingStatus.id}`,
         audience: { kind: 'residents', residentIds: [complaint.resident_id] },
