@@ -1,13 +1,13 @@
-import { Bell, LogOut, KeyRound, Languages, UserCircle, Download, Menu, HelpCircle } from 'lucide-react';
+import { LogOut, KeyRound, Languages, UserCircle, Download, Menu, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useUnreadNotices } from '@/hooks/useUnreadNotices';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 import { useState } from 'react';
 import IosInstallGuideDialog from '@/components/IosInstallGuideDialog';
+import NotificationBell from '@/components/NotificationBell';
 
 interface TopBarProps {
   onOpenSidebar?: () => void;
@@ -17,7 +17,6 @@ const TopBar = ({ onOpenSidebar }: TopBarProps) => {
   const { user, signOut } = useAuth();
   const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
-  const { unreadCount } = useUnreadNotices();
   const { canInstall, installing, isIOS, promptInstall } = useInstallPrompt();
   const [iosGuide, setIosGuide] = useState(false);
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
@@ -83,14 +82,7 @@ const TopBar = ({ onOpenSidebar }: TopBarProps) => {
             <span className="hidden sm:inline">{lang === 'en' ? 'हिंदी' : 'English'}</span>
             <span className="sm:hidden">{lang === 'en' ? 'हि' : 'EN'}</span>
           </Button>
-          <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => navigate('/notices')} title={t('notices')}>
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute top-0.5 right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </Button>
+          <NotificationBell />
           <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => navigate('/my-profile')} title={t('my_profile')}>
             <UserCircle className="h-5 w-5" />
           </Button>
