@@ -358,6 +358,10 @@ const translations: Record<string, Record<Lang, string>> = {
 
   // Release updates
   'release_updates': { en: 'Release Updates', hi: 'अपडेट जारी करें' },
+
+  // Complaints extra
+  'photos_optional': { en: 'Photos (optional)', hi: 'फ़ोटो (वैकल्पिक)' },
+  'general': { en: 'General', hi: 'सामान्य' },
 };
 
 interface LanguageContextType {

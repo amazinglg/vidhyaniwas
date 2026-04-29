@@ -1,8 +1,11 @@
 // Sends a Web Push notification to one or more users via VAPID.
-// Invoked by the client whenever a notice/maintenance/complaint event happens
-// that should reach users even when their app is closed.
+// Uses @negrel/webpush — a pure-Deno Web Push implementation built on the
+// native Web Crypto API. The previous npm `web-push` library required
+// Node's `crypto.ECDH` which isn't implemented in Supabase's Deno edge
+// runtime, causing every delivery to fail.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import webpush from 'https://esm.sh/web-push@3.6.7?target=deno';
+import * as webpush from 'jsr:@negrel/webpush@0.5.0';
+import { decodeBase64Url } from 'jsr:@std/encoding@0.224.0/base64url';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,8 +16,6 @@ const corsHeaders = {
 const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY')!;
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!;
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com';
-
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 type Audience =
   | { kind: 'all' }
@@ -28,8 +29,52 @@ interface PushBody {
   url?: string;
   tag?: string;
   audience: Audience;
-  // Optional: id of the actor who triggered this — they will NOT receive the push (avoid self-notify).
   excludeUserId?: string;
+}
+
+// Build the VAPID application server once at boot.
+let appServerPromise: Promise<webpush.ApplicationServer> | null = null;
+async function getAppServer(): Promise<webpush.ApplicationServer> {
+  if (!appServerPromise) {
+    appServerPromise = (async () => {
+      // Convert raw VAPID base64url keys (the format we already store as
+      // env vars) into a JWK CryptoKeyPair the library expects.
+      const publicRaw = decodeBase64Url(VAPID_PUBLIC_KEY);
+      const privateRaw = decodeBase64Url(VAPID_PRIVATE_KEY);
+
+      const toBase64Url = (bytes: Uint8Array) =>
+        btoa(String.fromCharCode(...bytes))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '');
+
+      // Public key: 65-byte uncompressed point (0x04 || X || Y)
+      const x = toBase64Url(publicRaw.subarray(1, 33));
+      const y = toBase64Url(publicRaw.subarray(33, 65));
+      const d = toBase64Url(privateRaw);
+
+      const publicKey = await crypto.subtle.importKey(
+        'jwk',
+        { kty: 'EC', crv: 'P-256', x, y, ext: true },
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['verify']
+      );
+      const privateKey = await crypto.subtle.importKey(
+        'jwk',
+        { kty: 'EC', crv: 'P-256', x, y, d, ext: true },
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['sign']
+      );
+
+      return await webpush.ApplicationServer.new({
+        contactInformation: VAPID_SUBJECT,
+        vapidKeys: { publicKey, privateKey },
+      });
+    })();
+  }
+  return appServerPromise;
 }
 
 Deno.serve(async (req) => {
@@ -48,7 +93,6 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    // Validate caller
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: auth } },
     });
@@ -68,10 +112,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use service role to read subscriptions across users + resolve audience
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Resolve target user_ids
     let targetUserIds: string[] = [];
     if (body.audience.kind === 'users') {
       targetUserIds = body.audience.userIds.filter(Boolean);
@@ -82,15 +124,12 @@ Deno.serve(async (req) => {
         targetUserIds = (data || []).map((r) => r.user_id);
       }
     } else if (body.audience.kind === 'admins') {
-      // "admins" audience also includes supervisors so that ops staff (e.g. complaint
-      // supervisor) get push notifications for new complaints.
       const { data } = await admin
         .from('user_roles')
         .select('user_id, role')
         .in('role', ['master_admin', 'president', 'vice_president', 'treasury_head', 'secretary', 'supervisor']);
       targetUserIds = (data || []).map((r) => r.user_id);
     } else {
-      // 'all' — every approved profile
       const { data } = await admin.from('profiles').select('user_id').eq('is_approved', true);
       targetUserIds = (data || []).map((r) => r.user_id);
     }
@@ -124,6 +163,9 @@ Deno.serve(async (req) => {
       url: body.url || '/',
       tag: body.tag,
     });
+    const payloadBytes = new TextEncoder().encode(payload);
+
+    const appServer = await getAppServer();
 
     let sent = 0;
     let removed = 0;
@@ -132,15 +174,16 @@ Deno.serve(async (req) => {
     await Promise.all(
       (subs || []).map(async (s) => {
         try {
-          await webpush.sendNotification(
-            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-            payload,
-            { TTL: 60 * 60 * 24 } // 24h
-          );
+          const subscriber = appServer.subscribe({
+            endpoint: s.endpoint,
+            keys: { p256dh: s.p256dh, auth: s.auth },
+          });
+          await subscriber.pushTextMessage(payloadBytes, { ttl: 60 * 60 * 24 });
           sent++;
         } catch (err: unknown) {
-          const status = (err as { statusCode?: number })?.statusCode;
-          // 404/410 = subscription gone; clean it up
+          const status =
+            (err as { statusCode?: number; status?: number })?.statusCode ??
+            (err as { statusCode?: number; status?: number })?.status;
           if (status === 404 || status === 410) {
             staleIds.push(s.id);
             removed++;

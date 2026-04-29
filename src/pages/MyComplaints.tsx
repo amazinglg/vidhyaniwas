@@ -107,7 +107,7 @@ const MyComplaints = () => {
               <div className="grid gap-2"><Label>{t('description')}</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
               <div className="grid gap-2"><Label>{t('category')}</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></div>
               <div className="grid gap-2">
-                <Label>Photos (optional)</Label>
+                <Label>{t('photos_optional')}</Label>
                 {user && <ComplaintImageUploader userId={user.id} value={form.attachments} onChange={(a) => setForm({ ...form, attachments: a })} max={3} />}
               </div>
               <Button onClick={handleAdd} className="w-full mt-2 gradient-warm text-primary-foreground">{t('submit')}</Button>
@@ -129,14 +129,14 @@ const MyComplaints = () => {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h3 className="font-semibold font-display">{c.title}</h3>
-                <Badge className={statusColors[c.status] || 'bg-muted'}>{c.status.replace('_', ' ')}</Badge>
+                <Badge className={statusColors[c.status] || 'bg-muted'}>{t(c.status)}</Badge>
                 <Badge variant="outline">{c.category}</Badge>
               </div>
               {c.description && <p className="text-sm text-muted-foreground">{c.description}</p>}
               {c.assigned_to && (
                 <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <UserCheck className="h-3.5 w-3.5 text-primary" />
-                  <span>Assigned to <span className="font-medium text-foreground">{c.assigned_to}</span></span>
+                  <span>{t('assigned_to')}: <span className="font-medium text-foreground">{c.assigned_to}</span></span>
                 </div>
               )}
               <ComplaintAttachmentsView paths={c.attachments || []} />
