@@ -17,7 +17,6 @@ const TopBar = ({ onOpenSidebar }: TopBarProps) => {
   const { user, signOut } = useAuth();
   const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
-  const { unreadCount } = useUnreadNotices();
   const { canInstall, installing, isIOS, promptInstall } = useInstallPrompt();
   const [iosGuide, setIosGuide] = useState(false);
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
