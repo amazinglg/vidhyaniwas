@@ -183,7 +183,7 @@ const Complaints = () => {
                 <div className="grid gap-2"><Label>{t('description')}</Label><Textarea value={raiseForm.description} onChange={(e) => setRaiseForm({ ...raiseForm, description: e.target.value })} rows={3} /></div>
                 <div className="grid gap-2"><Label>{t('category')}</Label><Input value={raiseForm.category} onChange={(e) => setRaiseForm({ ...raiseForm, category: e.target.value })} /></div>
                 <div className="grid gap-2">
-                  <Label>Photos (optional)</Label>
+                  <Label>{t('photos_optional')}</Label>
                   {user && <ComplaintImageUploader userId={user.id} value={raiseForm.attachments} onChange={(a) => setRaiseForm({ ...raiseForm, attachments: a })} max={3} />}
                 </div>
                 <Button onClick={handleRaiseComplaint} className="w-full mt-2 gradient-warm text-primary-foreground">{t('submit')}</Button>
@@ -221,7 +221,7 @@ const Complaints = () => {
               <Badge className={`text-xs ${statusColors[c.status] || 'bg-muted'}`}>{t(c.status)}</Badge>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{c.category}</span>
+              <span>{t(`cat_${c.category.toLowerCase()}`) !== `cat_${c.category.toLowerCase()}` ? t(`cat_${c.category.toLowerCase()}`) : c.category}</span>
               <span>•</span>
               <span>{c.assigned_to || '-'}</span>
               <span>•</span>
@@ -279,7 +279,7 @@ const Complaints = () => {
                 <TableCell>{c.category}</TableCell>
                 <TableCell>{c.assigned_to || '-'}</TableCell>
                 <TableCell>{new Date(c.created_at).toLocaleDateString()}</TableCell>
-                <TableCell><Badge className={statusColors[c.status] || 'bg-muted'}>{t(c.status).replace('_', ' ')}</Badge></TableCell>
+                <TableCell><Badge className={statusColors[c.status] || 'bg-muted'}>{t(c.status)}</Badge></TableCell>
                 {canManage && (
                   <TableCell>
                     <div className="flex gap-1">
