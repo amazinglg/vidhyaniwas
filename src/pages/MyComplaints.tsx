@@ -69,7 +69,7 @@ const MyComplaints = () => {
     });
     if (error) { toast.error(error.message); return; }
     void triggerPush({
-      title: '📝 New complaint raised',
+      title: 'New complaint raised',
       body: form.title,
       url: '/complaints',
       tag: 'new-complaint',

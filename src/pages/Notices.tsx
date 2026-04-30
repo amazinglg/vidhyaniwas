@@ -143,7 +143,7 @@ const Notices = () => {
           sendTo === 'specific' ? { kind: 'users' as const, userIds: selectedUserIds } :
           { kind: 'all' as const };
         void triggerPush({
-          title: `📢 ${form.title}`,
+          title: `Notice: ${form.title}`,
           body: form.content.substring(0, 150),
           url: '/notices',
           tag: `notice-${noticeId}`,

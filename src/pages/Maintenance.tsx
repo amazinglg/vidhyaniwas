@@ -148,7 +148,7 @@ const Maintenance = () => {
     }
     if (payload.resident_id) {
       void triggerPush({
-        title: '💰 Maintenance entry added',
+        title: 'Maintenance entry added',
         body: `${payload.month} ${payload.year} • ₹${payload.total_maintenance ?? payload.amount ?? ''}`,
         url: '/maintenance',
         tag: `maint-${payload.resident_id}`,

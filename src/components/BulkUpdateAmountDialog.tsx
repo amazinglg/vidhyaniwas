@@ -81,7 +81,7 @@ const BulkUpdateAmountDialog = ({ open, onOpenChange, residents }: Props) => {
     toast.success(`${updated} updated, ${created} created`);
     if (selectedIds.length) {
       void triggerPush({
-        title: '💰 Maintenance amount updated',
+        title: 'Maintenance amount updated',
         body: `Your annual maintenance has been set to ₹${amt.toLocaleString('en-IN')}.`,
         url: '/maintenance',
         tag: 'bulk-amount',

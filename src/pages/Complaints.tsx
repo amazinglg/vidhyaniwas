@@ -84,16 +84,16 @@ const Complaints = () => {
     const { error } = await supabase.from('complaints').update(update).eq('id', pendingStatus.id);
     if (error) { toast.error(error.message); return; }
     if (complaint?.resident_id && pendingStatus.status !== complaint.status) {
-      const labels: Record<string, { emoji: string; verb: string }> = {
-        open: { emoji: '🔄', verb: 'reopened' },
-        in_progress: { emoji: '🔧', verb: 'is in progress' },
-        pending_user_reply: { emoji: '⏳', verb: 'awaiting your reply' },
-        resolved: { emoji: '✅', verb: 'resolved' },
-        withdrawn: { emoji: '🚫', verb: 'withdrawn' },
+      const labels: Record<string, string> = {
+        open: 'reopened',
+        in_progress: 'is in progress',
+        pending_user_reply: 'awaiting your reply',
+        resolved: 'resolved',
+        withdrawn: 'withdrawn',
       };
-      const meta = labels[pendingStatus.status] || { emoji: '🔔', verb: `set to ${pendingStatus.status}` };
+      const verb = labels[pendingStatus.status] || `set to ${pendingStatus.status}`;
       void triggerPush({
-        title: `${meta.emoji} Complaint ${meta.verb}`,
+        title: `Complaint ${verb}`,
         body: complaint.title || 'Your complaint status was updated',
         url: '/my-complaints',
         tag: `complaint-${pendingStatus.id}`,
@@ -134,7 +134,7 @@ const Complaints = () => {
     });
     if (error) { toast.error(error.message); return; }
     void triggerPush({
-      title: '📝 New complaint raised',
+      title: 'New complaint raised',
       body: raiseForm.title,
       url: '/complaints',
       tag: 'new-complaint',

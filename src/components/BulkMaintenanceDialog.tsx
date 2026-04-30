@@ -151,7 +151,7 @@ const BulkMaintenanceDialog = ({ open, onOpenChange, residents, defaultAmount }:
     )) as string[];
     if (residentIds.length) {
       void triggerPush({
-        title: '💰 Maintenance updated',
+        title: 'Maintenance updated',
         body: 'A new maintenance entry has been recorded for your unit.',
         url: '/maintenance',
         tag: 'bulk-maint',
