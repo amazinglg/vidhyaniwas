@@ -37,17 +37,31 @@ self.addEventListener('push', (event: PushEvent) => {
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close();
-  const targetUrl = (event.notification.data && (event.notification.data as { url?: string }).url) || '/';
+  const rawUrl = (event.notification.data && (event.notification.data as { url?: string }).url) || '/';
+  // Build an absolute URL within our scope so navigate/openWindow always work.
+  const targetUrl = new URL(rawUrl, self.registration.scope).href;
 
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if ('focus' in client) {
-          (client as WindowClient).navigate(targetUrl).catch(() => {});
-          return (client as WindowClient).focus();
-        }
-      }
-      return self.clients.openWindow(targetUrl);
-    })
-  );
+  event.waitUntil((async () => {
+    const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // Prefer an already-open client — focus it and route via postMessage so
+    // React Router handles the navigation without a full reload (which loses
+    // session state). Fall back to client.navigate, then openWindow.
+    for (const client of allClients) {
+      const win = client as WindowClient;
+      try {
+        win.postMessage({ type: 'NAVIGATE', url: rawUrl });
+        await win.focus();
+        return;
+      } catch {}
+    }
+    for (const client of allClients) {
+      try {
+        const win = client as WindowClient;
+        await win.navigate(targetUrl);
+        await win.focus();
+        return;
+      } catch {}
+    }
+    await self.clients.openWindow(targetUrl);
+  })());
 });
