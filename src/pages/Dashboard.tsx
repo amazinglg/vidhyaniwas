@@ -1,23 +1,52 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, IndianRupee, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { Users, IndianRupee, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, BarChart3, PieChart as PieIcon, LayoutDashboard, Wallet, CalendarRange } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import StatCard from '@/components/dashboard/StatCard';
 import { useResidents, useMaintenanceCollections, useExpenses } from '@/hooks/useSocietyData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import NotificationStatsCard from '@/components/NotificationStatsCard';
+import { PageHeader, SectionHeader, SectionCard, Chip } from '@/components/layout/PagePrimitives';
 
-const CHART_COLORS = ['hsl(30, 85%, 52%)', 'hsl(142, 71%, 45%)', 'hsl(0, 72%, 51%)', 'hsl(210, 92%, 45%)', 'hsl(45, 93%, 47%)'];
+const CHART_COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--destructive))', 'hsl(var(--accent))', 'hsl(var(--warning))'];
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 const statusIcon: Record<string, any> = { paid: CheckCircle2, partial: Clock, pending: Clock, overdue: AlertTriangle };
+
+// Compact metric tile mirroring MyProfile chip aesthetic but bigger and tappable.
+const MetricTile = ({
+  label, value, subtitle, icon: Icon, tone = 'primary', onClick,
+}: { label: string; value: string; subtitle?: string; icon: any; tone?: 'primary' | 'success' | 'destructive' | 'warning'; onClick?: () => void }) => {
+  const tones: Record<string, string> = {
+    primary: 'bg-primary/10 text-primary border-primary/25',
+    success: 'bg-success/10 text-success border-success/25',
+    destructive: 'bg-destructive/10 text-destructive border-destructive/25',
+    warning: 'bg-warning/15 text-warning-foreground border-warning/40',
+  };
+  const Comp: any = onClick ? 'button' : 'div';
+  return (
+    <Comp
+      onClick={onClick}
+      type={onClick ? 'button' : undefined}
+      className={`group text-left w-full rounded-xl border bg-card p-3 shadow-sm transition-all ${onClick ? 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0' : ''}`}
+    >
+      <div className="flex items-center gap-2.5">
+        <div className={`h-9 w-9 rounded-lg border flex items-center justify-center shrink-0 ${tones[tone]}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none">{label}</p>
+          <p className="text-base font-bold font-display leading-tight mt-1 truncate">{value}</p>
+          {subtitle && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+    </Comp>
+  );
+};
 
 const Dashboard = () => {
   const [selectedYear, setSelectedYear] = useState('2026');
@@ -28,7 +57,6 @@ const Dashboard = () => {
   const { isAdmin, residentId } = useAuth();
   const navigate = useNavigate();
 
-  // For non-admin: fetch own maintenance
   const { data: myMaintenance = [] } = useQuery({
     queryKey: ['my_maintenance_dashboard', residentId],
     queryFn: async () => {
@@ -64,169 +92,134 @@ const Dashboard = () => {
     return Object.entries(map).map(([name, value]) => ({ name: name.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()), value }));
   }, [yearExpenses]);
 
-  // Non-admin personal dashboard
+  const yearSelector = (
+    <Select value={selectedYear} onValueChange={setSelectedYear}>
+      <SelectTrigger className="h-8 w-[88px] text-xs"><CalendarRange className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="2026">2026</SelectItem>
+        <SelectItem value="2025">2025</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  // -------- Resident view --------
   if (!isAdmin) {
     const myYearMaintenance = myMaintenance.filter((m: any) => m.year === Number(selectedYear));
     const myTotalPaid = myYearMaintenance.reduce((s: number, m: any) => s + Number(m.amount || 0), 0);
     const myTotalDue = myYearMaintenance.reduce((s: number, m: any) => s + Number(m.due_amount || 0), 0);
 
     return (
-      <div className="space-y-4 md:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('dashboard')}</h1>
-            <p className="text-muted-foreground mt-1 text-sm">{t('your_payment_history')}</p>
-          </div>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="2026">2026</SelectItem>
-              <SelectItem value="2025">2025</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="space-y-3">
+        <PageHeader
+          icon={LayoutDashboard}
+          title={t('dashboard')}
+          subtitle={t('your_payment_history')}
+          action={yearSelector}
+        />
+
+        <div className="grid grid-cols-2 gap-2.5">
+          <MetricTile label={`${t('total_paid')} ${selectedYear}`} value={`₹${myTotalPaid.toLocaleString('en-IN')}`} icon={TrendingUp} tone="success" />
+          <MetricTile label={`${t('total_pending')} ${selectedYear}`} value={`₹${myTotalDue.toLocaleString('en-IN')}`} icon={AlertTriangle} tone="warning" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:gap-4">
-          <Card className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
-            <p className="text-xs text-green-600 dark:text-green-400 font-medium">{t('total_paid')} ({selectedYear})</p>
-            <p className="text-2xl font-bold text-green-700 dark:text-green-300">₹{myTotalPaid.toLocaleString('en-IN')}</p>
-          </Card>
-          <Card className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-            <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">{t('total_pending')} ({selectedYear})</p>
-            <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">₹{myTotalDue.toLocaleString('en-IN')}</p>
-          </Card>
-        </div>
-
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold font-display mb-4">{t('maintenance_fund')} - {selectedYear}</h3>
+        <SectionCard>
+          <SectionHeader icon={Wallet} title={`${t('maintenance_fund')} • ${selectedYear}`} />
           {myYearMaintenance.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">{t('no_records')}</p>
+            <p className="text-center text-xs text-muted-foreground py-8">{t('no_records')}</p>
           ) : (
-            <>
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>{t('month')}</TableHead><TableHead>{t('total_maintenance')}</TableHead><TableHead>{t('paid')}</TableHead><TableHead>{t('due')}</TableHead><TableHead>{t('date')}</TableHead><TableHead>{t('status')}</TableHead><TableHead>{t('payment_mode')}</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {myYearMaintenance.map((m: any) => {
-                      const StatusIcon = statusIcon[m.status] || Clock;
-                      return (
-                        <TableRow key={m.id}>
-                          <TableCell className="font-medium">{m.month} {m.year}</TableCell>
-                          <TableCell>₹{Number(m.total_maintenance || 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-green-600 font-medium">₹{Number(m.amount || 0).toLocaleString()}</TableCell>
-                          <TableCell className="text-orange-600 font-medium">₹{Number(m.due_amount || 0).toLocaleString()}</TableCell>
-                          <TableCell>{m.paid_date || '-'}</TableCell>
-                          <TableCell><Badge variant={statusBadge[m.status] || 'outline'} className="gap-1"><StatusIcon className="h-3 w-3" />{t(m.status)}</Badge></TableCell>
-                          <TableCell className="capitalize">{m.payment_mode || '-'}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="md:hidden space-y-3">
-                {myYearMaintenance.map((m: any) => {
-                  const StatusIcon = statusIcon[m.status] || Clock;
-                  return (
-                    <div key={m.id} className="p-4 rounded-lg border bg-card space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{m.month} {m.year}</span>
-                        <Badge variant={statusBadge[m.status] || 'outline'} className="gap-1"><StatusIcon className="h-3 w-3" />{t(m.status)}</Badge>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div><p className="text-muted-foreground text-xs">{t('total_maintenance')}</p><p className="font-medium">₹{Number(m.total_maintenance || 0).toLocaleString()}</p></div>
-                        <div><p className="text-muted-foreground text-xs">{t('paid')}</p><p className="font-medium text-green-600">₹{Number(m.amount || 0).toLocaleString()}</p></div>
-                        <div><p className="text-muted-foreground text-xs">{t('due')}</p><p className="font-medium text-orange-600">₹{Number(m.due_amount || 0).toLocaleString()}</p></div>
-                      </div>
+            <div className="space-y-2 pb-3">
+              {myYearMaintenance.map((m: any) => {
+                const StatusIcon = statusIcon[m.status] || Clock;
+                return (
+                  <div key={m.id} className="rounded-lg border border-border bg-muted/40 p-2.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold">{m.month} {m.year}</span>
+                      <Badge variant={statusBadge[m.status] || 'outline'} className="gap-1 h-5 text-[10px]">
+                        <StatusIcon className="h-3 w-3" />{t(m.status)}
+                      </Badge>
                     </div>
-                  );
-                })}
-              </div>
-            </>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <Chip label={t('total_maintenance')} value={`₹${Number(m.total_maintenance || 0).toLocaleString()}`} />
+                      <Chip label={t('paid')} value={`₹${Number(m.amount || 0).toLocaleString()}`} />
+                      <Chip label={t('due')} value={`₹${Number(m.due_amount || 0).toLocaleString()}`} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
-        </Card>
+        </SectionCard>
       </div>
     );
   }
 
-  // Admin dashboard
+  // -------- Admin view --------
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('dashboard')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t('financial_overview')}</p>
-        </div>
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2026">2026</SelectItem>
-            <SelectItem value="2025">2025</SelectItem>
-          </SelectContent>
-        </Select>
+    <div className="space-y-3">
+      <PageHeader
+        icon={LayoutDashboard}
+        title={t('dashboard')}
+        subtitle={t('financial_overview')}
+        action={yearSelector}
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <MetricTile label={t('total_residents')} value={String(residents.length)} subtitle={`${residents.filter((r: any) => r.is_active).length} ${t('active').toLowerCase()}`} icon={Users} tone="primary" onClick={() => navigate('/residents')} />
+        <MetricTile label={t('total_collected')} value={`₹${totalCollected.toLocaleString('en-IN')}`} subtitle={`${paidCount} ${t('payments_received')}`} icon={TrendingUp} tone="success" onClick={() => navigate('/maintenance?filter=paid')} />
+        <MetricTile label={t('total_expenses')} value={`₹${totalExpensesAmt.toLocaleString('en-IN')}`} icon={TrendingDown} tone="destructive" onClick={() => navigate('/expenses')} />
+        <MetricTile label={t('pending_dues')} value={`₹${totalDue.toLocaleString('en-IN')}`} subtitle={`${overdueCount} ${t('residents_pending')}`} icon={AlertTriangle} tone="warning" onClick={() => navigate('/maintenance?filter=pending')} />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <button type="button" onClick={() => navigate('/residents')} className="text-left transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
-          <StatCard title={t('total_residents')} value={String(residents.length)} subtitle={`${residents.filter((r: any) => r.is_active).length} ${t('active').toLowerCase()}`} icon={Users} variant="primary" />
-        </button>
-        <button type="button" onClick={() => navigate('/maintenance?filter=paid')} className="text-left transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
-          <StatCard title={t('total_collected')} value={`₹${totalCollected.toLocaleString('en-IN')}`} subtitle={`${paidCount} ${t('payments_received')}`} icon={TrendingUp} variant="success" />
-        </button>
-        <button type="button" onClick={() => navigate('/expenses')} className="text-left transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
-          <StatCard title={t('total_expenses')} value={`₹${totalExpensesAmt.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
-        </button>
-        <button type="button" onClick={() => navigate('/maintenance?filter=pending')} className="text-left transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary rounded-xl">
-          <StatCard title={t('pending_dues')} value={`₹${totalDue.toLocaleString('en-IN')}`} subtitle={`${overdueCount} ${t('residents_pending')}`} icon={AlertTriangle} variant="warning" />
-        </button>
-      </div>
-
-      <Card className="p-5">
-        <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-6 w-6 text-success" />
-          <div>
-            <p className="text-sm text-muted-foreground">{t('net_balance')} ({selectedYear})</p>
-            <p className="text-2xl font-bold font-display text-foreground">₹{(totalCollected - totalExpensesAmt).toLocaleString('en-IN')}</p>
+      <SectionCard>
+        <div className="flex items-center justify-between py-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 rounded-lg bg-success/15 text-success border border-success/30 flex items-center justify-center shrink-0">
+              <IndianRupee className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none">{t('net_balance')} • {selectedYear}</p>
+              <p className="text-lg font-bold font-display leading-tight mt-0.5">₹{(totalCollected - totalExpensesAmt).toLocaleString('en-IN')}</p>
+            </div>
           </div>
         </div>
-      </Card>
+      </SectionCard>
 
       <NotificationStatsCard />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-5">
-          <h3 className="text-lg font-semibold font-display mb-4">{t('monthly_income_vs_expenses')}</h3>
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(40, 20%, 88%)" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`} />
-              <Bar dataKey="income" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} name={t('income')} />
-              <Bar dataKey="expense" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} name={t('expense')} />
+      <SectionCard>
+        <SectionHeader icon={BarChart3} title={t('monthly_income_vs_expenses')} />
+        <div className="pb-3">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={monthlyData} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <Bar dataKey="income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} name={t('income')} />
+              <Bar dataKey="expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} name={t('expense')} />
             </BarChart>
           </ResponsiveContainer>
-        </Card>
+        </div>
+      </SectionCard>
 
-        <Card className="p-5">
-          <h3 className="text-lg font-semibold font-display mb-4">{t('expenses_by_category')}</h3>
+      <SectionCard>
+        <SectionHeader icon={PieIcon} title={t('expenses_by_category')} />
+        <div className="pb-3">
           {expenseByCategory.length > 0 ? (
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={expenseByCategory} cx="50%" cy="45%" outerRadius={90} dataKey="value" label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                <Pie data={expenseByCategory} cx="50%" cy="45%" outerRadius={80} dataKey="value" label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} style={{ fontSize: 11 }}>
                   {expenseByCategory.map((_: any, i: number) => (<Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />))}
                 </Pie>
-                <Legend />
-                <Tooltip formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Tooltip formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`} contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-muted-foreground text-center py-20">{t('no_expenses_yet')}</p>
+            <p className="text-muted-foreground text-center text-xs py-12">{t('no_expenses_yet')}</p>
           )}
-        </Card>
-      </div>
+        </div>
+      </SectionCard>
     </div>
   );
 };
