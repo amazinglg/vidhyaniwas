@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Bell, CheckCheck, Trash2, MessageSquareWarning, MessageSquarePlus, UserPlus, Wallet, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,13 +8,13 @@ import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
 
-const typeStyles: Record<string, string> = {
-  complaint_status: 'bg-success/15 text-success-foreground border-success/30',
-  complaint_new: 'bg-warning/15 text-warning-foreground border-warning/30',
-  signup_pending: 'bg-info/15 text-info-foreground border-info/30',
-  maintenance_new: 'bg-primary/15 text-primary-foreground border-primary/30',
-  notice_new: 'bg-accent/30 text-accent-foreground border-accent/40',
-  general: 'bg-muted text-muted-foreground border-border',
+const typeMeta: Record<string, { icon: any; cls: string }> = {
+  complaint_status:  { icon: MessageSquareWarning, cls: 'bg-success/15 text-success border-success/30' },
+  complaint_new:     { icon: MessageSquarePlus,    cls: 'bg-warning/15 text-warning-foreground border-warning/40' },
+  signup_pending:    { icon: UserPlus,             cls: 'bg-info/15 text-info-foreground border-info/40' },
+  maintenance_new:   { icon: Wallet,               cls: 'bg-primary/15 text-primary border-primary/30' },
+  notice_new:        { icon: Megaphone,            cls: 'bg-accent/40 text-accent-foreground border-accent/50' },
+  general:           { icon: Bell,                 cls: 'bg-muted text-muted-foreground border-border' },
 };
 
 const NotificationBell = () => {
