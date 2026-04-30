@@ -22,6 +22,7 @@ import DeletedHistory from "@/pages/DeletedHistory";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
 import { Building2 } from "lucide-react";
+import SwNavigationBridge from "@/components/SwNavigationBridge";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +110,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <SwNavigationBridge />
             <Routes>
               <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
               <Route path="/*" element={
