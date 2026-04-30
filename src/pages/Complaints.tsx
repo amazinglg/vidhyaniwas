@@ -23,6 +23,7 @@ import { ComplaintAttachmentsView } from '@/components/ComplaintAttachmentsView'
 const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
   in_progress: 'gradient-warm text-primary-foreground',
+  pending_user_reply: 'bg-info text-info-foreground',
   resolved: 'bg-success text-success-foreground',
   withdrawn: 'bg-muted text-muted-foreground',
 };
@@ -86,6 +87,7 @@ const Complaints = () => {
       const labels: Record<string, { emoji: string; verb: string }> = {
         open: { emoji: '🔄', verb: 'reopened' },
         in_progress: { emoji: '🔧', verb: 'is in progress' },
+        pending_user_reply: { emoji: '⏳', verb: 'awaiting your reply' },
         resolved: { emoji: '✅', verb: 'resolved' },
         withdrawn: { emoji: '🚫', verb: 'withdrawn' },
       };
@@ -234,6 +236,7 @@ const Complaints = () => {
                   <SelectContent>
                     <SelectItem value="open">{t('open')}</SelectItem>
                     <SelectItem value="in_progress">{t('in_progress')}</SelectItem>
+                    <SelectItem value="pending_user_reply">{t('pending_user_reply')}</SelectItem>
                     <SelectItem value="resolved">{t('resolved')}</SelectItem>
                   </SelectContent>
                 </Select>
@@ -288,6 +291,7 @@ const Complaints = () => {
                         <SelectContent>
                           <SelectItem value="open">{t('open')}</SelectItem>
                           <SelectItem value="in_progress">{t('in_progress')}</SelectItem>
+                          <SelectItem value="pending_user_reply">{t('pending_user_reply')}</SelectItem>
                           <SelectItem value="resolved">{t('resolved')}</SelectItem>
                         </SelectContent>
                       </Select>

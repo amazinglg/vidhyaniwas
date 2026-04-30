@@ -19,6 +19,7 @@ import { triggerPush } from '@/lib/triggerPush';
 const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
   in_progress: 'gradient-warm text-primary-foreground',
+  pending_user_reply: 'bg-info text-info-foreground',
   resolved: 'bg-success text-success-foreground',
   withdrawn: 'bg-muted text-muted-foreground',
 };
