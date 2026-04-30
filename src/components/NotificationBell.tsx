@@ -64,7 +64,11 @@ const NotificationBell = () => {
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {items.map(n => (
+              {items.map(n => {
+                const meta = typeMeta[n.type] || typeMeta.general;
+                const Icon = meta.icon;
+                const cleanTitle = n.title.replace(/^[^\p{L}\p{N}]+\s*/u, '');
+                return (
                 <li
                   key={n.id}
                   className={`group relative flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/60 ${!n.is_read ? 'bg-primary/5' : ''}`}
@@ -73,12 +77,12 @@ const NotificationBell = () => {
                   {!n.is_read && (
                     <span className="absolute left-1.5 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-primary" />
                   )}
-                  <div className={`shrink-0 mt-0.5 h-8 w-8 rounded-lg border flex items-center justify-center text-xs font-bold ${typeStyles[n.type] || typeStyles.general}`}>
-                    {n.title.match(/\p{Emoji}/u)?.[0] || '•'}
+                  <div className={`shrink-0 mt-0.5 h-8 w-8 rounded-lg border flex items-center justify-center ${meta.cls}`}>
+                    <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold leading-tight truncate">
-                      {n.title.replace(/^\p{Emoji}\s*/u, '')}
+                      {cleanTitle || n.title}
                     </p>
                     {n.body && <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>}
                     <p className="text-[10px] text-muted-foreground mt-1">
