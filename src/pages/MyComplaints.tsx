@@ -149,7 +149,7 @@ const MyComplaints = () => {
               )}
               <div className="flex items-center justify-between mt-2">
                 <p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
-                {(c.status === 'open' || c.status === 'in_progress') && (
+                {(c.status === 'open' || c.status === 'in_progress' || c.status === 'pending_user_reply') && (
                   <Button variant="outline" size="sm" onClick={() => handleWithdraw(c.id)} className="text-destructive border-destructive/30">
                     <XCircle className="h-3 w-3 mr-1" />{t('withdraw')}
                   </Button>
