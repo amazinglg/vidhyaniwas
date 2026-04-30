@@ -195,8 +195,8 @@ const Complaints = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {['open', 'in_progress', 'resolved'].map(status => {
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {['open', 'in_progress', 'pending_user_reply', 'resolved'].map(status => {
           const count = complaints.filter((c: any) => c.status === status).length;
           return (
             <Card key={status} className="p-3 md:p-4 text-center">
