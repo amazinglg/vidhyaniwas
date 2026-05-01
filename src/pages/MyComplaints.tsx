@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { ComplaintImageUploader } from '@/components/ComplaintImageUploader';
 import { ComplaintAttachmentsView } from '@/components/ComplaintAttachmentsView';
 import { triggerPush } from '@/lib/triggerPush';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
@@ -91,15 +92,15 @@ const MyComplaints = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">{t('my_complaints')}</h1>
-          <p className="text-muted-foreground mt-1">{t('track_complaints')}</p>
-        </div>
+    <div className="space-y-4 md:space-y-6 max-w-3xl mx-auto">
+      <PageHeader
+        icon={MessageSquareWarning}
+        title={t('my_complaints')}
+        subtitle={t('track_complaints')}
+        action={
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gradient-warm text-primary-foreground shadow-lg"><Plus className="h-4 w-4 mr-2" /> {t('new_complaint')}</Button>
+            <Button size="sm" className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">{t('new_complaint')}</span></Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle className="font-display">{t('submit_complaint')}</DialogTitle></DialogHeader>
@@ -115,14 +116,15 @@ const MyComplaints = () => {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+        }
+      />
 
       {isLoading ? (
         <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
       ) : complaints.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">{t('no_complaints_submitted')}</Card>
+        <SectionCard className="p-8 text-center text-muted-foreground">{t('no_complaints_submitted')}</SectionCard>
       ) : complaints.map((c: any) => (
-        <Card key={c.id} className="p-5 hover:shadow-md transition-shadow">
+        <SectionCard key={c.id} className="py-3 hover:shadow-md transition-shadow">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10">
               <MessageSquareWarning className="h-5 w-5 text-destructive" />
@@ -157,7 +159,7 @@ const MyComplaints = () => {
               </div>
             </div>
           </div>
-        </Card>
+        </SectionCard>
       ))}
     </div>
   );
