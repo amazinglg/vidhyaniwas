@@ -19,6 +19,7 @@ import ResidentDetailModal from '@/components/ResidentDetailModal';
 import TenantModal from '@/components/TenantModal';
 import { downloadReceipt } from '@/utils/generateReceipt';
 import BulkUpdateAmountDialog from '@/components/BulkUpdateAmountDialog';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 const Residents = () => {
   const { data: allResidents = [], isLoading } = useAllResidents();
@@ -240,12 +241,11 @@ const Residents = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('residents')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{owners.length} {t('total_residents_count')}</p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader
+        icon={UsersIcon}
+        title={t('residents')}
+        subtitle={`${owners.length} ${t('total_residents_count')}`}
+        action={<div className="flex gap-2 flex-wrap justify-end">
           {isAdmin && (
             <>
               <Button variant="outline" size="sm" onClick={downloadCSV}>
@@ -285,10 +285,10 @@ const Residents = () => {
               </DialogContent>
             </Dialog>
           )}
-        </div>
-      </div>
+        </div>}
+      />
 
-      <Card className="p-3 md:p-4">
+      <SectionCard className="py-3 md:py-3">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -306,16 +306,16 @@ const Residents = () => {
             </SelectContent>
           </Select>
         </div>
-      </Card>
+      </SectionCard>
 
       {/* Mobile card view */}
       <div className="md:hidden space-y-3">
         {isLoading ? (
           <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
         ) : filtered.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">{t('no_residents_found')}</Card>
+          <SectionCard className="p-8 text-center text-muted-foreground">{t('no_residents_found')}</SectionCard>
         ) : filtered.map((r: any) => (
-          <Card key={r.id} className="p-4 space-y-2">
+          <SectionCard key={r.id} className="py-3 space-y-2">
             <div className="flex items-center justify-between">
               <div>
                 {canViewDetails ? (
@@ -354,12 +354,12 @@ const Residents = () => {
                 <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
               </div>
             )}
-          </Card>
+          </SectionCard>
         ))}
       </div>
 
       {/* Desktop table */}
-      <Card className="hidden md:block">
+      <SectionCard className="hidden md:block overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -445,7 +445,7 @@ const Residents = () => {
             ))}
           </TableBody>
         </Table>
-      </Card>
+      </SectionCard>
 
       <ResidentDetailModal
         resident={selectedResident}
