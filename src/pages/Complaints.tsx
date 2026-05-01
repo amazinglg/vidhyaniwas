@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ComplaintImageUploader } from '@/components/ComplaintImageUploader';
 import { ComplaintAttachmentsView } from '@/components/ComplaintAttachmentsView';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 const statusColors: Record<string, string> = {
   open: 'bg-destructive text-destructive-foreground',
@@ -87,7 +88,7 @@ const Complaints = () => {
       const labels: Record<string, string> = {
         open: 'reopened',
         in_progress: 'is in progress',
-        pending_user_reply: 'awaiting your reply',
+        pending_user_reply: 'awaiting resident reply',
         resolved: 'resolved',
         withdrawn: 'withdrawn',
       };
