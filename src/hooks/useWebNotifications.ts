@@ -75,6 +75,7 @@ export const useWebNotifications = () => {
     if (!session || !user?.id || hasRequested.current) return;
     hasRequested.current = true;
     const timer = setTimeout(async () => {
+      if (!('Notification' in window)) return;
       const preference = getStoredPushPreference(user.id);
       if (Notification.permission === 'granted' && preference !== 'disabled') {
         void subscribeToWebPush(user.id);
@@ -134,7 +135,7 @@ export const useWebNotifications = () => {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'maintenance_collections' }, (payload) => {
           const m = payload.new as { resident_id: string; month: string; year: number; total_maintenance: number };
           if (myResidentId && m.resident_id === myResidentId) {
-            notify('💰 Maintenance entry added', `${m.month} ${m.year} • ₹${m.total_maintenance}`);
+            notify('Maintenance entry added', `${m.month} ${m.year} • ₹${m.total_maintenance}`);
           }
         })
         // 3. New pending signup — notify admins
