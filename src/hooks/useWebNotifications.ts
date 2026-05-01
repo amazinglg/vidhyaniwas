@@ -81,10 +81,6 @@ export const useWebNotifications = () => {
         void subscribeToWebPush(user.id);
         return;
       }
-      if (preference === 'enabled' && Notification.permission === 'default') {
-        const result = await requestNotificationPermission();
-        if (result === 'granted') void subscribeToWebPush(user.id);
-      }
     }, 2000);
     return () => clearTimeout(timer);
   }, [session, user?.id]);
