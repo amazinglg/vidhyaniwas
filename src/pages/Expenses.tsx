@@ -3,7 +3,6 @@ import { Plus, Search, Filter, Receipt, TrendingDown, Calendar, Edit2, Trash2, E
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -18,6 +17,7 @@ import { toast } from 'sonner';
 import StatCard from '@/components/dashboard/StatCard';
 import AuditHistoryDialog from '@/components/AuditHistoryDialog';
 import type { Database } from '@/integrations/supabase/types';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 type ExpenseCategory = Database['public']['Enums']['expense_category'];
 
@@ -120,12 +120,11 @@ const Expenses = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('expenses')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t('track_expenses')}</p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader
+        icon={Receipt}
+        title={t('expenses')}
+        subtitle={t('track_expenses')}
+        action={<div className="flex gap-2">
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={downloadCSV}>
               <Download className="h-4 w-4 mr-1" /> CSV
@@ -164,8 +163,8 @@ const Expenses = () => {
               </DialogContent>
             </Dialog>
           )}
-        </div>
-      </div>
+        </div>}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
         <StatCard title={t('total_expenses')} value={`₹${totalExpenses.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
@@ -173,7 +172,7 @@ const Expenses = () => {
         <StatCard title={t('total_entries')} value={String(filtered.length)} icon={Receipt} variant="default" />
       </div>
 
-      <Card className="p-3 md:p-4">
+      <SectionCard className="py-3 md:py-3">
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -187,16 +186,16 @@ const Expenses = () => {
             </SelectContent>
           </Select>
         </div>
-      </Card>
+      </SectionCard>
 
       {/* Mobile card view */}
       <div className="md:hidden space-y-3">
         {isLoading ? (
           <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
         ) : filtered.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">{t('no_expenses_found')}</Card>
+          <SectionCard className="p-8 text-center text-muted-foreground">{t('no_expenses_found')}</SectionCard>
         ) : filtered.map((e: any) => (
-          <Card key={e.id} className="p-4 space-y-2">
+          <SectionCard key={e.id} className="py-3 space-y-2">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-sm">{e.description}</p>
@@ -222,12 +221,12 @@ const Expenses = () => {
                 <Button variant="ghost" size="sm" onClick={() => handleDelete(e.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
               </div>
             )}
-          </Card>
+          </SectionCard>
         ))}
       </div>
 
       {/* Desktop table view */}
-      <Card className="hidden md:block">
+      <SectionCard className="hidden md:block overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -269,7 +268,7 @@ const Expenses = () => {
             ))}
           </TableBody>
         </Table>
-      </Card>
+      </SectionCard>
       <AuditHistoryDialog
         open={!!historyRecordId}
         onClose={() => setHistoryRecordId(null)}

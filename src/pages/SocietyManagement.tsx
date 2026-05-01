@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 const SocietyManagement = () => {
   const { isAdmin } = useAuth();
@@ -83,28 +83,27 @@ const SocietyManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">{t('society_management')}</h1>
-          <p className="text-muted-foreground mt-1">{t('society_mgmt_desc')}</p>
-        </div>
-        {isAdmin && (
-          <Button onClick={openAdd} className="gradient-warm text-primary-foreground">
+    <div className="space-y-4 md:space-y-6">
+      <PageHeader
+        icon={Users}
+        title={t('society_management')}
+        subtitle={t('society_mgmt_desc')}
+        action={isAdmin && (
+          <Button size="sm" onClick={openAdd} className="gradient-warm text-primary-foreground">
             <Plus className="h-4 w-4 mr-2" />{t('add')}
           </Button>
         )}
-      </div>
+      />
 
       {members.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">
+        <SectionCard className="p-8 text-center text-muted-foreground">
           <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
           <p>{t('no_mgmt_members')}</p>
-        </Card>
+        </SectionCard>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {members.map((m) => (
-            <Card key={m.id} className="p-5 hover:shadow-md transition-shadow">
+            <SectionCard key={m.id} className="py-4 hover:shadow-md transition-shadow">
               <div className="flex flex-col items-center text-center gap-3">
                 <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-primary/10 overflow-hidden">
                   {m.photo_url ? (
@@ -129,7 +128,7 @@ const SocietyManagement = () => {
                   </div>
                 )}
               </div>
-            </Card>
+            </SectionCard>
           ))}
         </div>
       )}

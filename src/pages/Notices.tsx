@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Plus, Megaphone, Trash2, Bell, Pencil, FileText, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -17,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useUnreadNotices } from '@/hooks/useUnreadNotices';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 const priorityStyles: Record<string, string> = {
   low: 'bg-muted text-muted-foreground',
@@ -180,16 +180,15 @@ const Notices = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground truncate">{t('notices')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm truncate">{t('stay_updated')}</p>
-        </div>
-        {isAdmin && (
+    <div className="space-y-4 md:space-y-6 max-w-3xl mx-auto">
+      <PageHeader
+        icon={Megaphone}
+        title={t('notices')}
+        subtitle={t('stay_updated')}
+        action={isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button onClick={openNew} size="sm" className="gradient-warm text-primary-foreground shadow-lg shrink-0 h-9 px-2 sm:px-3">
+              <Button onClick={openNew} size="sm" className="gradient-warm text-primary-foreground shrink-0 h-9 px-2 sm:px-3">
                 <Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">{t('new_notice')}</span>
               </Button>
             </DialogTrigger>
@@ -302,15 +301,15 @@ const Notices = () => {
             </DialogContent>
           </Dialog>
         )}
-      </div>
+      />
 
       <div className="grid gap-4">
         {isLoading ? (
           <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
         ) : notices.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">{t('no_notices')}</Card>
+          <SectionCard className="p-8 text-center text-muted-foreground">{t('no_notices')}</SectionCard>
         ) : notices.map((n: any) => (
-          <Card key={n.id} className={`p-5 hover:shadow-md transition-all animate-fade-in border-l-4 ${n.is_draft ? 'border-l-muted-foreground opacity-80' : 'border-l-primary'}`}>
+          <SectionCard key={n.id} className={`py-3 hover:shadow-md transition-all animate-fade-in border-l-4 ${n.is_draft ? 'border-l-muted-foreground opacity-80' : 'border-l-primary'}`}>
             <div className="flex items-start gap-3">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow ${n.is_draft ? 'bg-muted' : 'gradient-warm'}`}>
                 {n.is_draft
@@ -344,7 +343,7 @@ const Notices = () => {
                 </div>
               </div>
             </div>
-          </Card>
+          </SectionCard>
         ))}
       </div>
     </div>

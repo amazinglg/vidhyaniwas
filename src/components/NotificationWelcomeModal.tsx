@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { requestNotificationPermission } from '@/hooks/useWebNotifications';
-import { subscribeToWebPush } from '@/lib/webPush';
+import { getStoredPushPreference, subscribeToWebPush } from '@/lib/webPush';
 import { toast } from 'sonner';
 
 const SHOWN_KEY = 'notif_welcome_modal_shown_v1';
@@ -21,6 +21,7 @@ const NotificationWelcomeModal = () => {
 
   useEffect(() => {
     if (!session || !user) return;
+    if (getStoredPushPreference(user.id)) return;
     if (!('Notification' in window)) return;
     if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
     const shownFor = localStorage.getItem(SHOWN_KEY);

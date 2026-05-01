@@ -163,7 +163,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'review_complaints': { en: 'Review, comment and resolve resident complaints', hi: 'निवासियों की शिकायतों की समीक्षा करें, टिप्पणी करें और समाधान करें' },
   'open': { en: 'Open', hi: 'खुला' },
   'in_progress': { en: 'In Progress', hi: 'प्रगति में' },
-  'pending_user_reply': { en: 'Pending User Reply', hi: 'उपयोगकर्ता उत्तर की प्रतीक्षा में' },
+  'pending_user_reply': { en: 'Pending Resident Reply', hi: 'निवासी के उत्तर की प्रतीक्षा में' },
   'resolved': { en: 'Resolved', hi: 'समाधान हो गया' },
   'closed': { en: 'Closed', hi: 'बंद' },
   'respond_complaint': { en: 'Respond to Complaint', hi: 'शिकायत का उत्तर दें' },

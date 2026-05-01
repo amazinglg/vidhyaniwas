@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -304,11 +304,8 @@ const SocietySettings = () => {
   }, [residents, users, roles, search, roleFilter]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold font-display text-foreground">{t('settings')}</h1>
-        <p className="text-muted-foreground mt-1">{t('master_admin_controls')}</p>
-      </div>
+    <div className="space-y-4 md:space-y-6">
+      <PageHeader icon={Building2} title={t('settings')} subtitle={t('master_admin_controls')} />
 
       <Tabs defaultValue="society" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -318,7 +315,7 @@ const SocietySettings = () => {
         </TabsList>
 
         <TabsContent value="society" className="mt-6">
-          <Card className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+          <SectionCard className="py-4 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
             <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
               <div className="flex items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-xl gradient-warm shadow-lg">
@@ -357,11 +354,11 @@ const SocietySettings = () => {
                 <div className="p-3 rounded-lg bg-card border"><span className="text-muted-foreground">{t('master_admin')}:</span> <span className="font-medium">{societyForm.adminName}</span></div>
               </div>
             )}
-          </Card>
+          </SectionCard>
 
           {isMasterAdmin && (
             <>
-              <Card className="p-6 mt-6 border-destructive/30 bg-destructive/5">
+              <SectionCard className="py-4 mt-6 border-destructive/30 bg-destructive/5">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
@@ -389,12 +386,12 @@ const SocietySettings = () => {
                     <Rocket className="h-4 w-4 mr-2" /> Release Updates
                   </Button>
                 </div>
-              </Card>
+              </SectionCard>
 
-              <Card className="p-6 mt-6 border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/10">
+              <SectionCard className="py-4 mt-6 border-warning/30 bg-warning/10">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-warning/15 text-warning-foreground">
                       <History className="h-6 w-6" />
                     </div>
                     <div>
@@ -408,7 +405,7 @@ const SocietySettings = () => {
                     <Link to="/deleted-history"><History className="h-4 w-4 mr-2" /> Open Deleted History</Link>
                   </Button>
                 </div>
-              </Card>
+              </SectionCard>
             </>
           )}
         </TabsContent>
@@ -432,7 +429,7 @@ const SocietySettings = () => {
             </Button>
           </div>
 
-          <Card className="overflow-x-auto">
+          <SectionCard className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -513,7 +510,7 @@ const SocietySettings = () => {
                 )}
               </TableBody>
             </Table>
-          </Card>
+          </SectionCard>
         </TabsContent>
 
         {/* HELPERS TAB */}
@@ -522,7 +519,7 @@ const SocietySettings = () => {
             <p className="text-sm text-muted-foreground">Helpers are not residents. They don't have login or maintenance dues.</p>
             <Button onClick={openAddHelper} className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 mr-2" />Add Helper</Button>
           </div>
-          <Card className="overflow-x-auto">
+          <SectionCard className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -552,7 +549,7 @@ const SocietySettings = () => {
                 ))}
               </TableBody>
             </Table>
-          </Card>
+          </SectionCard>
         </TabsContent>
       </Tabs>
 

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { subscribeToWebPush } from '@/lib/webPush';
+import { getStoredPushPreference, subscribeToWebPush } from '@/lib/webPush';
 
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) return 'denied';
@@ -72,12 +72,14 @@ export const useWebNotifications = () => {
   const hasRequested = useRef(false);
 
   useEffect(() => {
-    if (!session || hasRequested.current) return;
+    if (!session || !user?.id || hasRequested.current) return;
     hasRequested.current = true;
     const timer = setTimeout(async () => {
-      const result = await requestNotificationPermission();
-      if (result === 'granted' && user?.id) {
+      if (!('Notification' in window)) return;
+      const preference = getStoredPushPreference(user.id);
+      if (Notification.permission === 'granted' && preference !== 'disabled') {
         void subscribeToWebPush(user.id);
+        return;
       }
     }, 2000);
     return () => clearTimeout(timer);
@@ -112,6 +114,7 @@ export const useWebNotifications = () => {
       const statusLabel: Record<string, string> = {
         open: 'reopened',
         in_progress: 'marked in progress',
+        pending_user_reply: 'pending resident reply',
         resolved: 'resolved',
         withdrawn: 'withdrawn',
       };
@@ -122,20 +125,20 @@ export const useWebNotifications = () => {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notices' }, (payload) => {
           const n = payload.new as { title: string; content: string; created_by: string | null };
           if (n.created_by === user.id) return;
-          notify(`📢 ${n.title}`, n.content?.substring(0, 150) || 'A new notice has been published.');
+          notify(`Notice: ${n.title}`, n.content?.substring(0, 150) || 'A new notice has been published.');
         })
         // 2. New maintenance entry — notify the resident it belongs to
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'maintenance_collections' }, (payload) => {
           const m = payload.new as { resident_id: string; month: string; year: number; total_maintenance: number };
           if (myResidentId && m.resident_id === myResidentId) {
-            notify('💰 Maintenance entry added', `${m.month} ${m.year} • ₹${m.total_maintenance}`);
+            notify('Maintenance entry added', `${m.month} ${m.year} • ₹${m.total_maintenance}`);
           }
         })
         // 3. New pending signup — notify admins
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload) => {
           const p = payload.new as { is_approved: boolean; full_name: string; mobile: string };
           if (isAdminUser && !p.is_approved) {
-            notify('👤 New signup pending', `${p.full_name || p.mobile} is awaiting approval.`);
+            notify('New signup pending', `${p.full_name || p.mobile} is awaiting approval.`);
           }
         })
         // 4. New complaint — notify admins AND supervisors
@@ -143,7 +146,7 @@ export const useWebNotifications = () => {
           const c = payload.new as { title: string; created_by: string | null };
           if (c.created_by === user.id) return;
           if (isAdminUser || isSupervisorUser) {
-            notify('📝 New complaint raised', c.title);
+            notify('New complaint raised', c.title);
           }
         })
         // 5. Any complaint status change — notify the resident who raised it
@@ -152,8 +155,7 @@ export const useWebNotifications = () => {
           const after = payload.new as { status: string; resident_id: string; title: string };
           if (before.status !== after.status && myResidentId === after.resident_id) {
             const label = statusLabel[after.status] || `set to ${after.status}`;
-            const emoji = after.status === 'resolved' ? '✅' : '🔄';
-            notify(`${emoji} Complaint ${label}`, after.title);
+            notify(`Complaint ${label}`, after.title);
           }
         })
         .subscribe();

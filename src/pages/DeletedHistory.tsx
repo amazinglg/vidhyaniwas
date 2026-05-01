@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +8,7 @@ import { Trash2, RotateCcw, AlertTriangle, IndianRupee, Receipt } from 'lucide-r
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 const DeletedHistory = () => {
   const { t } = useLanguage();
@@ -103,11 +103,8 @@ const DeletedHistory = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('deleted_history')}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t('deleted_history_desc')}</p>
-      </div>
+    <div className="space-y-4 md:space-y-6">
+      <PageHeader icon={Trash2} title={t('deleted_history')} subtitle={t('deleted_history_desc')} />
 
       <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs">
         <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
@@ -138,7 +135,7 @@ const DeletedHistory = () => {
               </div>
             )}
 
-            <Card className="overflow-x-auto">
+            <SectionCard className="overflow-x-auto">
               {loading ? (
                 <div className="p-8 text-center text-muted-foreground">{t('loading')}</div>
               ) : filtered.length === 0 ? (
@@ -185,7 +182,7 @@ const DeletedHistory = () => {
                   </TableBody>
                 </Table>
               )}
-            </Card>
+            </SectionCard>
           </TabsContent>
         ))}
       </Tabs>
