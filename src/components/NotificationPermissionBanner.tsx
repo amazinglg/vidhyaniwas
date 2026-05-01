@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestNotificationPermission } from '@/hooks/useWebNotifications';
-import { subscribeToWebPush } from '@/lib/webPush';
+import { getStoredPushPreference, subscribeToWebPush } from '@/lib/webPush';
 import { useAuth } from '@/contexts/AuthContext';
 
 const DISMISSED_KEY = 'notification_prompt_dismissed';
@@ -12,6 +12,7 @@ const NotificationPermissionBanner = () => {
   const { user } = useAuth();
 
   useEffect(() => {
+    if (!user?.id || getStoredPushPreference(user.id)) return;
     if (!('Notification' in window)) return;
     if (Notification.permission === 'granted') return;
     if (Notification.permission === 'denied') return;
@@ -19,7 +20,7 @@ const NotificationPermissionBanner = () => {
     if (dismissed) return;
     const t = setTimeout(() => setVisible(true), 1500);
     return () => clearTimeout(t);
-  }, []);
+  }, [user?.id]);
 
   const handleEnable = async () => {
     const result = await requestNotificationPermission();
