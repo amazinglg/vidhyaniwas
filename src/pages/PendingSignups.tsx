@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 const PendingSignups = () => {
   const { t } = useLanguage();
@@ -81,11 +81,8 @@ const PendingSignups = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold font-display text-foreground">{t('pending_signups')}</h1>
-        <p className="text-muted-foreground mt-1">{t('review_pending_signups')}</p>
-      </div>
+    <div className="space-y-4 md:space-y-6">
+      <PageHeader icon={Clock} title={t('pending_signups')} subtitle={t('review_pending_signups')} />
 
       <Tabs defaultValue="pending">
         <TabsList>
@@ -98,7 +95,7 @@ const PendingSignups = () => {
         </TabsList>
 
         <TabsContent value="pending">
-          <Card className="overflow-x-auto">
+          <SectionCard className="overflow-x-auto">
             {loading ? (
               <div className="p-8 text-center text-muted-foreground">{t('loading')}</div>
             ) : pendingSignups.length === 0 ? (
@@ -139,11 +136,11 @@ const PendingSignups = () => {
                 </TableBody>
               </Table>
             )}
-          </Card>
+          </SectionCard>
         </TabsContent>
 
         <TabsContent value="history">
-          <Card className="overflow-x-auto">
+          <SectionCard className="overflow-x-auto">
             {approvedHistory.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">{t('no_records_found')}</div>
             ) : (
@@ -168,7 +165,7 @@ const PendingSignups = () => {
                 </TableBody>
               </Table>
             )}
-          </Card>
+          </SectionCard>
         </TabsContent>
       </Tabs>
     </div>
