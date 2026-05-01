@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { requestNotificationPermission } from '@/hooks/useWebNotifications';
-import { subscribeToWebPush } from '@/lib/webPush';
+import { rememberPushPreference, subscribeToWebPush } from '@/lib/webPush';
 import { toast } from 'sonner';
 
 type Status = 'unsupported' | 'denied' | 'default' | 'granted-not-subscribed' | 'subscribed' | 'loading';
@@ -89,6 +89,7 @@ const NotificationSettingsCard = () => {
           .eq('endpoint', sub.endpoint);
         await sub.unsubscribe();
       }
+      rememberPushPreference(user.id, false);
       toast.success('Notifications disabled on this device');
       await refresh();
     } catch (e: any) {
