@@ -5,6 +5,8 @@ const PRESERVE_LOCAL_STORAGE_KEYS = [
   'app-last-applied-release',
   'pwa-last-seen-sw-etag',
   'lang',
+  'push-notification-preference-v1',
+  'notif_welcome_modal_shown_v1',
 ];
 
 export const hardRefreshApp = async (): Promise<void> => {
