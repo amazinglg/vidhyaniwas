@@ -158,15 +158,14 @@ const Complaints = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('manage_complaints')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t('review_complaints')}</p>
-        </div>
-        {canManage && (
+      <PageHeader
+        icon={MessageSquareWarning}
+        title={t('manage_complaints')}
+        subtitle={t('review_complaints')}
+        action={canManage && (
           <Dialog open={raiseDialogOpen} onOpenChange={setRaiseDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gradient-warm text-primary-foreground shadow-lg" size="sm"><Plus className="h-4 w-4 mr-2" /> {t('raise_complaint')}</Button>
+              <Button className="gradient-warm text-primary-foreground" size="sm"><Plus className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">{t('raise_complaint')}</span></Button>
             </DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-display">{t('raise_complaint')}</DialogTitle></DialogHeader>
@@ -194,14 +193,14 @@ const Complaints = () => {
             </DialogContent>
           </Dialog>
         )}
-      </div>
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {['open', 'in_progress', 'pending_user_reply', 'resolved'].map(status => {
           const count = complaints.filter((c: any) => c.status === status).length;
           return (
-            <Card key={status} className="p-3 md:p-4 text-center">
-              <p className="text-xl md:text-2xl font-bold font-display">{count}</p>
+            <Card key={status} className="rounded-lg p-3 text-center border-border bg-card/95">
+              <p className="text-xl font-bold font-display">{count}</p>
               <p className="text-xs md:text-sm text-muted-foreground capitalize">{t(status)}</p>
             </Card>
           );
@@ -256,7 +255,7 @@ const Complaints = () => {
       </div>
 
       {/* Desktop table */}
-      <Card className="hidden md:block">
+        <SectionCard className="hidden md:block overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -311,7 +310,7 @@ const Complaints = () => {
             ))}
           </TableBody>
         </Table>
-      </Card>
+        </SectionCard>
 
       {/* Status change comment required dialog */}
       <Dialog open={!!pendingStatus} onOpenChange={() => setPendingStatus(null)}>
