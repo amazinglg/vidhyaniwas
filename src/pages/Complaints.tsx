@@ -212,9 +212,9 @@ const Complaints = () => {
         {isLoading ? (
           <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
         ) : complaints.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">{t('no_complaints')}</Card>
+          <SectionCard className="p-8 text-center text-muted-foreground">{t('no_complaints')}</SectionCard>
         ) : complaints.map((c: any) => (
-          <Card key={c.id} className="p-4 space-y-2">
+          <SectionCard key={c.id} className="py-3 space-y-2">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-sm">{c.title}</p>
@@ -250,7 +250,7 @@ const Complaints = () => {
                 )}
               </div>
             )}
-          </Card>
+          </SectionCard>
         ))}
       </div>
 
