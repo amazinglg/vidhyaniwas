@@ -430,7 +430,7 @@ const SocietySettings = () => {
             </Button>
           </div>
 
-          <Card className="overflow-x-auto">
+          <SectionCard className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -511,7 +511,7 @@ const SocietySettings = () => {
                 )}
               </TableBody>
             </Table>
-          </Card>
+          </SectionCard>
         </TabsContent>
 
         {/* HELPERS TAB */}
@@ -520,7 +520,7 @@ const SocietySettings = () => {
             <p className="text-sm text-muted-foreground">Helpers are not residents. They don't have login or maintenance dues.</p>
             <Button onClick={openAddHelper} className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 mr-2" />Add Helper</Button>
           </div>
-          <Card className="overflow-x-auto">
+          <SectionCard className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -550,7 +550,7 @@ const SocietySettings = () => {
                 ))}
               </TableBody>
             </Table>
-          </Card>
+          </SectionCard>
         </TabsContent>
       </Tabs>
 
