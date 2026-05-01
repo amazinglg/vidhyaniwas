@@ -1,6 +1,26 @@
 // Web Push subscription helper — runs only in the browser PWA, not on native Capacitor.
 import { supabase } from '@/integrations/supabase/client';
 
+export const PUSH_PREFERENCE_KEY = 'push-notification-preference-v1';
+
+export const getStoredPushPreference = (userId?: string | null): 'enabled' | 'disabled' | null => {
+  if (!userId) return null;
+  try {
+    const raw = localStorage.getItem(PUSH_PREFERENCE_KEY);
+    if (raw === `${userId}:enabled`) return 'enabled';
+    if (raw === `${userId}:disabled`) return 'disabled';
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+export const rememberPushPreference = (userId: string, enabled: boolean) => {
+  try {
+    localStorage.setItem(PUSH_PREFERENCE_KEY, `${userId}:${enabled ? 'enabled' : 'disabled'}`);
+  } catch {}
+};
+
 // VAPID PUBLIC KEY (safe to expose; matches the private key stored as a server secret)
 const VAPID_PUBLIC_KEY =
   'BBKPCtgnQ521h8tWeyMSYmfC4tOUNyCdNu4Kw47_xsj_eEMJaG_Fu8W9ihKVoG4fSVrwEPPvdS6ZNIrHdgaON2s';
@@ -62,6 +82,7 @@ export async function subscribeToWebPush(userId: string): Promise<boolean> {
       console.warn('[push] failed to save subscription:', error.message);
       return false;
     }
+    rememberPushPreference(userId, true);
     return true;
   } catch (e) {
     console.warn('[push] subscription failed:', e);
