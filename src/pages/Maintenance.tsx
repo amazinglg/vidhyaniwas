@@ -25,6 +25,7 @@ import { findExistingMainEntryForFY, MAX_DUE_PER_FY } from '@/utils/maintenanceF
 import { downloadReceipt } from '@/utils/generateReceipt';
 import { triggerPush } from '@/lib/triggerPush';
 import { Textarea } from '@/components/ui/textarea';
+import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = { paid: 'default', partial: 'secondary', pending: 'outline', overdue: 'destructive' };
 
@@ -334,12 +335,11 @@ const Maintenance = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold font-display text-foreground">{t('maintenance_fund')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t('track_maintenance')}</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
+      <PageHeader
+        icon={IndianRupee}
+        title={t('maintenance_fund')}
+        subtitle={t('track_maintenance')}
+        action={<div className="flex gap-2 flex-wrap justify-end">
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={downloadCSV}>
               <Download className="h-4 w-4 mr-1" /> CSV
@@ -417,8 +417,8 @@ const Maintenance = () => {
               </Dialog>
             </>
           )}
-        </div>
-      </div>
+        </div>}
+      />
 
       {/* Due Payment Dialog */}
       <Dialog open={duePaymentDialog} onOpenChange={setDuePaymentDialog}>
@@ -472,7 +472,7 @@ const Maintenance = () => {
         <StatCard title={t('overdue')} value={String(filtered.filter((c: any) => getEffectiveStatus(c) === 'overdue' || c.status === 'pending').length)} icon={Clock} variant="destructive" />
       </div>
 
-      <Card className="p-3 md:p-4">
+      <SectionCard className="py-3 md:py-3">
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -498,18 +498,18 @@ const Maintenance = () => {
             </Select>
           </div>
         </div>
-      </Card>
+      </SectionCard>
 
       {/* Mobile card view */}
       <div className="md:hidden space-y-3">
         {isLoading ? (
           <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
         ) : filtered.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">{t('no_records_found')}</Card>
+          <SectionCard className="p-8 text-center text-muted-foreground">{t('no_records_found')}</SectionCard>
         ) : filtered.map((c: any) => {
           const effectiveStatus = getEffectiveStatus(c);
           return (
-            <Card key={c.id} className="p-4 space-y-2">
+            <SectionCard key={c.id} className="py-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-sm">{(c.residents as any)?.name}</p>
@@ -562,13 +562,13 @@ const Maintenance = () => {
                   <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                 </div>
               )}
-            </Card>
+            </SectionCard>
           );
         })}
       </div>
 
       {/* Desktop table view */}
-      <Card className="hidden md:block">
+      <SectionCard className="hidden md:block overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -636,7 +636,7 @@ const Maintenance = () => {
             })}
           </TableBody>
         </Table>
-      </Card>
+      </SectionCard>
       <AuditHistoryDialog
         open={!!historyRecordId}
         onClose={() => setHistoryRecordId(null)}
