@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Bell, BellOff, CheckCircle2, AlertCircle, Download, RefreshCw, Smartphone, HelpCircle, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { requestNotificationPermission } from '@/hooks/useWebNotifications';
-import { subscribeToWebPush } from '@/lib/webPush';
+import { rememberPushPreference, subscribeToWebPush } from '@/lib/webPush';
 import { toast } from 'sonner';
 import { hardRefreshApp } from '@/utils/hardRefresh';
 import IosInstallGuideDialog from '@/components/IosInstallGuideDialog';
@@ -64,6 +64,7 @@ const AppSettingsCard = ({ canInstall, installing, isIOS, standalone, onInstall,
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) { await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+      rememberPushPreference(userId, false);
       toast.success('Notifications disabled');
       await refresh();
     } finally { setWorking(false); }
