@@ -166,7 +166,7 @@ const Expenses = () => {
         </div>}
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         <StatCard title={t('total_expenses')} value={`₹${totalExpenses.toLocaleString('en-IN')}`} icon={TrendingDown} variant="destructive" />
         <StatCard title={t('this_month')} value={`₹${filtered.filter((e: any) => e.date?.startsWith(new Date().toISOString().slice(0, 7))).reduce((s: number, e: any) => s + Number(e.amount), 0).toLocaleString('en-IN')}`} icon={Calendar} variant="primary" />
         <StatCard title={t('total_entries')} value={String(filtered.length)} icon={Receipt} variant="default" />
