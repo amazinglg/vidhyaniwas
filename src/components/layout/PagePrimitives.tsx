@@ -17,17 +17,17 @@ export const PageHeader = ({
   subtitle?: string;
   action?: ReactNode;
 }) => (
-  <div className="flex items-center justify-between gap-3 px-1 pt-1 pb-3">
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-1 pt-1 pb-3">
     <div className="flex items-center gap-2.5 min-w-0">
       <div className="h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
         <Icon className="h-4.5 w-4.5" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <h1 className="text-lg md:text-xl font-bold font-display leading-tight truncate">{title}</h1>
         {subtitle && <p className="text-[11px] text-muted-foreground truncate">{subtitle}</p>}
       </div>
     </div>
-    {action && <div className="shrink-0">{action}</div>}
+    {action && <div className="shrink-0 w-full sm:w-auto">{action}</div>}
   </div>
 );
 
