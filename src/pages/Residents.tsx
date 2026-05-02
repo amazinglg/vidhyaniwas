@@ -244,20 +244,20 @@ const Residents = () => {
         icon={UsersIcon}
         title={t('residents')}
         subtitle={`${owners.length} ${t('total_residents_count')}`}
-        action={<div className="flex gap-2 flex-wrap justify-end">
+        action={<div className="flex gap-1.5 flex-nowrap items-center justify-start sm:justify-end w-full overflow-x-auto">
           {isAdmin && (
             <>
-              <Button variant="outline" size="sm" onClick={downloadCSV}>
-                <Download className="h-4 w-4 mr-1" /> CSV
+              <Button variant="outline" size="sm" onClick={downloadCSV} className="h-8 px-2.5 text-xs shrink-0">
+                <Download className="h-3.5 w-3.5 mr-1" /> CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setBulkAmountOpen(true)}>
-                <Layers className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Bulk Amount</span><span className="sm:hidden">Bulk ₹</span>
+              <Button variant="outline" size="sm" onClick={() => setBulkAmountOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
+                <Layers className="h-3.5 w-3.5 mr-1" /> Bulk ₹
               </Button>
             </>
           )}
           {!readOnly && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild><Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-2" /> {t('add_resident')}</Button></DialogTrigger>
+              <DialogTrigger asChild><Button onClick={openAdd} size="sm" className="h-8 px-2.5 text-xs shrink-0"><Plus className="h-3.5 w-3.5 mr-1" /> {t('add_resident')}</Button></DialogTrigger>
               <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit_resident') : t('add_resident')}</DialogTitle></DialogHeader>
                 <div className="grid gap-4 py-4">
