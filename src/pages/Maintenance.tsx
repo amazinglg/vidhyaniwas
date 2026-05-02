@@ -338,31 +338,31 @@ const Maintenance = () => {
         icon={IndianRupee}
         title={t('maintenance_fund')}
         subtitle={t('track_maintenance')}
-        action={<div className="flex gap-2 flex-wrap justify-end">
+        action={<div className="flex gap-1.5 flex-nowrap items-center justify-start sm:justify-end w-full overflow-x-auto">
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={downloadCSV}>
-              <Download className="h-4 w-4 mr-1" /> CSV
+            <Button variant="outline" size="sm" onClick={downloadCSV} className="h-8 px-2.5 text-xs shrink-0">
+              <Download className="h-3.5 w-3.5 mr-1" /> CSV
             </Button>
           )}
           {!readOnly && (
             <>
               {isMasterAdmin && (
-                <Button variant="outline" size="sm" onClick={() => { setDefaultAmount(String(storedDefault)); setDefaultAmountDialog(true); }}>
-                  <Settings2 className="h-4 w-4 mr-1" /> {t('amount')}
+                <Button variant="outline" size="sm" onClick={() => { setDefaultAmount(String(storedDefault)); setDefaultAmountDialog(true); }} className="h-8 px-2.5 text-xs shrink-0">
+                  <Settings2 className="h-3.5 w-3.5 mr-1" /> {t('amount')}
                 </Button>
               )}
               {canBulk && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
-                    <Layers className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Bulk Entry</span><span className="sm:hidden">Bulk</span>
+                  <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
+                    <Layers className="h-3.5 w-3.5 mr-1" /> Bulk
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setBulkDeleteOpen(true)} className="text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Bulk Delete</span><span className="sm:hidden">Del</span>
+                  <Button variant="outline" size="sm" onClick={() => setBulkDeleteOpen(true)} className="h-8 px-2.5 text-xs shrink-0 text-destructive hover:text-destructive">
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Del
                   </Button>
                 </>
               )}
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild><Button onClick={openAdd} size="sm"><Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">{t('record_payment')}</span><span className="sm:hidden">{t('add')}</span></Button></DialogTrigger>
+                <DialogTrigger asChild><Button onClick={openAdd} size="sm" className="h-8 px-2.5 text-xs shrink-0"><Plus className="h-3.5 w-3.5 mr-1" /> {t('add')}</Button></DialogTrigger>
                 <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                   <DialogHeader><DialogTitle className="font-display">{editingId ? t('edit') + ' ' + t('record_payment') : t('record_payment')}</DialogTitle></DialogHeader>
                   <div className="grid gap-4 py-4">
