@@ -10,10 +10,10 @@ interface StatCardProps {
 }
 
 const variantStyles = {
-  primary: 'bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20',
-  success: 'bg-gradient-to-br from-success/10 to-success/5 border-success/20',
-  destructive: 'bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/20',
-  warning: 'bg-gradient-to-br from-warning/10 to-warning/5 border-warning/20',
+  primary: 'bg-card border-border',
+  success: 'bg-card border-border',
+  destructive: 'bg-card border-border',
+  warning: 'bg-card border-border',
   default: 'bg-card border-border',
 };
 
