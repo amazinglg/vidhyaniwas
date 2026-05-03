@@ -19,11 +19,20 @@ export const useRolePermissions = () => {
   });
 
   const can = (page: PageKey) => {
-    if (isMasterAdmin) return true; // master always has all access
+    if (isMasterAdmin) return true;
     if (!userRole) return false;
     const row = perms.find((p: any) => p.role === userRole && p.page_key === page);
-    return row ? !!row.allowed : false;
+    if (!row) return false;
+    // Backward-compat: if can_read missing, fall back to allowed
+    return row.can_read !== undefined ? !!row.can_read : !!row.allowed;
   };
 
-  return { can, perms };
+  const canWrite = (page: PageKey) => {
+    if (isMasterAdmin) return true;
+    if (!userRole) return false;
+    const row = perms.find((p: any) => p.role === userRole && p.page_key === page);
+    return row ? !!row.can_write : false;
+  };
+
+  return { can, canWrite, perms };
 };
