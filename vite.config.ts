@@ -60,4 +60,21 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("react-dom") || id.match(/[\\/]react[\\/]/) || id.includes("react/jsx") || id.includes("scheduler")) return "react-vendor";
+          if (id.includes("@radix-ui") || id.includes("cmdk") || id.includes("vaul") || id.includes("sonner") || id.includes("lucide-react")) return "ui-vendor";
+          if (id.includes("recharts") || id.includes("d3-")) return "charts-vendor";
+          if (id.includes("@supabase") || id.includes("@tanstack")) return "data-vendor";
+          if (id.includes("jspdf") || id.includes("html2canvas") || id.includes("dompurify")) return "pdf-vendor";
+          if (id.includes("date-fns") || id.includes("react-day-picker")) return "date-vendor";
+          if (id.includes("react-hook-form") || id.includes("@hookform") || id.includes("zod")) return "form-vendor";
+        },
+      },
+    },
+  },
 }));
