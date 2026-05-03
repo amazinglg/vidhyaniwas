@@ -813,6 +813,8 @@ export type Database = {
       role_page_permissions: {
         Row: {
           allowed: boolean
+          can_read: boolean
+          can_write: boolean
           id: string
           page_key: string
           role: Database["public"]["Enums"]["app_role"]
@@ -821,6 +823,8 @@ export type Database = {
         }
         Insert: {
           allowed?: boolean
+          can_read?: boolean
+          can_write?: boolean
           id?: string
           page_key: string
           role: Database["public"]["Enums"]["app_role"]
@@ -829,6 +833,8 @@ export type Database = {
         }
         Update: {
           allowed?: boolean
+          can_read?: boolean
+          can_write?: boolean
           id?: string
           page_key?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -973,6 +979,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_custom_role: { Args: { _role_name: string }; Returns: undefined }
       check_duplicate_resident: {
         Args: { _mobile: string }
         Returns: {
@@ -992,6 +999,10 @@ export type Database = {
         }[]
       }
       get_email_by_mobile: { Args: { _mobile: string }; Returns: string }
+      has_page_permission: {
+        Args: { _action: string; _page: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
