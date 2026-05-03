@@ -622,6 +622,8 @@ export type Database = {
       }
       polls: {
         Row: {
+          audience_type: string
+          audience_user_ids: string[]
           created_at: string
           created_by: string | null
           description: string | null
@@ -629,10 +631,14 @@ export type Database = {
           id: string
           is_active: boolean
           options: Json
+          outcome_released: boolean
+          outcome_released_at: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          audience_type?: string
+          audience_user_ids?: string[]
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -640,10 +646,14 @@ export type Database = {
           id?: string
           is_active?: boolean
           options?: Json
+          outcome_released?: boolean
+          outcome_released_at?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          audience_type?: string
+          audience_user_ids?: string[]
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -651,6 +661,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           options?: Json
+          outcome_released?: boolean
+          outcome_released_at?: string | null
           title?: string
           updated_at?: string
         }
