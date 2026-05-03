@@ -35,6 +35,7 @@ const Residents = () => {
 
   const [selectedResident, setSelectedResident] = useState<any>(null);
   const [tenantResident, setTenantResident] = useState<any>(null);
+  const [moveOutResident, setMoveOutResident] = useState<any>(null);
   const [maintAmountDialog, setMaintAmountDialog] = useState<{ open: boolean; resident: any | null; value: string }>({ open: false, resident: null, value: '' });
   const canViewDetails = isAdmin || isCoordinator;
   const [bulkAmountOpen, setBulkAmountOpen] = useState(false);
@@ -351,6 +352,7 @@ const Residents = () => {
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={() => openEdit(r)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                {isAdmin && <Button variant="ghost" size="sm" title="Move out" onClick={() => setMoveOutResident(r)}><LogOut className="h-3.5 w-3.5 text-warning" /></Button>}
                 <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
               </div>
             )}
