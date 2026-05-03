@@ -21,7 +21,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import AuditHistoryDialog from '@/components/AuditHistoryDialog';
 import MaintenanceConflictDialog, { ConflictReason } from '@/components/MaintenanceConflictDialog';
 import { findExistingMainEntryForFY, MAX_DUE_PER_FY } from '@/utils/maintenanceFY';
-import { downloadReceipt } from '@/utils/generateReceipt';
+import { downloadReceipt } from '@/utils/lazyReceipt';
 import { triggerPush } from '@/lib/triggerPush';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
