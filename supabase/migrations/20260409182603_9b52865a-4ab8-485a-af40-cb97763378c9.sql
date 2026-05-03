@@ -4,7 +4,7 @@ CREATE TABLE public.maintenance_receipts (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   maintenance_collection_id uuid NOT NULL REFERENCES public.maintenance_collections(id) ON DELETE CASCADE,
   resident_id uuid NOT NULL REFERENCES public.residents(id) ON DELETE CASCADE,
-  society_name text NOT NULL DEFAULT 'Vidhya Niwas Society',
+  society_name text NOT NULL DEFAULT 'Shri Vidhya Niwas Society',
   receipt_date date NOT NULL DEFAULT CURRENT_DATE,
   total_maintenance numeric NOT NULL DEFAULT 0,
   amount_paid numeric NOT NULL DEFAULT 0,
