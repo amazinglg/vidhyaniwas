@@ -34,7 +34,7 @@ const MoveOutDialog = ({ resident, open, onOpenChange, onDone }: Props) => {
   }, [open, resident]);
 
   const confirm = async () => {
-    if (outstanding > 0 && !confirm(`Outstanding dues of ₹${outstanding}. Continue anyway?`)) return;
+    if (outstanding > 0 && !window.confirm(`Outstanding dues of ₹${outstanding}. Continue anyway?`)) return;
     setLoading(true);
     try {
       // Delete vehicles

@@ -72,8 +72,11 @@ const Polls = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader icon={Vote} title="Polls & Voting" subtitle="Society polls and decisions">
-        {isAdmin && (
+      <PageHeader
+        icon={Vote}
+        title="Polls & Voting"
+        subtitle="Society polls and decisions"
+        action={isAdmin ? (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 mr-1" />New Poll</Button>
@@ -99,8 +102,8 @@ const Polls = () => {
               </div>
             </DialogContent>
           </Dialog>
-        )}
-      </PageHeader>
+        ) : undefined}
+      />
 
       {polls.length === 0 && (
         <SectionCard><p className="text-center text-muted-foreground py-8">No polls yet.</p></SectionCard>
