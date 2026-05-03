@@ -17,7 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ResidentDetailModal from '@/components/ResidentDetailModal';
 import TenantModal from '@/components/TenantModal';
-import { downloadReceipt } from '@/utils/lazyReceipt';
+import { downloadReceipt } from '@/utils/generateReceipt';
 import BulkUpdateAmountDialog from '@/components/BulkUpdateAmountDialog';
 import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
 
