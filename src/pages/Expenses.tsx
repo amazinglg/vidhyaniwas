@@ -35,6 +35,7 @@ const Expenses = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ category: 'maintenance' as ExpenseCategory, description: '', amount: '', date: new Date().toISOString().split('T')[0], approved_by_name: '', notes: '' });
@@ -57,8 +58,15 @@ const Expenses = () => {
   const filtered = useMemo(() => expenses.filter((e: any) => {
     const matchSearch = e.description.toLowerCase().includes(search.toLowerCase());
     const matchCat = filterCategory === 'all' || e.category === filterCategory;
-    return matchSearch && matchCat;
-  }), [expenses, search, filterCategory]);
+    const matchMonth = filterMonth === 'all' || (e.date && e.date.slice(0, 7) === filterMonth);
+    return matchSearch && matchCat && matchMonth;
+  }), [expenses, search, filterCategory, filterMonth]);
+
+  const monthOptions = useMemo(() => {
+    const set = new Set<string>();
+    expenses.forEach((e: any) => { if (e.date) set.add(e.date.slice(0, 7)); });
+    return Array.from(set).sort().reverse();
+  }, [expenses]);
 
   const totalExpenses = filtered.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
 
@@ -183,6 +191,17 @@ const Expenses = () => {
             <SelectContent>
               <SelectItem value="all">{t('all_categories')}</SelectItem>
               {Object.entries(CATEGORY_KEYS).map(([k, tKey]) => <SelectItem key={k} value={k}>{t(tKey)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterMonth} onValueChange={setFilterMonth}>
+            <SelectTrigger className="w-full sm:w-44"><Calendar className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('all_months')}</SelectItem>
+              {monthOptions.map((m) => {
+                const [y, mo] = m.split('-');
+                const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                return <SelectItem key={m} value={m}>{label}</SelectItem>;
+              })}
             </SelectContent>
           </Select>
         </div>
