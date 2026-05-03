@@ -61,6 +61,37 @@
     --gradient-cool: linear-gradient(135deg, hsl(203, 41%, 27%), hsl(192, 70%, 12%));
     --gradient-sunset: linear-gradient(135deg, hsl(184, 82%, 33%), hsl(199, 36%, 59%));
   }
+
+  .dark {
+    --background: 192 70% 6%;
+    --foreground: 190 40% 92%;
+    --card: 188 76% 9%;
+    --card-foreground: 190 40% 92%;
+    --popover: 188 76% 9%;
+    --popover-foreground: 190 40% 92%;
+    --primary: 184 82% 45%;
+    --primary-foreground: 192 70% 6%;
+    --secondary: 203 41% 22%;
+    --secondary-foreground: 190 40% 92%;
+    --muted: 188 40% 14%;
+    --muted-foreground: 199 25% 70%;
+    --accent: 199 36% 50%;
+    --accent-foreground: 190 40% 96%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 168 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 90% 56%;
+    --warning-foreground: 22 25% 12%;
+    --info: 199 36% 60%;
+    --info-foreground: 192 70% 8%;
+    --border: 188 40% 18%;
+    --input: 188 40% 18%;
+    --ring: 184 82% 45%;
+    --gradient-warm: linear-gradient(135deg, hsl(184, 82%, 40%), hsl(186, 80%, 28%));
+    --gradient-cool: linear-gradient(135deg, hsl(203, 41%, 22%), hsl(192, 70%, 8%));
+    --gradient-sunset: linear-gradient(135deg, hsl(184, 82%, 40%), hsl(199, 36%, 50%));
+  }
 }
 
 @layer base {

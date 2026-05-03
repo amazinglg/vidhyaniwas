@@ -315,6 +315,30 @@ export type Database = {
         }
         Relationships: []
       }
+      login_attempts: {
+        Row: {
+          attempted_at: string
+          id: string
+          ip: string | null
+          mobile: string
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          id?: string
+          ip?: string | null
+          mobile: string
+          success?: boolean
+        }
+        Update: {
+          attempted_at?: string
+          id?: string
+          ip?: string | null
+          mobile?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       maintenance_collections: {
         Row: {
           amount: number
@@ -564,6 +588,74 @@ export type Database = {
           },
         ]
       }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_index?: number
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          options: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          options?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          options?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved_at: string | null
@@ -718,6 +810,33 @@ export type Database = {
           },
         ]
       }
+      role_page_permissions: {
+        Row: {
+          allowed: boolean
+          id: string
+          page_key: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed?: boolean
+          id?: string
+          page_key: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed?: boolean
+          id?: string
+          page_key?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       society_info: {
         Row: {
           admin_name: string
@@ -863,6 +982,7 @@ export type Database = {
           exists_in_residents: boolean
         }[]
       }
+      clear_login_attempts: { Args: { _mobile: string }; Returns: undefined }
       generate_new_fy_dues: {
         Args: { _target_year?: number }
         Returns: {
@@ -881,8 +1001,13 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_coordinator: { Args: { _user_id: string }; Returns: boolean }
+      is_mobile_locked: { Args: { _mobile: string }; Returns: boolean }
       is_supervisor: { Args: { _user_id: string }; Returns: boolean }
       purge_old_deleted_records: { Args: never; Returns: undefined }
+      record_login_attempt: {
+        Args: { _mobile: string; _success: boolean }
+        Returns: undefined
+      }
       restore_deleted_record: { Args: { _id: string }; Returns: undefined }
       signup_lookup_owner: {
         Args: { _owner_mobile: string }

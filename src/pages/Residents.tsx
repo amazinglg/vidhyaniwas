@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown, IndianRupee, Pencil, Layers } from 'lucide-react';
+import { Plus, Search, Phone, Home, Edit2, Trash2, Users as UsersIcon, Download, FileDown, IndianRupee, Pencil, Layers, LogOut } from 'lucide-react';
+import MoveOutDialog from '@/components/MoveOutDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,7 @@ const Residents = () => {
 
   const [selectedResident, setSelectedResident] = useState<any>(null);
   const [tenantResident, setTenantResident] = useState<any>(null);
+  const [moveOutResident, setMoveOutResident] = useState<any>(null);
   const [maintAmountDialog, setMaintAmountDialog] = useState<{ open: boolean; resident: any | null; value: string }>({ open: false, resident: null, value: '' });
   const canViewDetails = isAdmin || isCoordinator;
   const [bulkAmountOpen, setBulkAmountOpen] = useState(false);
@@ -350,6 +352,7 @@ const Residents = () => {
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={() => openEdit(r)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                {isAdmin && <Button variant="ghost" size="sm" title="Move out" onClick={() => setMoveOutResident(r)}><LogOut className="h-3.5 w-3.5 text-warning" /></Button>}
                 <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
               </div>
             )}
@@ -437,6 +440,7 @@ const Residents = () => {
                       </Tooltip>
                     )}
                     <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Edit2 className="h-4 w-4" /></Button>
+                    {isAdmin && <Button variant="ghost" size="icon" title="Move out" onClick={() => setMoveOutResident(r)}><LogOut className="h-4 w-4 text-warning" /></Button>}
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </TableCell>
                 )}
@@ -462,6 +466,12 @@ const Residents = () => {
         owner={tenantResident}
         open={!!tenantResident}
         onClose={() => setTenantResident(null)}
+      />
+
+      <MoveOutDialog
+        resident={moveOutResident}
+        open={!!moveOutResident}
+        onOpenChange={(o) => !o && setMoveOutResident(null)}
       />
 
       <Dialog open={maintAmountDialog.open} onOpenChange={(o) => !o && setMaintAmountDialog({ open: false, resident: null, value: '' })}>
