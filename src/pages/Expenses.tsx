@@ -58,8 +58,15 @@ const Expenses = () => {
   const filtered = useMemo(() => expenses.filter((e: any) => {
     const matchSearch = e.description.toLowerCase().includes(search.toLowerCase());
     const matchCat = filterCategory === 'all' || e.category === filterCategory;
-    return matchSearch && matchCat;
-  }), [expenses, search, filterCategory]);
+    const matchMonth = filterMonth === 'all' || (e.date && e.date.slice(0, 7) === filterMonth);
+    return matchSearch && matchCat && matchMonth;
+  }), [expenses, search, filterCategory, filterMonth]);
+
+  const monthOptions = useMemo(() => {
+    const set = new Set<string>();
+    expenses.forEach((e: any) => { if (e.date) set.add(e.date.slice(0, 7)); });
+    return Array.from(set).sort().reverse();
+  }, [expenses]);
 
   const totalExpenses = filtered.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
 
