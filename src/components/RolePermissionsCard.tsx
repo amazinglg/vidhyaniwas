@@ -23,8 +23,9 @@ const RolePermissionsCard = () => {
   };
   useEffect(() => { load(); }, []);
 
-  // Discover roles from existing rows + defaults
-  const allRoles = Array.from(new Set([...DEFAULT_ROLES, ...perms.map((p: any) => p.role)]));
+  // Discover roles from existing rows + defaults — exclude master_admin (always full access)
+  const allRoles = Array.from(new Set([...DEFAULT_ROLES, ...perms.map((p: any) => p.role)]))
+    .filter((r) => r !== 'master_admin');
 
   const getRow = (role: string, page: string) =>
     perms.find((p: any) => p.role === role && p.page_key === page);
