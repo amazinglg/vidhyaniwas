@@ -1,7 +1,8 @@
-import { LogOut, KeyRound, Languages, UserCircle, Download, Menu, HelpCircle } from 'lucide-react';
+import { LogOut, KeyRound, Languages, UserCircle, Download, Menu, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
