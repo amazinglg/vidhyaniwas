@@ -1,28 +1,35 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { Suspense, lazy } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import AppLayout from "@/components/layout/AppLayout";
-import Dashboard from "@/pages/Dashboard";
-import Residents from "@/pages/Residents";
-import Maintenance from "@/pages/Maintenance";
-import Expenses from "@/pages/Expenses";
-import Notices from "@/pages/Notices";
-import Complaints from "@/pages/Complaints";
-import SocietySettings from "@/pages/SocietySettings";
-import MyProfile from "@/pages/MyProfile";
-import MyComplaints from "@/pages/MyComplaints";
-import ChangePassword from "@/pages/ChangePassword";
-import PendingSignups from "@/pages/PendingSignups";
-import SocietyManagement from "@/pages/SocietyManagement";
-import DeletedHistory from "@/pages/DeletedHistory";
 import Auth from "@/pages/Auth";
+import MyProfile from "@/pages/MyProfile";
 import NotFound from "./pages/NotFound";
 import { Building2 } from "lucide-react";
 import SwNavigationBridge from "@/components/SwNavigationBridge";
+import PageSkeleton from "@/components/PageSkeleton";
+
+// Code-split heavy routes
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Residents = lazy(() => import("@/pages/Residents"));
+const Maintenance = lazy(() => import("@/pages/Maintenance"));
+const Expenses = lazy(() => import("@/pages/Expenses"));
+const Notices = lazy(() => import("@/pages/Notices"));
+const Complaints = lazy(() => import("@/pages/Complaints"));
+const SocietySettings = lazy(() => import("@/pages/SocietySettings"));
+const MyComplaints = lazy(() => import("@/pages/MyComplaints"));
+const ChangePassword = lazy(() => import("@/pages/ChangePassword"));
+const PendingSignups = lazy(() => import("@/pages/PendingSignups"));
+const SocietyManagement = lazy(() => import("@/pages/SocietyManagement"));
+const DeletedHistory = lazy(() => import("@/pages/DeletedHistory"));
+const Polls = lazy(() => import("@/pages/Polls"));
+const AuditLog = lazy(() => import("@/pages/AuditLog"));
 
 const queryClient = new QueryClient();
 
@@ -33,10 +40,6 @@ const SplashScreen = ({ message = 'Loading...' }: { message?: string }) => (
     </div>
     <h1 className="text-xl font-bold font-display">Shri Vidhya Niwas</h1>
     <p className="text-sm text-muted-foreground mt-2">{message}</p>
-    <div className="mt-4 h-1 w-32 overflow-hidden rounded-full bg-muted">
-      <div className="h-full w-1/3 gradient-warm animate-[loading_1.2s_ease-in-out_infinite]" />
-    </div>
-    <style>{`@keyframes loading{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}`}</style>
   </div>
 );
 
@@ -104,42 +107,48 @@ const DefaultRedirect = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <SwNavigationBridge />
-            <Routes>
-              <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-              <Route path="/*" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Routes>
-                      <Route path="/" element={<DefaultRedirect />} />
-                      <Route path="/residents" element={<ResidentOrAdminRoute><Residents /></ResidentOrAdminRoute>} />
-                      <Route path="/maintenance" element={<ResidentOrAdminRoute><Maintenance /></ResidentOrAdminRoute>} />
-                      <Route path="/expenses" element={<ResidentOrAdminRoute><Expenses /></ResidentOrAdminRoute>} />
-                      <Route path="/notices" element={<ResidentOrAdminRoute><Notices /></ResidentOrAdminRoute>} />
-                      <Route path="/complaints" element={<AdminOrSupervisorRoute><Complaints /></AdminOrSupervisorRoute>} />
-                      <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
-                      <Route path="/deleted-history" element={<MasterAdminRoute><DeletedHistory /></MasterAdminRoute>} />
-                      <Route path="/my-profile" element={<MyProfile />} />
-                      <Route path="/my-complaints" element={<MyComplaints />} />
-                      <Route path="/change-password" element={<ChangePassword />} />
-                      <Route path="/pending-signups" element={<AdminRoute><PendingSignups /></AdminRoute>} />
-                      <Route path="/society-management" element={<ResidentOrAdminRoute><SocietyManagement /></ResidentOrAdminRoute>} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <SwNavigationBridge />
+              <Routes>
+                <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+                <Route path="/*" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Suspense fallback={<PageSkeleton />}>
+                        <Routes>
+                          <Route path="/" element={<DefaultRedirect />} />
+                          <Route path="/residents" element={<ResidentOrAdminRoute><Residents /></ResidentOrAdminRoute>} />
+                          <Route path="/maintenance" element={<ResidentOrAdminRoute><Maintenance /></ResidentOrAdminRoute>} />
+                          <Route path="/expenses" element={<ResidentOrAdminRoute><Expenses /></ResidentOrAdminRoute>} />
+                          <Route path="/notices" element={<ResidentOrAdminRoute><Notices /></ResidentOrAdminRoute>} />
+                          <Route path="/complaints" element={<AdminOrSupervisorRoute><Complaints /></AdminOrSupervisorRoute>} />
+                          <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
+                          <Route path="/audit-log" element={<MasterAdminRoute><AuditLog /></MasterAdminRoute>} />
+                          <Route path="/deleted-history" element={<MasterAdminRoute><DeletedHistory /></MasterAdminRoute>} />
+                          <Route path="/my-profile" element={<MyProfile />} />
+                          <Route path="/my-complaints" element={<MyComplaints />} />
+                          <Route path="/change-password" element={<ChangePassword />} />
+                          <Route path="/pending-signups" element={<AdminRoute><PendingSignups /></AdminRoute>} />
+                          <Route path="/society-management" element={<ResidentOrAdminRoute><SocietyManagement /></ResidentOrAdminRoute>} />
+                          <Route path="/polls" element={<Polls />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </Suspense>
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+              </Routes>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
