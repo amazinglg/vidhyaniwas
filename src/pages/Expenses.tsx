@@ -193,6 +193,17 @@ const Expenses = () => {
               {Object.entries(CATEGORY_KEYS).map(([k, tKey]) => <SelectItem key={k} value={k}>{t(tKey)}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={filterMonth} onValueChange={setFilterMonth}>
+            <SelectTrigger className="w-full sm:w-44"><Calendar className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('all_months')}</SelectItem>
+              {monthOptions.map((m) => {
+                const [y, mo] = m.split('-');
+                const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                return <SelectItem key={m} value={m}>{label}</SelectItem>;
+              })}
+            </SelectContent>
+          </Select>
         </div>
       </SectionCard>
 
