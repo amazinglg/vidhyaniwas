@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
-import RolePermissionsCard from '@/components/RolePermissionsCard';
+
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -309,16 +309,11 @@ const SocietySettings = () => {
       <PageHeader icon={Building2} title={t('settings')} subtitle={t('master_admin_controls')} />
 
       <Tabs defaultValue="society" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('society_info')}</span><span className="sm:hidden">Society</span></TabsTrigger>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('manage_users')}</span><span className="sm:hidden">Users</span></TabsTrigger>
           <TabsTrigger value="helpers"><HardHat className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">Helpers</span><span className="sm:hidden">Helpers</span></TabsTrigger>
-          <TabsTrigger value="permissions"><ShieldCheck className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">Permissions</span><span className="sm:hidden">Perms</span></TabsTrigger>
         </TabsList>
-
-        <TabsContent value="permissions" className="mt-6">
-          <RolePermissionsCard />
-        </TabsContent>
 
         <TabsContent value="society" className="mt-6">
           <SectionCard className="py-4 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
