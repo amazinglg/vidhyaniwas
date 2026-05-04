@@ -16,7 +16,7 @@ interface TopBarProps {
 const TopBar = ({ onOpenSidebar }: TopBarProps) => {
   const { user, signOut } = useAuth();
   const { lang, setLang, t } = useLanguage();
-  const { theme, toggle: toggleTheme } = useTheme();
+  
   const navigate = useNavigate();
   const { canInstall, installing, isIOS, promptInstall } = useInstallPrompt();
   const [iosGuide, setIosGuide] = useState(false);
