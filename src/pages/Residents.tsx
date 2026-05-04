@@ -527,11 +527,6 @@ const Residents = () => {
                   <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
                     <Edit2 className="h-3.5 w-3.5" />
                   </Button>
-                  {isAdmin && (
-                    <Button variant="ghost" size="sm" title="Move out" onClick={() => setMoveOutResident(r)}>
-                      <LogOut className="h-3.5 w-3.5 text-warning" />
-                    </Button>
-                  )}
                   <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)}>
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
                   </Button>
