@@ -28,13 +28,16 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Account lockout check
-    const { data: locked } = await supabase.rpc('is_mobile_locked' as any, { _mobile: loginForm.mobile });
-    if (locked) {
-      toast.error('Too many failed attempts. Account is temporarily locked. Please contact a Master Admin to reset your password.');
-      setLoading(false);
-      return;
-    }
+    // Account lockout check (defensive — ignore if RPC unavailable)
+    try {
+      const { data: locked } = await supabase.rpc('is_mobile_locked' as any, { _mobile: loginForm.mobile });
+      if (locked) {
+        toast.error('Too many failed attempts. Account is temporarily locked. Please contact a Master Admin to reset your password.');
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
 
     const { data: email, error: lookupError } = await supabase.rpc('get_email_by_mobile', { _mobile: loginForm.mobile });
 
