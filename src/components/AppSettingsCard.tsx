@@ -126,6 +126,34 @@ const AppSettingsCard = ({ canInstall, installing, isIOS, standalone, onInstall,
             ) : status === 'unsupported' ? null : (
               <Button size="sm" onClick={enableNotif} disabled={working || status === 'loading'} className="h-8 text-xs gradient-warm text-primary-foreground">{working ? '…' : status === 'loading' ? 'Enable' : 'Enable'}</Button>
             )}
+
+          <Row
+            icon={KeyRound}
+            title={lang === 'hi' ? 'पासवर्ड बदलें' : 'Change Password'}
+            hint={lang === 'hi' ? 'अपना लॉगिन पासवर्ड अपडेट करें' : 'Update your login password'}
+            action={
+              <Dialog open={pwOpen} onOpenChange={setPwOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-8 text-xs">{lang === 'hi' ? 'बदलें' : 'Change'}</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader><DialogTitle>{lang === 'hi' ? 'पासवर्ड बदलें' : 'Change Password'}</DialogTitle></DialogHeader>
+                  <div className="space-y-3">
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">{lang === 'hi' ? 'नया पासवर्ड' : 'New password'}</Label>
+                      <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Min 6 characters" minLength={6} />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">{lang === 'hi' ? 'पासवर्ड दोहराएँ' : 'Confirm password'}</Label>
+                      <Input type="password" value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} placeholder="Repeat password" />
+                    </div>
+                    <Button onClick={changePassword} disabled={pwSaving} className="w-full gradient-warm text-primary-foreground">
+                      {pwSaving ? (lang === 'hi' ? 'सेव हो रहा है…' : 'Saving…') : (lang === 'hi' ? 'पासवर्ड अपडेट करें' : 'Update password')}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            }
           />
 
           {canInstall && (
