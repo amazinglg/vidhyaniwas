@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
-import RolePermissionsCard from '@/components/RolePermissionsCard';
+
 
 type AppRole = Database['public']['Enums']['app_role'];
 
