@@ -126,6 +126,7 @@ const AppSettingsCard = ({ canInstall, installing, isIOS, standalone, onInstall,
             ) : status === 'unsupported' ? null : (
               <Button size="sm" onClick={enableNotif} disabled={working || status === 'loading'} className="h-8 text-xs gradient-warm text-primary-foreground">{working ? '…' : status === 'loading' ? 'Enable' : 'Enable'}</Button>
             )}
+          />
 
           <Row
             icon={KeyRound}
