@@ -32,6 +32,21 @@ const AppSettingsCard = ({ canInstall, installing, isIOS, standalone, onInstall,
   const [status, setStatus] = useState<NotifStatus>('loading');
   const [working, setWorking] = useState(false);
   const [iosGuide, setIosGuide] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+
+  const changePassword = async () => {
+    if (pw !== pwConfirm) { toast.error('Passwords do not match'); return; }
+    if (pw.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    setPwSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setPwSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(lang === 'hi' ? 'पासवर्ड अपडेट हो गया' : 'Password updated');
+    setPw(''); setPwConfirm(''); setPwOpen(false);
+  };
 
   const refresh = async () => {
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) { setStatus('unsupported'); return; }
