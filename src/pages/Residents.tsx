@@ -56,7 +56,7 @@ const Residents = () => {
 
   const [selectedResident, setSelectedResident] = useState<any>(null);
   const [tenantResident, setTenantResident] = useState<any>(null);
-  const [moveOutResident, setMoveOutResident] = useState<any>(null);
+  
   const [maintAmountDialog, setMaintAmountDialog] = useState<{ open: boolean; resident: any | null; value: string }>({
     open: false,
     resident: null,
