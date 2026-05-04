@@ -685,12 +685,6 @@ const Residents = () => {
 
       <TenantModal owner={tenantResident} open={!!tenantResident} onClose={() => setTenantResident(null)} />
 
-      <MoveOutDialog
-        resident={moveOutResident}
-        open={!!moveOutResident}
-        onOpenChange={(o) => !o && setMoveOutResident(null)}
-      />
-
       <Dialog
         open={maintAmountDialog.open}
         onOpenChange={(o) => !o && setMaintAmountDialog({ open: false, resident: null, value: "" })}
