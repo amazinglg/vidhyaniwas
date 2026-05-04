@@ -1,4 +1,4 @@
-import { LogOut, KeyRound, Languages, UserCircle, Download, Menu } from 'lucide-react';
+import { LogOut, Languages, UserCircle, Download, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
