@@ -83,15 +83,9 @@ const TopBar = ({ onOpenSidebar }: TopBarProps) => {
             <span className="hidden sm:inline">{lang === 'en' ? 'हिंदी' : 'English'}</span>
             <span className="sm:hidden">{lang === 'en' ? 'हि' : 'EN'}</span>
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
           <NotificationBell />
           <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => navigate('/my-profile')} title={t('my_profile')}>
             <UserCircle className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="relative h-9 w-9 hidden sm:inline-flex" onClick={() => navigate('/change-password')} title={t('change_password')}>
-            <KeyRound className="h-5 w-5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleSignOut} title={t('sign_out')}>
             <LogOut className="h-5 w-5" />
