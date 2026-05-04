@@ -33,48 +33,37 @@ const AppSidebar = ({ mobileOpen, setMobileOpen }: AppSidebarProps) => {
   const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor } = useAuth();
   const { t } = useLanguage();
   const { unreadCount } = useUnreadNotices();
-  const { can } = useRolePermissions();
 
-  const allItems: { label: string; icon: any; path: string; key: PageKey }[] = [];
+  const navItems: any[] = [];
 
   if (isAdmin) {
-    allItems.push(
-      { label: t('dashboard'), icon: LayoutDashboard, path: '/', key: 'dashboard' },
-      { label: t('residents'), icon: Users, path: '/residents', key: 'residents' },
-      { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance', key: 'maintenance' },
-      { label: t('expenses'), icon: Receipt, path: '/expenses', key: 'expenses' },
-      { label: t('notices_short'), icon: Megaphone, path: '/notices', key: 'notices' },
-      { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints', key: 'complaints' },
-      { label: t('society_management'), icon: Shield, path: '/society-management', key: 'society_management' },
-      { label: 'Polls', icon: Vote, path: '/polls', key: 'polls' },
+    navItems.push(
+      { label: t('dashboard'), icon: LayoutDashboard, path: '/' },
+      { label: t('residents'), icon: Users, path: '/residents' },
+      { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
+      { label: t('expenses'), icon: Receipt, path: '/expenses' },
+      { label: t('notices_short'), icon: Megaphone, path: '/notices' },
+      { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
+      { label: t('society_management'), icon: Shield, path: '/society-management' },
     );
   } else if (isSupervisor) {
-    allItems.push(
-      { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints', key: 'complaints' },
-      { label: 'Polls', icon: Vote, path: '/polls', key: 'polls' },
-    );
-  } else if (isCoordinator) {
-    allItems.push(
-      { label: 'Polls', icon: Vote, path: '/polls', key: 'polls' },
+    navItems.push(
+      { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
     );
   } else if (isResident) {
-    allItems.push(
-      { label: t('residents'), icon: Users, path: '/residents', key: 'residents' },
-      { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance', key: 'maintenance' },
-      { label: t('expenses'), icon: Receipt, path: '/expenses', key: 'expenses' },
-      { label: t('notices_short'), icon: Megaphone, path: '/notices', key: 'notices' },
-      { label: t('society_management'), icon: Shield, path: '/society-management', key: 'society_management' },
-      { label: 'Polls', icon: Vote, path: '/polls', key: 'polls' },
+    navItems.push(
+      { label: t('residents'), icon: Users, path: '/residents' },
+      { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
+      { label: t('expenses'), icon: Receipt, path: '/expenses' },
+      { label: t('notices_short'), icon: Megaphone, path: '/notices' },
+      { label: t('society_management'), icon: Shield, path: '/society-management' },
     );
   }
-
-  const navItems: any[] = allItems.filter(item => can(item.key));
 
   if (isResident) navItems.push({ label: t('my_complaints'), icon: MessageSquareWarning, path: '/my-complaints' });
   if (isAdmin) navItems.push({ label: t('pending_signups'), icon: Clock, path: '/pending-signups' });
   if (isMasterAdmin) {
     navItems.push({ label: t('settings'), icon: Settings, path: '/settings' });
-    navItems.push({ label: 'Audit Log', icon: History, path: '/audit-log' });
     navItems.push({ label: t('deleted_history'), icon: Trash2, path: '/deleted-history' });
   }
 
