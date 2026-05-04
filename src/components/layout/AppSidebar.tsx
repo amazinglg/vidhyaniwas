@@ -17,13 +17,10 @@ import {
   Clock,
   Shield,
   Trash2,
-  Vote,
-  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useRolePermissions, type PageKey } from '@/hooks/useRolePermissions';
 
 interface AppSidebarProps {
   mobileOpen: boolean;
