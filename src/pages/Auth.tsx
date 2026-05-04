@@ -52,10 +52,10 @@ const Auth = () => {
       password: loginForm.password,
     });
     if (error) {
-      await supabase.rpc('record_login_attempt' as any, { _mobile: loginForm.mobile, _success: false });
+      try { await supabase.rpc('record_login_attempt' as any, { _mobile: loginForm.mobile, _success: false }); } catch {}
       toast.error(error.message);
     } else {
-      await supabase.rpc('record_login_attempt' as any, { _mobile: loginForm.mobile, _success: true });
+      try { await supabase.rpc('record_login_attempt' as any, { _mobile: loginForm.mobile, _success: true }); } catch {}
       const { data: session } = await supabase.auth.getSession();
       if (session?.session?.user) {
         const { data: profile } = await supabase.from('profiles').select('is_approved, is_blocked').eq('user_id', session.session.user.id).maybeSingle();
