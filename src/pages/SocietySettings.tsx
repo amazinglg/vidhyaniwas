@@ -421,8 +421,6 @@ const SocietySettings = () => {
                 </div>
               </SectionCard>
 
-              <RolePermissionsCard />
-
               <SectionCard className="py-4 mt-6 border-warning/30 bg-warning/10">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex items-start gap-4">
