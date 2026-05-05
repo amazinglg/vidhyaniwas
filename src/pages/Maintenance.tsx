@@ -113,7 +113,6 @@ const Maintenance = () => {
     amount: "",
     date: new Date().toISOString().split("T")[0],
     paymentMode: "upi",
-    receiptNo: "",
     dueDate: "",
   });
   const [defaultAmountDialog, setDefaultAmountDialog] = useState(false);
@@ -124,7 +123,6 @@ const Maintenance = () => {
     amount: "",
     date: new Date().toISOString().split("T")[0],
     paymentMode: "upi",
-    receiptNo: "",
   });
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const [conflict, setConflict] = useState<ConflictReason | null>(null);
@@ -181,8 +179,7 @@ const Maintenance = () => {
       amount: "",
       date: new Date().toISOString().split("T")[0],
       paymentMode: "upi",
-      receiptNo: "",
-      dueDate: "",
+        dueDate: "",
     });
     setDialogOpen(true);
   };
@@ -195,7 +192,6 @@ const Maintenance = () => {
       amount: String(c.amount),
       date: c.paid_date || new Date().toISOString().split("T")[0],
       paymentMode: c.payment_mode || "upi",
-      receiptNo: c.receipt_no || "",
       dueDate: c.due_date || "",
     });
     setDialogOpen(true);
@@ -207,8 +203,7 @@ const Maintenance = () => {
       amount: String(c.due_amount),
       date: new Date().toISOString().split("T")[0],
       paymentMode: "upi",
-      receiptNo: "",
-    });
+      });
     setDuePaymentDialog(true);
   };
 
@@ -263,7 +258,6 @@ const Maintenance = () => {
       year,
       status: dueAmount <= 0 ? "paid" : amt > 0 ? "partial" : "pending",
       payment_mode: form.paymentMode,
-      receipt_no: form.receiptNo || null,
       due_date: form.dueDate || null,
     };
 
@@ -350,7 +344,6 @@ const Maintenance = () => {
       year: dateObj.getFullYear(),
       status: remainingDue <= 0 ? "paid" : "partial",
       payment_mode: duePaymentForm.paymentMode,
-      receipt_no: duePaymentForm.receiptNo || null,
     });
     if (error) {
       toast.error(error.message);
@@ -460,7 +453,6 @@ const Maintenance = () => {
     const r: any = receipt || {};
     downloadReceipt({
       societyName: r.society_name || "Shri Vidhya Niwas Society",
-      receiptNo: r.receipt_no || c.receipt_no || "N/A",
       receiptDate: r.receipt_date || c.paid_date || new Date().toISOString().split("T")[0],
       residentName: r.resident_name || (c.residents as any)?.name || "",
       houseNo: r.house_no || (c.residents as any)?.house_no || "",
@@ -613,13 +605,7 @@ const Maintenance = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="grid gap-2">
-                          <Label>{t("receipt_no")}</Label>
-                          <Input
-                            value={form.receiptNo}
-                            onChange={(e) => setForm({ ...form, receiptNo: e.target.value })}
-                          />
-                        </div>
+
                       </div>
                       <Button onClick={handleSave} className="w-full mt-2">
                         {editingId ? t("update") : t("record_payment")}
@@ -687,13 +673,7 @@ const Maintenance = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label>{t("receipt_no")}</Label>
-              <Input
-                value={duePaymentForm.receiptNo}
-                onChange={(e) => setDuePaymentForm({ ...duePaymentForm, receiptNo: e.target.value })}
-              />
-            </div>
+
             <Button onClick={handleDuePayment} className="w-full gradient-warm text-primary-foreground">
               {t("pay_due")}
             </Button>

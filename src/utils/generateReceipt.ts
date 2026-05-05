@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 
 interface ReceiptData {
   societyName: string;
-  receiptNo: string;
+  receiptNo?: string;
   receiptDate: string;
   residentName: string;
   houseNo: string;
@@ -86,16 +86,14 @@ export const generateReceiptPDF = (data: ReceiptData) => {
   doc.setTextColor(220, 230, 234);
   doc.text(data.isDueClearance ? 'Due Clearance Receipt' : 'Maintenance Payment Receipt', margin + 16, 20);
 
-  // Receipt no in header (right)
-  doc.setFontSize(7);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`Receipt No.`, pageW - margin, 12, { align: 'right' });
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text(data.receiptNo || 'N/A', pageW - margin, 17, { align: 'right' });
+  // Date in header (right) — receipt number intentionally removed
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text(`Date: ${data.receiptDate}`, pageW - margin, 23, { align: 'right' });
+  doc.setTextColor(255, 255, 255);
+  doc.text('Receipt Date', pageW - margin, 13, { align: 'right' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text(data.receiptDate, pageW - margin, 19, { align: 'right' });
 
   let y = 42;
 
@@ -151,7 +149,7 @@ export const generateReceiptPDF = (data: ReceiptData) => {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('PAYMENT DETAILS', tableX, y);
-  y += 4;
+  y += 8;
 
   type Row = [string, string, ('paid' | 'due' | 'normal')?];
   const rows: Row[] = [];
