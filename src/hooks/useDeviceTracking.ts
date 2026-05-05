@@ -32,14 +32,16 @@ export const useDeviceTracking = () => {
   useEffect(() => {
     if (!user?.id) return;
     const save = async () => {
-      await supabase.from('app_user_devices' as any).upsert({
-        user_id: user.id,
-        device_key: getDeviceKey(),
-        platform: detectPlatform(),
-        display_mode: detectDisplayMode(),
-        user_agent: navigator.userAgent,
-        last_seen_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,device_key' }).catch(() => {});
+      try {
+        await supabase.from('app_user_devices' as any).upsert({
+          user_id: user.id,
+          device_key: getDeviceKey(),
+          platform: detectPlatform(),
+          display_mode: detectDisplayMode(),
+          user_agent: navigator.userAgent,
+          last_seen_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,device_key' });
+      } catch {}
     };
     void save();
     const id = window.setInterval(() => { void save(); }, 5 * 60 * 1000);
