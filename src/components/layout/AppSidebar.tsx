@@ -31,13 +31,13 @@ interface AppSidebarProps {
 const AppSidebar = ({ mobileOpen, setMobileOpen }: AppSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor } = useAuth();
+  const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor, userRole } = useAuth();
   const { t } = useLanguage();
   const { unreadCount } = useUnreadNotices();
   const { rows } = usePermissionRows();
   const canSee = (page: string) => {
     if (isMasterAdmin) return true;
-    const role = isAdmin ? (rows.find(r => ['president','vice_president','treasury_head','secretary'].includes(r.role))?.role) : isSupervisor ? 'supervisor' : isCoordinator ? 'coordinator' : 'resident';
+    const role = userRole || (isSupervisor ? 'supervisor' : isCoordinator ? 'coordinator' : 'resident');
     const row = rows.find(r => r.role === role && r.page_key === page);
     if (row) return row.can_read;
     return true;
@@ -76,7 +76,7 @@ const AppSidebar = ({ mobileOpen, setMobileOpen }: AppSidebarProps) => {
     navItems.push({ label: t('deleted_history'), icon: Trash2, path: '/deleted-history' });
   }
 
-  if (!navItems.some(item => item.path === '/my-profile')) {
+  if (!navItems.some(item => item && item.path === '/my-profile')) {
     navItems.push({ label: t('my_profile'), icon: UserCircle, path: '/my-profile' });
   }
 

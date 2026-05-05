@@ -19,10 +19,11 @@ self.addEventListener('push', (event: PushEvent) => {
   try {
     data = event.data?.json() ?? {};
   } catch {
-    data = { title: 'Vidhya Niwas', body: event.data?.text() || 'You have a new update' };
+    data = { title: 'Shri Vidhya Niwas', body: event.data?.text() || 'You have a new update' };
   }
 
-  const title = data.title || 'Vidhya Niwas';
+  const cleanTitle = String(data.title || 'Shri Vidhya Niwas').replace(/&#\d+;|[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '').trim();
+  const title = cleanTitle || 'Shri Vidhya Niwas';
   const options: NotificationOptions = {
     body: data.body || '',
     icon: data.icon || '/icons/icon-192x192.png',
