@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePermissionRows } from '@/hooks/usePageAccess';
 
 interface AppSidebarProps {
   mobileOpen: boolean;
@@ -33,30 +34,38 @@ const AppSidebar = ({ mobileOpen, setMobileOpen }: AppSidebarProps) => {
   const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor } = useAuth();
   const { t } = useLanguage();
   const { unreadCount } = useUnreadNotices();
+  const { rows } = usePermissionRows();
+  const canSee = (page: string) => {
+    if (isMasterAdmin) return true;
+    const role = isAdmin ? (rows.find(r => ['president','vice_president','treasury_head','secretary'].includes(r.role))?.role) : isSupervisor ? 'supervisor' : isCoordinator ? 'coordinator' : 'resident';
+    const row = rows.find(r => r.role === role && r.page_key === page);
+    if (row) return row.can_read;
+    return true;
+  };
 
   const navItems: any[] = [];
 
   if (isAdmin) {
     navItems.push(
-      { label: t('dashboard'), icon: LayoutDashboard, path: '/' },
-      { label: t('residents'), icon: Users, path: '/residents' },
-      { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
-      { label: t('expenses'), icon: Receipt, path: '/expenses' },
-      { label: t('notices_short'), icon: Megaphone, path: '/notices' },
-      { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
-      { label: t('society_management'), icon: Shield, path: '/society-management' },
+      canSee('dashboard') && { label: t('dashboard'), icon: LayoutDashboard, path: '/' },
+      canSee('residents') && { label: t('residents'), icon: Users, path: '/residents' },
+      canSee('maintenance') && { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
+      canSee('expenses') && { label: t('expenses'), icon: Receipt, path: '/expenses' },
+      canSee('notices') && { label: t('notices_short'), icon: Megaphone, path: '/notices' },
+      canSee('complaints') && { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
+      canSee('society_management') && { label: t('society_management'), icon: Shield, path: '/society-management' },
     );
   } else if (isSupervisor) {
     navItems.push(
-      { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
+      canSee('complaints') && { label: t('manage_complaints'), icon: MessageSquareWarning, path: '/complaints' },
     );
   } else if (isResident) {
     navItems.push(
-      { label: t('residents'), icon: Users, path: '/residents' },
-      { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
-      { label: t('expenses'), icon: Receipt, path: '/expenses' },
-      { label: t('notices_short'), icon: Megaphone, path: '/notices' },
-      { label: t('society_management'), icon: Shield, path: '/society-management' },
+      canSee('residents') && { label: t('residents'), icon: Users, path: '/residents' },
+      canSee('maintenance') && { label: t('maintenance_fund'), icon: IndianRupee, path: '/maintenance' },
+      canSee('expenses') && { label: t('expenses'), icon: Receipt, path: '/expenses' },
+      canSee('notices') && { label: t('notices_short'), icon: Megaphone, path: '/notices' },
+      canSee('society_management') && { label: t('society_management'), icon: Shield, path: '/society-management' },
     );
   }
 
@@ -91,7 +100,7 @@ const AppSidebar = ({ mobileOpen, setMobileOpen }: AppSidebarProps) => {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {navItems.filter(Boolean).map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <Link
