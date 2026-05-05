@@ -35,6 +35,39 @@ export type Database = {
         }
         Relationships: []
       }
+      app_user_devices: {
+        Row: {
+          created_at: string
+          device_key: string
+          display_mode: string
+          id: string
+          last_seen_at: string
+          platform: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_key: string
+          display_mode?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_key?: string
+          display_mode?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
