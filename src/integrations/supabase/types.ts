@@ -35,6 +35,39 @@ export type Database = {
         }
         Relationships: []
       }
+      app_user_devices: {
+        Row: {
+          created_at: string
+          device_key: string
+          display_mode: string
+          id: string
+          last_seen_at: string
+          platform: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_key: string
+          display_mode?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_key?: string
+          display_mode?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -588,86 +621,6 @@ export type Database = {
           },
         ]
       }
-      poll_votes: {
-        Row: {
-          created_at: string
-          id: string
-          option_index: number
-          poll_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          option_index: number
-          poll_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          option_index?: number
-          poll_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "poll_votes_poll_id_fkey"
-            columns: ["poll_id"]
-            isOneToOne: false
-            referencedRelation: "polls"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      polls: {
-        Row: {
-          audience_type: string
-          audience_user_ids: string[]
-          created_at: string
-          created_by: string | null
-          description: string | null
-          expires_at: string | null
-          id: string
-          is_active: boolean
-          options: Json
-          outcome_released: boolean
-          outcome_released_at: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          audience_type?: string
-          audience_user_ids?: string[]
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          options?: Json
-          outcome_released?: boolean
-          outcome_released_at?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          audience_type?: string
-          audience_user_ids?: string[]
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          options?: Json
-          outcome_released?: boolean
-          outcome_released_at?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           approved_at: string | null
@@ -1000,6 +953,10 @@ export type Database = {
           exists_in_helpers: boolean
           exists_in_residents: boolean
         }[]
+      }
+      cleanup_deleted_app_user: {
+        Args: { _target_user_id: string }
+        Returns: undefined
       }
       clear_login_attempts: { Args: { _mobile: string }; Returns: undefined }
       generate_new_fy_dues: {

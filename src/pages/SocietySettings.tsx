@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ROLE_LABELS } from '@/types/society';
-import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus, Ban, ShieldCheck, Rocket, Search, Filter, AlertTriangle, HardHat, History } from 'lucide-react';
+import { Building2, Users, KeyRound, Edit2, Trash2, Save, Plus, Ban, ShieldCheck, Rocket, Search, Filter, AlertTriangle, HardHat, History, SlidersHorizontal, Smartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
 import { PageHeader, SectionCard } from '@/components/layout/PagePrimitives';
+import RolePermissionsCard from '@/components/RolePermissionsCard';
 
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -34,6 +35,7 @@ const SocietySettings = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [helpers, setHelpers] = useState<any[]>([]);
+  const [devices, setDevices] = useState<any[]>([]);
   const [editResident, setEditResident] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: '', house_no: '', lane_no: '', mobile: '', family_members: '1' });
 
@@ -63,7 +65,7 @@ const SocietySettings = () => {
   });
   const [societyRowId, setSocietyRowId] = useState<string | null>(null);
 
-  useEffect(() => { fetchUsersAndRoles(); fetchHelpers(); fetchSocietyInfo(); }, []);
+  useEffect(() => { fetchUsersAndRoles(); fetchHelpers(); fetchSocietyInfo(); fetchDevices(); }, []);
 
   const fetchSocietyInfo = async () => {
     const { data } = await supabase.from('society_info').select('*').limit(1).maybeSingle();
@@ -94,11 +96,22 @@ const SocietySettings = () => {
     setHelpers(data || []);
   };
 
+  const fetchDevices = async () => {
+    const { data } = await supabase.from('app_user_devices' as any).select('*').order('last_seen_at', { ascending: false });
+    setDevices(data || []);
+  };
+
+  const getUserDevice = (userId?: string) => {
+    if (!userId) return null;
+    return devices.find((d: any) => d.user_id === userId);
+  };
+
   // Realtime sync for profiles + helpers
   useEffect(() => {
     const channel = supabase.channel('settings-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { fetchUsersAndRoles(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'helpers' }, () => { fetchHelpers(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_user_devices' }, () => { fetchDevices(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
@@ -153,6 +166,24 @@ const SocietySettings = () => {
     if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ['residents'] });
     toast.success(t('resident_removed'));
+  };
+
+  const handleDeleteUser = async (resident: any, matchedUser: any, currentRole: string) => {
+    if (!confirm(t('confirm_complete_user_delete'))) return;
+    if (currentRole === 'master_admin') { toast.error('Master admin cannot be deleted'); return; }
+    if (matchedUser?.user_id === user?.id) { toast.error('You cannot delete yourself'); return; }
+    if (matchedUser?.user_id) {
+      const { data, error } = await supabase.functions.invoke('delete-app-user', { body: { target_user_id: matchedUser.user_id } });
+      if (error || (data as any)?.error) { toast.error((data as any)?.error || error?.message || 'Delete failed'); return; }
+    } else {
+      const { error } = await supabase.from('residents').delete().eq('id', resident.id);
+      if (error) { toast.error(error.message); return; }
+    }
+    queryClient.invalidateQueries({ queryKey: ['residents'] });
+    queryClient.invalidateQueries({ queryKey: ['all_residents'] });
+    fetchUsersAndRoles();
+    fetchDevices();
+    toast.success(t('user_deleted_completely'));
   };
 
   // Add User: handles helpers separately + duplicate check + master override
@@ -309,10 +340,11 @@ const SocietySettings = () => {
       <PageHeader icon={Building2} title={t('settings')} subtitle={t('master_admin_controls')} />
 
       <Tabs defaultValue="society" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('society_info')}</span><span className="sm:hidden">Society</span></TabsTrigger>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('manage_users')}</span><span className="sm:hidden">Users</span></TabsTrigger>
           <TabsTrigger value="helpers"><HardHat className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">Helpers</span><span className="sm:hidden">Helpers</span></TabsTrigger>
+          <TabsTrigger value="permissions"><SlidersHorizontal className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('permissions')}</span><span className="sm:hidden">Perms</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="society" className="mt-6">
@@ -439,6 +471,7 @@ const SocietySettings = () => {
                   <TableHead>{t('mobile')}</TableHead>
                   <TableHead>{t('lane')}</TableHead>
                   <TableHead>{t('status')}</TableHead>
+                  <TableHead>{t('device')}</TableHead>
                   <TableHead>{t('role')}</TableHead>
                   <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
@@ -447,6 +480,7 @@ const SocietySettings = () => {
                 {filteredResidents.map((r: any) => {
                   const matchedUser = users.find((u: any) => u.mobile === r.mobile);
                   const currentRole = matchedUser ? getUserRole(matchedUser.user_id) : (r.pending_role || 'resident');
+                  const device = getUserDevice(matchedUser?.user_id);
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">{r.name}</TableCell>
@@ -454,6 +488,7 @@ const SocietySettings = () => {
                       <TableCell>{r.mobile}</TableCell>
                       <TableCell>{r.lane_no}</TableCell>
                       <TableCell><Badge variant={r.is_active ? 'default' : 'secondary'}>{r.is_active ? t('active') : t('inactive')}</Badge></TableCell>
+                      <TableCell>{device ? <Badge variant="outline" className="gap-1"><Smartphone className="h-3 w-3" />{device.platform} · {device.display_mode}</Badge> : <span className="text-xs text-muted-foreground">-</span>}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Select value={currentRole} onValueChange={async (v) => {
@@ -500,19 +535,21 @@ const SocietySettings = () => {
                               {matchedUser.is_blocked ? <><ShieldCheck className="h-3 w-3 mr-1" />Unblock</> : <><Ban className="h-3 w-3 mr-1" />Block</>}
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteResident(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(r, matchedUser, currentRole)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   );
                 })}
                 {filteredResidents.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No users match the filter.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No users match the filter.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
           </SectionCard>
         </TabsContent>
+
+        <TabsContent value="permissions" className="mt-6"><RolePermissionsCard /></TabsContent>
 
         {/* HELPERS TAB */}
         <TabsContent value="helpers" className="mt-6 space-y-4">

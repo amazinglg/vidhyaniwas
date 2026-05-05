@@ -364,6 +364,21 @@ const translations: Record<string, Record<Lang, string>> = {
 
   // Release updates
   'release_updates': { en: 'Release Updates', hi: 'अपडेट जारी करें' },
+  'permissions': { en: 'Permissions', hi: 'अनुमतियां' },
+  'permission_matrix': { en: 'Role Permission Matrix', hi: 'भूमिका अनुमति मैट्रिक्स' },
+  'permission_matrix_desc': { en: 'Change page view/write access instantly without code changes.', hi: 'कोड बदले बिना पेज देखने/लिखने की अनुमति तुरंत बदलें।' },
+  'master_admin_unrestricted': { en: 'Master Admin is always unrestricted', hi: 'मास्टर एडमिन हमेशा पूर्ण अधिकार वाला है' },
+  'new_role_placeholder': { en: 'new_role_name', hi: 'नई_भूमिका_नाम' },
+  'add_role': { en: 'Add Role', hi: 'भूमिका जोड़ें' },
+  'role_added': { en: 'Role added', hi: 'भूमिका जोड़ी गई' },
+  'permission_updated': { en: 'Permission updated', hi: 'अनुमति अपडेट हुई' },
+  'permission_live_note': { en: 'Changes apply immediately for users on their next navigation/refresh.', hi: 'बदलाव उपयोगकर्ताओं के अगले नेविगेशन/रिफ्रेश पर तुरंत लागू होंगे।' },
+  'view': { en: 'View', hi: 'देखें' },
+  'write': { en: 'Write', hi: 'लिखें' },
+  'device': { en: 'Device', hi: 'डिवाइस' },
+  'confirm_complete_user_delete': { en: 'Completely delete this user and linked records? This cannot be undone.', hi: 'इस उपयोगकर्ता और जुड़े रिकॉर्ड पूरी तरह हटाएं? यह वापस नहीं होगा।' },
+  'user_deleted_completely': { en: 'User completely deleted', hi: 'उपयोगकर्ता पूरी तरह हटाया गया' },
+
 
   // Complaints extra
   'photos_optional': { en: 'Photos (optional)', hi: 'फ़ोटो (वैकल्पिक)' },

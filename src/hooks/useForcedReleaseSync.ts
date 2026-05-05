@@ -43,8 +43,8 @@ const checkForNewRelease = async (isInitialLoad: boolean) => {
       localStorage.setItem(STORAGE_KEY, data.released_at);
       await hardRefreshApp();
     } else {
-      // User is mid-session (possibly with drafts) — prompt instead of force-reload
-      promptUserToRefresh(data.released_at);
+      localStorage.setItem(STORAGE_KEY, data.released_at);
+      await hardRefreshApp();
     }
   }
 };
@@ -67,8 +67,8 @@ export const useForcedReleaseSync = () => {
           if (!releasedAt) return;
           const last = localStorage.getItem(STORAGE_KEY);
           if (last !== releasedAt) {
-            // Never auto-reload mid-session — always prompt
-            promptUserToRefresh(releasedAt);
+            localStorage.setItem(STORAGE_KEY, releasedAt);
+            void hardRefreshApp();
           }
         },
       )

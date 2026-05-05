@@ -6,6 +6,7 @@ import { useForcedReleaseSync } from '@/hooks/useForcedReleaseSync';
 import NotificationWelcomeModal from '@/components/NotificationWelcomeModal';
 import InstallAppBanner from '@/components/InstallAppBanner';
 import PwaUpdatePrompt from '@/components/PwaUpdatePrompt';
+import { useDeviceTracking } from '@/hooks/useDeviceTracking';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ interface AppLayoutProps {
 const AppLayout = ({ children }: AppLayoutProps) => {
   useWebNotifications();
   useForcedReleaseSync();
+  useDeviceTracking();
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background">

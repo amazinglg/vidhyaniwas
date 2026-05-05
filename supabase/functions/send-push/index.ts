@@ -163,8 +163,6 @@ Deno.serve(async (req) => {
       url: body.url || '/',
       tag: body.tag,
     });
-    const payloadBytes = new TextEncoder().encode(payload);
-
     const appServer = await getAppServer();
 
     let sent = 0;
@@ -178,7 +176,7 @@ Deno.serve(async (req) => {
             endpoint: s.endpoint,
             keys: { p256dh: s.p256dh, auth: s.auth },
           });
-          await subscriber.pushTextMessage(payloadBytes, { ttl: 60 * 60 * 24 });
+          await subscriber.pushTextMessage(payload, { ttl: 60 * 60 * 24 });
           sent++;
         } catch (err: unknown) {
           const status =
