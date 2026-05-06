@@ -83,7 +83,7 @@ const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const AuthedRoute = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+
 
 const ResidentOrAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, isResident, loading } = useAuth();
