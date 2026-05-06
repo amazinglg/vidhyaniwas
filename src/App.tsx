@@ -83,12 +83,7 @@ const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const PagePermissionRoute = ({ page, children }: { page: PageKey; children: React.ReactNode }) => {
-  const { canRead, loading } = usePageAccess(page);
-  if (loading) return <SplashScreen />;
-  if (!canRead) return <Navigate to="/my-profile" replace />;
-  return <>{children}</>;
-};
+const AuthedRoute = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 
 const ResidentOrAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, isResident, loading } = useAuth();
