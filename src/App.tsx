@@ -22,7 +22,7 @@ import MyComplaints from "@/pages/MyComplaints";
 import PendingSignups from "@/pages/PendingSignups";
 import SocietyManagement from "@/pages/SocietyManagement";
 import DeletedHistory from "@/pages/DeletedHistory";
-import { usePageAccess, type PageKey } from '@/hooks/usePageAccess';
+
 
 const queryClient = new QueryClient();
 
