@@ -18,6 +18,8 @@ import {
   History,
   FileDown,
   Layers,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import BulkMaintenanceDialog from "@/components/BulkMaintenanceDialog";
 import BulkDeleteMaintenanceDialog from "@/components/BulkDeleteMaintenanceDialog";
@@ -37,11 +39,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import StatCard from "@/components/dashboard/StatCard";
 import AuditHistoryDialog from "@/components/AuditHistoryDialog";
-import MaintenanceConflictDialog, { ConflictReason } from "@/components/MaintenanceConflictDialog";
-import { findExistingMainEntryForFY, MAX_DUE_PER_FY } from "@/utils/maintenanceFY";
-import { downloadReceipt } from "@/utils/generateReceipt";
+import { downloadReceipt, downloadStatement } from "@/utils/generateReceipt";
 import { triggerPush } from "@/lib/triggerPush";
-import { Textarea } from "@/components/ui/textarea";
 import { PageHeader, SectionCard } from "@/components/layout/PagePrimitives";
 
 const statusBadge: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -61,6 +60,14 @@ const getStoredDefault = (): number => {
   return 9000;
 };
 
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+const fyForDate = (d: Date) => {
+  const m = d.getMonth();
+  const y = d.getFullYear();
+  return m >= 3 ? y : y - 1;
+};
+
 const Maintenance = () => {
   const { data: collections = [], isLoading } = useMaintenanceCollections();
   const { data: residents = [] } = useResidents();
@@ -70,359 +77,253 @@ const Maintenance = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [supervisorResidentIds, setSupervisorResidentIds] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
 
-  // Fetch supervisor residents to exclude them from maintenance lists
   useEffect(() => {
     void (async () => {
       const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "supervisor");
       const userIds = (roles || []).map((r: any) => r.user_id);
-      if (userIds.length === 0) {
-        setSupervisorResidentIds([]);
-        return;
-      }
+      if (userIds.length === 0) { setSupervisorResidentIds([]); return; }
       const { data: profs } = await supabase.from("profiles").select("resident_id").in("user_id", userIds);
       setSupervisorResidentIds((profs || []).map((p: any) => p.resident_id).filter(Boolean));
     })();
   }, []);
+
   const [search, setSearch] = useState("");
   const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get("filter");
   const [filterStatus, setFilterStatus] = useState(
-    initialFilter === "paid"
-      ? "paid"
-      : initialFilter === "pending"
-        ? "pending"
-        : initialFilter === "partial"
-          ? "partial"
-          : initialFilter === "overdue"
-            ? "overdue"
-            : "all",
+    initialFilter && ["paid","pending","partial","overdue"].includes(initialFilter) ? initialFilter : "all"
   );
   useEffect(() => {
     const f = searchParams.get("filter");
-    if (f && ["paid", "pending", "partial", "overdue"].includes(f)) setFilterStatus(f);
+    if (f && ["paid","pending","partial","overdue"].includes(f)) setFilterStatus(f);
   }, [searchParams]);
   const [filterMonth, setFilterMonth] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+
   const [storedDefault, setStoredDefault] = useState(getStoredDefault);
-  const [form, setForm] = useState({
-    residentId: "",
-    totalMaintenance: String(storedDefault),
-    amount: "",
-    date: new Date().toISOString().split("T")[0],
-    paymentMode: "upi",
-    dueDate: "",
-  });
   const [defaultAmountDialog, setDefaultAmountDialog] = useState(false);
   const [defaultAmount, setDefaultAmount] = useState(String(storedDefault));
+
+  // Add new parent (FY entry)
+  const [addParentOpen, setAddParentOpen] = useState(false);
+  const [addParentForm, setAddParentForm] = useState({ residentId: "", year: String(fyForDate(new Date())), totalMaintenance: String(storedDefault) });
+
+  // Edit parent total
+  const [editParent, setEditParent] = useState<any>(null);
+  const [editParentTotal, setEditParentTotal] = useState("");
+
+  // Edit child payment
+  const [editChild, setEditChild] = useState<any>(null);
+  const [editChildForm, setEditChildForm] = useState({ amount: "", date: "", paymentMode: "upi" });
+
+  // Pay due dialog (parent)
   const [duePaymentDialog, setDuePaymentDialog] = useState(false);
-  const [duePaymentEntry, setDuePaymentEntry] = useState<any>(null);
-  const [duePaymentForm, setDuePaymentForm] = useState({
-    amount: "",
-    date: new Date().toISOString().split("T")[0],
-    paymentMode: "upi",
-  });
+  const [duePaymentParent, setDuePaymentParent] = useState<any>(null);
+  const [duePaymentForm, setDuePaymentForm] = useState({ amount: "", date: new Date().toISOString().split("T")[0], paymentMode: "upi" });
+
   const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
-  const [conflict, setConflict] = useState<ConflictReason | null>(null);
-  const [pendingPayload, setPendingPayload] = useState<any>(null);
-  const [pendingExistingId, setPendingExistingId] = useState<string | null>(null);
   const readOnly = isResident || isCoordinator;
 
-  const computeDue = (total: number, paid: number) => Math.max(0, total - paid);
+  // Group collections: parents (parent_id null) + children attached
+  const groups = useMemo(() => {
+    const parents: any[] = [];
+    const childrenByParent: Record<string, any[]> = {};
+    for (const c of collections as any[]) {
+      if (supervisorResidentIds.includes(c.resident_id)) continue;
+      if (c.parent_id) {
+        (childrenByParent[c.parent_id] ||= []).push(c);
+      } else {
+        parents.push(c);
+      }
+    }
+    Object.values(childrenByParent).forEach(arr => arr.sort((a,b)=>(b.paid_date||"").localeCompare(a.paid_date||"")));
+    parents.sort((a,b)=> (b.year||0)-(a.year||0) || ((a.residents as any)?.name||"").localeCompare((b.residents as any)?.name||""));
+    return { parents, childrenByParent };
+  }, [collections, supervisorResidentIds]);
 
-  const filtered = useMemo(
-    () =>
-      collections.filter((c: any) => {
-        if (supervisorResidentIds.includes(c.resident_id)) return false;
-        const name = (c.residents as any)?.name || "";
-        const houseNo = (c.residents as any)?.house_no || "";
-        const matchSearch =
-          name.toLowerCase().includes(search.toLowerCase()) || houseNo.toLowerCase().includes(search.toLowerCase());
-        const matchStatus = filterStatus === "all" || c.status === filterStatus;
-        const matchMonth = filterMonth === "all" || c.month === filterMonth;
-        return matchSearch && matchStatus && matchMonth;
-      }),
-    [collections, search, filterStatus, filterMonth, supervisorResidentIds],
-  );
+  const isFilterActive = filterStatus !== "all" || filterMonth !== "all" || search.trim() !== "";
 
-  // Residents list for the "record payment" dropdown — also exclude supervisors
+  // Filtered parent list (default view)
+  const filteredParents = useMemo(() => {
+    return groups.parents.filter((p: any) => {
+      const name = (p.residents as any)?.name || "";
+      const houseNo = (p.residents as any)?.house_no || "";
+      const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || houseNo.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = filterStatus === "all" || p.status === filterStatus;
+      return matchSearch && matchStatus;
+    });
+  }, [groups, search, filterStatus]);
+
+  // Flat children list (when month/status filter is active)
+  const filteredChildren = useMemo(() => {
+    const allChildren: any[] = [];
+    for (const p of groups.parents) {
+      const kids = groups.childrenByParent[p.id] || [];
+      for (const k of kids) {
+        // attach resident info from parent
+        allChildren.push({ ...k, residents: p.residents, _parent: p });
+      }
+    }
+    return allChildren.filter((c: any) => {
+      const name = (c.residents as any)?.name || "";
+      const houseNo = (c.residents as any)?.house_no || "";
+      const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || houseNo.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = filterStatus === "all" || c.status === filterStatus;
+      const matchMonth = filterMonth === "all" || c.month === filterMonth;
+      return matchSearch && matchStatus && matchMonth;
+    }).sort((a,b)=>(b.paid_date||"").localeCompare(a.paid_date||""));
+  }, [groups, search, filterStatus, filterMonth]);
+
+  const totalCollected = groups.parents.reduce((s, p:any) => {
+    const kids = groups.childrenByParent[p.id] || [];
+    return s + kids.reduce((ss:number, k:any)=> ss + Number(k.amount||0), 0);
+  }, 0);
+  const totalPending = groups.parents.reduce((s, p:any)=> s + Number(p.due_amount||0), 0);
+  const paidCount = groups.parents.filter(p=>p.status==="paid").length;
+  const overdueCount = groups.parents.filter(p=> Number(p.due_amount||0) > 0).length;
+
   const eligibleResidents = useMemo(
     () => residents.filter((r: any) => !supervisorResidentIds.includes(r.id)),
     [residents, supervisorResidentIds],
   );
 
-  const totalCollected = filtered.reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
-  const totalPending = filtered.reduce((s: number, c: any) => s + Number(c.due_amount || 0), 0);
-
-  const MONTHS = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  const openAdd = () => {
-    setEditingId(null);
-    setForm({
-      residentId: "",
-      totalMaintenance: String(storedDefault),
-      amount: "",
-      date: new Date().toISOString().split("T")[0],
-      paymentMode: "upi",
-        dueDate: "",
+  // ---------- Actions ----------
+  const handleAddParent = async () => {
+    if (!addParentForm.residentId || !addParentForm.totalMaintenance) {
+      toast.error(t("please_fill_required"));
+      return;
+    }
+    const year = Number(addParentForm.year);
+    const total = Number(addParentForm.totalMaintenance);
+    // Check duplicate
+    const dup = groups.parents.find(p=>p.resident_id===addParentForm.residentId && p.year===year);
+    if (dup) { toast.error("Annual entry already exists for this resident & FY"); return; }
+    const { error } = await supabase.from("maintenance_collections").insert({
+      resident_id: addParentForm.residentId,
+      total_maintenance: total,
+      amount: 0,
+      due_amount: total,
+      month: "Annual",
+      year,
+      status: "pending",
+      parent_id: null,
     });
-    setDialogOpen(true);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
+    setAddParentOpen(false);
+    toast.success(t("payment_recorded"));
   };
 
-  const openEdit = (c: any) => {
-    setEditingId(c.id);
-    setForm({
-      residentId: c.resident_id,
-      totalMaintenance: String(c.total_maintenance || storedDefault),
-      amount: String(c.amount),
-      date: c.paid_date || new Date().toISOString().split("T")[0],
-      paymentMode: c.payment_mode || "upi",
-      dueDate: c.due_date || "",
-    });
-    setDialogOpen(true);
+  const handleEditParent = async () => {
+    if (!editParent) return;
+    const newTotal = Number(editParentTotal);
+    if (!newTotal || newTotal < 0) { toast.error(t("please_fill_required")); return; }
+    // Update parent total; trigger will recompute due based on existing children
+    const { error } = await supabase.from("maintenance_collections").update({ total_maintenance: newTotal }).eq("id", editParent.id);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
+    setEditParent(null);
+    toast.success(t("amount_updated") || "Updated");
   };
 
-  const openDuePayment = (c: any) => {
-    setDuePaymentEntry(c);
-    setDuePaymentForm({
-      amount: String(c.due_amount),
-      date: new Date().toISOString().split("T")[0],
-      paymentMode: "upi",
-      });
+  const handleEditChild = async () => {
+    if (!editChild) return;
+    const amt = Number(editChildForm.amount);
+    const dateObj = new Date(editChildForm.date);
+    const { error } = await supabase.from("maintenance_collections").update({
+      amount: amt,
+      paid_date: editChildForm.date,
+      month: MONTHS[dateObj.getMonth()],
+      year: dateObj.getFullYear(),
+      payment_mode: editChildForm.paymentMode,
+    }).eq("id", editChild.id);
+    if (error) { toast.error(error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
+    setEditChild(null);
+    toast.success(t("update") || "Updated");
+  };
+
+  const openDuePayment = (parent: any) => {
+    setDuePaymentParent(parent);
+    setDuePaymentForm({ amount: String(parent.due_amount), date: new Date().toISOString().split("T")[0], paymentMode: "upi" });
     setDuePaymentDialog(true);
   };
 
-  const commitManualEntry = async (payload: any, mode: "insert" | "update", updateId?: string | null) => {
-    if (mode === "update" && updateId) {
-      const { error } = await supabase.from("maintenance_collections").update(payload).eq("id", updateId);
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-    } else {
-      const { error } = await supabase.from("maintenance_collections").insert(payload);
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-    }
-    if (payload.resident_id) {
-      void triggerPush({
-        title: "Maintenance entry added",
-        body: `${payload.month} ${payload.year} • ₹${payload.total_maintenance ?? payload.amount ?? ""}`,
-        url: "/maintenance",
-        tag: `maint-${payload.resident_id}`,
-        audience: { kind: "residents", residentIds: [payload.resident_id] },
-        excludeUserId: user?.id,
-      });
-    }
-    toast.success(t("payment_recorded"));
-    queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
-    setDialogOpen(false);
-    return true;
-  };
-
-  const handleSave = async () => {
-    if (!form.residentId || !form.amount) {
-      toast.error(t("please_fill_required"));
-      return;
-    }
-    const amt = Number(form.amount);
-    const totalMaint = Number(form.totalMaintenance) || storedDefault;
-    const dueAmount = computeDue(totalMaint, amt);
-    const dateObj = new Date(form.date);
-    const month = MONTHS[dateObj.getMonth()];
-    const year = dateObj.getFullYear();
-    const payload: any = {
-      resident_id: form.residentId,
-      amount: amt,
-      due_amount: dueAmount,
-      total_maintenance: totalMaint,
-      paid_date: form.date,
-      month,
-      year,
-      status: dueAmount <= 0 ? "paid" : amt > 0 ? "partial" : "pending",
-      payment_mode: form.paymentMode,
-      due_date: form.dueDate || null,
-    };
-
-    if (editingId) {
-      // Editing an existing row — no FY/duplicate check needed.
-      await commitManualEntry(payload, "update", editingId);
-      return;
-    }
-
-    // Manual ADD: enforce one main entry + ≤10,000 due per FY
-    const { fy, existing, totalDue } = await findExistingMainEntryForFY(form.residentId, form.date);
-    const projectedDue = totalDue - Number(existing?.due_amount || 0) + dueAmount;
-    const duplicate = !!existing;
-    const breaches = projectedDue > MAX_DUE_PER_FY;
-
-    if (duplicate || breaches) {
-      const reason: ConflictReason =
-        duplicate && breaches
-          ? {
-              kind: "both",
-              fyLabel: fy.label,
-              existingAmount: Number(existing.total_maintenance || 0),
-              currentDue: totalDue,
-              addingAmount: dueAmount,
-            }
-          : duplicate
-            ? { kind: "duplicate", fyLabel: fy.label, existingAmount: Number(existing.total_maintenance || 0) }
-            : { kind: "limit", fyLabel: fy.label, currentDue: totalDue, addingAmount: dueAmount };
-      setPendingPayload(payload);
-      // If duplicate → "Continue" updates the existing row; if only limit breach → "Continue" inserts new.
-      setPendingExistingId(duplicate ? existing.id : null);
-      setConflict(reason);
-      return;
-    }
-
-    await commitManualEntry(payload, "insert");
-  };
-
-  const onConflictIgnore = () => {
-    setConflict(null);
-    setPendingPayload(null);
-    setPendingExistingId(null);
-  };
-
-  const onConflictContinue = async () => {
-    const payload = pendingPayload;
-    const updateId = pendingExistingId;
-    setConflict(null);
-    setPendingPayload(null);
-    setPendingExistingId(null);
-    if (!payload) return;
-    if (updateId) await commitManualEntry(payload, "update", updateId);
-    else await commitManualEntry(payload, "insert");
-  };
-
   const handleDuePayment = async () => {
-    if (!duePaymentEntry || !duePaymentForm.amount) {
-      toast.error(t("please_fill_required"));
-      return;
-    }
+    if (!duePaymentParent || !duePaymentForm.amount) { toast.error(t("please_fill_required")); return; }
     const payAmount = Number(duePaymentForm.amount);
-    const originalDue = Number(duePaymentEntry.due_amount);
-    const previousPaid = Number(duePaymentEntry.amount);
-    const totalMaint = Number(duePaymentEntry.total_maintenance);
-    const remainingDue = Math.max(0, originalDue - payAmount);
-
-    const newOriginalStatus = remainingDue <= 0 ? "paid" : "partial";
-    await supabase
-      .from("maintenance_collections")
-      .update({
-        due_amount: remainingDue,
-        status: newOriginalStatus,
-      })
-      .eq("id", duePaymentEntry.id);
-
     const dateObj = new Date(duePaymentForm.date);
+    const totalMaint = Number(duePaymentParent.total_maintenance);
+    // Existing children sum
+    const kids = groups.childrenByParent[duePaymentParent.id] || [];
+    const alreadyPaid = kids.reduce((s:number,k:any)=> s+Number(k.amount||0),0);
+    const remainingDue = Math.max(0, totalMaint - (alreadyPaid + payAmount));
+    const status = remainingDue <= 0 ? "paid" : "partial";
+
     const { error } = await supabase.from("maintenance_collections").insert({
-      resident_id: duePaymentEntry.resident_id,
+      parent_id: duePaymentParent.id,
+      resident_id: duePaymentParent.resident_id,
       amount: payAmount,
       due_amount: remainingDue,
       total_maintenance: totalMaint,
       paid_date: duePaymentForm.date,
       month: MONTHS[dateObj.getMonth()],
       year: dateObj.getFullYear(),
-      status: remainingDue <= 0 ? "paid" : "partial",
+      status,
       payment_mode: duePaymentForm.paymentMode,
     });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    // Receipt is auto-created by DB trigger; user must click download button to get the PDF.
-    // (No automatic PDF download — per user request #13)
-
+    if (error) { toast.error(error.message); return; }
+    void triggerPush({
+      title: "Maintenance payment recorded",
+      body: `Payment of INR ${payAmount} recorded`,
+      url: "/maintenance",
+      tag: `maint-${duePaymentParent.resident_id}`,
+      audience: { kind: "residents", residentIds: [duePaymentParent.resident_id] },
+      excludeUserId: user?.id,
+    });
     queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
     setDuePaymentDialog(false);
-    toast.success(t("due_payment_recorded"));
+    setExpanded(p => ({ ...p, [duePaymentParent.id]: true }));
+    toast.success(t("due_payment_recorded") || "Payment recorded");
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm(t("confirm_delete"))) return;
     const { error } = await supabase.from("maintenance_collections").delete().eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
     toast.success(t("delete"));
   };
 
   const toggleVisibility = async (id: string, current: boolean) => {
     const { error } = await supabase.from("maintenance_collections").update({ is_visible: !current }).eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
     toast.success(t("visibility_updated"));
   };
 
   const handleUpdateDefaultAmount = async () => {
     const newAmt = Number(defaultAmount);
-    if (!newAmt || newAmt <= 0) {
-      toast.error(t("please_fill_required"));
-      return;
-    }
-    // Save to localStorage so it persists
+    if (!newAmt || newAmt <= 0) { toast.error(t("please_fill_required")); return; }
     localStorage.setItem(STORAGE_KEY, String(newAmt));
     setStoredDefault(newAmt);
-
-    // Update all existing records
-    for (const c of collections) {
-      const due = computeDue(newAmt, Number(c.amount || 0));
-      const status = due <= 0 ? "paid" : Number(c.amount) > 0 ? "partial" : "pending";
-      await supabase
-        .from("maintenance_collections")
-        .update({ due_amount: due, total_maintenance: newAmt, status })
-        .eq("id", c.id);
-    }
-    queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
     setDefaultAmountDialog(false);
     toast.success(t("amount_updated"));
   };
 
+  // CSV: per-row export — when filtered children visible, export children; else export all children
   const downloadCSV = () => {
-    const headers = [
-      t("resident"),
-      t("house"),
-      t("date"),
-      "Total",
-      t("paid"),
-      t("due"),
-      t("due_date"),
-      t("mode"),
-      t("status"),
-    ];
-    const rows = filtered.map((c: any) => [
+    const rowsSrc = isFilterActive ? filteredChildren : (groups.parents.flatMap(p=>(groups.childrenByParent[p.id]||[]).map(k=>({...k, residents:p.residents}))));
+    const headers = [t("resident"), t("house"), t("date"), "Total", t("paid"), t("due"), t("mode"), t("status")];
+    const rows = rowsSrc.map((c: any) => [
       (c.residents as any)?.name || "",
       (c.residents as any)?.house_no || "",
       c.paid_date || "",
       c.total_maintenance,
       c.amount,
       c.due_amount,
-      c.due_date || "",
       c.payment_mode || "",
       c.status,
     ]);
@@ -431,25 +332,12 @@ const Maintenance = () => {
       .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "maintenance_funds.csv";
-    a.click();
+    const a = document.createElement("a"); a.href = url; a.download = "maintenance_funds.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 
-  const getEffectiveStatus = (c: any) => {
-    if (c.status === "paid") return "paid";
-    if (c.due_date && new Date(c.due_date) < new Date() && Number(c.due_amount) > 0) return "overdue";
-    return c.status;
-  };
-
-  const handleDownloadReceipt = async (c: any) => {
-    const { data: receipt } = await supabase
-      .from("maintenance_receipts")
-      .select("*")
-      .eq("maintenance_collection_id", c.id)
-      .maybeSingle();
+  const handleDownloadChildReceipt = async (c: any) => {
+    const { data: receipt } = await supabase.from("maintenance_receipts").select("*").eq("maintenance_collection_id", c.id).maybeSingle();
     const r: any = receipt || {};
     downloadReceipt({
       societyName: r.society_name || "Shri Vidhya Niwas Society",
@@ -468,6 +356,110 @@ const Maintenance = () => {
     });
   };
 
+  const handleDownloadParentStatement = (parent: any) => {
+    const kids = (groups.childrenByParent[parent.id] || []).slice().sort((a,b)=>(a.paid_date||"").localeCompare(b.paid_date||""));
+    let runningPaid = 0;
+    const total = Number(parent.total_maintenance || 0);
+    const children = kids.map((k:any)=> {
+      runningPaid += Number(k.amount||0);
+      return {
+        date: k.paid_date || "-",
+        amountPaid: Number(k.amount||0),
+        dueAfter: Math.max(0, total - runningPaid),
+        paymentMode: k.payment_mode,
+      };
+    });
+    downloadStatement({
+      societyName: "Shri Vidhya Niwas Society",
+      residentName: (parent.residents as any)?.name || "",
+      houseNo: (parent.residents as any)?.house_no || "",
+      laneNo: (parent.residents as any)?.lane_no || "",
+      year: parent.year,
+      totalMaintenance: total,
+      totalPaid: runningPaid,
+      totalDue: Number(parent.due_amount || 0),
+      children,
+    });
+  };
+
+  // ---------- Render ----------
+  const renderParentRowMobile = (p: any) => {
+    const kids = groups.childrenByParent[p.id] || [];
+    const isOpen = !!expanded[p.id];
+    return (
+      <SectionCard key={p.id} className="py-3 space-y-2">
+        <div className="flex items-center justify-between cursor-pointer" onClick={()=>setExpanded(s=>({...s,[p.id]:!s[p.id]}))}>
+          <div className="flex items-center gap-2 min-w-0">
+            {isOpen ? <ChevronDown className="h-4 w-4 shrink-0"/> : <ChevronRight className="h-4 w-4 shrink-0"/>}
+            <div className="min-w-0">
+              <p className="font-semibold text-sm truncate">{(p.residents as any)?.name}</p>
+              <p className="text-xs text-muted-foreground">{(p.residents as any)?.house_no} • FY {p.year}-{String((p.year+1)%100).padStart(2,"0")}</p>
+            </div>
+          </div>
+          <Badge variant={statusBadge[p.status] || "outline"} className="text-xs">{t(p.status)}</Badge>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-sm">
+          <div><p className="text-xs text-muted-foreground">Total</p><p className="font-medium">₹{Number(p.total_maintenance).toLocaleString("en-IN")}</p></div>
+          <div><p className="text-xs text-muted-foreground">{t("paid")}</p><p className="font-medium text-success">₹{(Number(p.total_maintenance) - Number(p.due_amount)).toLocaleString("en-IN")}</p></div>
+          <div><p className="text-xs text-muted-foreground">{t("due")}</p><p className={`font-medium ${Number(p.due_amount) > 0 ? "text-destructive" : ""}`}>₹{Number(p.due_amount).toLocaleString("en-IN")}</p></div>
+        </div>
+        {!readOnly && (
+          <div className="flex gap-1 pt-1 border-t flex-wrap">
+            {Number(p.due_amount) > 0 && (
+              <Button variant="ghost" size="sm" onClick={()=>openDuePayment(p)}><BanknoteIcon className="h-3.5 w-3.5 text-orange-500 mr-1"/>{t("pay_due")}</Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={()=>handleDownloadParentStatement(p)}><FileDown className="h-3.5 w-3.5 text-primary"/></Button>
+            {isMasterAdmin && <Button variant="ghost" size="sm" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance));}}><Edit2 className="h-3.5 w-3.5"/></Button>}
+            {isMasterAdmin && <Button variant="ghost" size="sm" onClick={()=>handleDelete(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive"/></Button>}
+          </div>
+        )}
+        {isOpen && kids.length > 0 && (
+          <div className="space-y-2 pt-2 border-t">
+            {kids.map((k:any)=>(
+              <div key={k.id} className="rounded-lg bg-muted/40 p-2 text-xs space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">{k.paid_date}</span>
+                  <span className="text-success font-semibold">₹{Number(k.amount).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="text-muted-foreground capitalize">{(k.payment_mode||"-").replace(/_/g," ")}</div>
+                {!readOnly && (
+                  <div className="flex gap-1 pt-1">
+                    <Button variant="ghost" size="sm" className="h-6 px-1.5" onClick={()=>handleDownloadChildReceipt(k)}><FileDown className="h-3 w-3 text-primary"/></Button>
+                    <Button variant="ghost" size="sm" className="h-6 px-1.5" onClick={()=>toggleVisibility(k.id, k.is_visible)}>{k.is_visible ? <Eye className="h-3 w-3 text-success"/> : <EyeOff className="h-3 w-3"/>}</Button>
+                    <Button variant="ghost" size="sm" className="h-6 px-1.5" onClick={()=>{setEditChild(k); setEditChildForm({amount:String(k.amount), date:k.paid_date||"", paymentMode:k.payment_mode||"upi"});}}><Edit2 className="h-3 w-3"/></Button>
+                    {isAdmin && <Button variant="ghost" size="sm" className="h-6 px-1.5" onClick={()=>setHistoryRecordId(k.id)}><History className="h-3 w-3 text-muted-foreground"/></Button>}
+                    <Button variant="ghost" size="sm" className="h-6 px-1.5" onClick={()=>handleDelete(k.id)}><Trash2 className="h-3 w-3 text-destructive"/></Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    );
+  };
+
+  const renderChildCardMobile = (c: any) => (
+    <SectionCard key={c.id} className="py-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-semibold text-sm">{(c.residents as any)?.name}</p>
+          <p className="text-xs text-muted-foreground">{(c.residents as any)?.house_no} • {c.paid_date}</p>
+        </div>
+        <span className="text-success font-semibold">₹{Number(c.amount).toLocaleString("en-IN")}</span>
+      </div>
+      <div className="text-xs text-muted-foreground capitalize">{(c.payment_mode||"-").replace(/_/g," ")}</div>
+      {!readOnly && (
+        <div className="flex gap-1 pt-1 border-t">
+          <Button variant="ghost" size="sm" onClick={()=>handleDownloadChildReceipt(c)}><FileDown className="h-3.5 w-3.5 text-primary"/></Button>
+          <Button variant="ghost" size="sm" onClick={()=>toggleVisibility(c.id, c.is_visible)}>{c.is_visible ? <Eye className="h-3.5 w-3.5 text-success"/> : <EyeOff className="h-3.5 w-3.5"/>}</Button>
+          <Button variant="ghost" size="sm" onClick={()=>{setEditChild(c); setEditChildForm({amount:String(c.amount), date:c.paid_date||"", paymentMode:c.payment_mode||"upi"});}}><Edit2 className="h-3.5 w-3.5"/></Button>
+          <Button variant="ghost" size="sm" onClick={()=>handleDelete(c.id)}><Trash2 className="h-3.5 w-3.5 text-destructive"/></Button>
+        </div>
+      )}
+    </SectionCard>
+  );
+
   return (
     <div className="space-y-4 md:space-y-6">
       <PageHeader
@@ -478,193 +470,248 @@ const Maintenance = () => {
           <div className="flex gap-1.5 flex-nowrap items-center justify-start sm:justify-end w-full overflow-x-auto">
             {isAdmin && (
               <Button variant="outline" size="sm" onClick={downloadCSV} className="h-8 px-2.5 text-xs shrink-0">
-                <Download className="h-3.5 w-3.5 mr-1" /> CSV
+                <Download className="h-3.5 w-3.5 mr-1"/> CSV
               </Button>
             )}
             {!readOnly && (
               <>
                 {isMasterAdmin && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setDefaultAmount(String(storedDefault));
-                      setDefaultAmountDialog(true);
-                    }}
-                    className="h-8 px-2.5 text-xs shrink-0"
-                  >
-                    <Settings2 className="h-3.5 w-3.5 mr-1" /> {t("amount")}
+                  <Button variant="outline" size="sm" onClick={()=>{setDefaultAmount(String(storedDefault)); setDefaultAmountDialog(true);}} className="h-8 px-2.5 text-xs shrink-0">
+                    <Settings2 className="h-3.5 w-3.5 mr-1"/> {t("amount")}
                   </Button>
                 )}
                 {canBulk && (
                   <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setBulkOpen(true)}
-                      className="h-8 px-2.5 text-xs shrink-0"
-                    >
-                      <Layers className="h-3.5 w-3.5 mr-1" /> Bulk
+                    <Button variant="outline" size="sm" onClick={()=>setBulkOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
+                      <Layers className="h-3.5 w-3.5 mr-1"/> Bulk
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setBulkDeleteOpen(true)}
-                      className="h-8 px-2.5 text-xs shrink-0 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Del
+                    <Button variant="outline" size="sm" onClick={()=>setBulkDeleteOpen(true)} className="h-8 px-2.5 text-xs shrink-0 text-destructive hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5 mr-1"/> Del
                     </Button>
                   </>
                 )}
-                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={openAdd} size="sm" className="h-8 px-2.5 text-xs shrink-0">
-                      <Plus className="h-3.5 w-3.5 mr-1" /> {t("add")}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="font-display">
-                        {editingId ? t("edit") + " " + t("record_payment") : t("record_payment")}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid gap-2">
-                        <Label>{t("resident")} *</Label>
-                        <Select value={form.residentId} onValueChange={(v) => setForm({ ...form, residentId: v })}>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t("select_resident")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {eligibleResidents.map((r: any) => (
-                              <SelectItem key={r.id} value={r.id}>
-                                {r.name} ({r.house_no})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label>{t("total_maintenance")} (₹)</Label>
-                          <Input
-                            type="number"
-                            value={form.totalMaintenance}
-                            onChange={(e) => setForm({ ...form, totalMaintenance: e.target.value })}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>{t("paid")} (₹) *</Label>
-                          <Input
-                            type="number"
-                            value={form.amount}
-                            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      {form.totalMaintenance && form.amount && (
-                        <div className="p-3 rounded-lg bg-muted text-sm">
-                          <span className="text-muted-foreground">{t("due")}: </span>
-                          <span
-                            className={`font-bold ${computeDue(Number(form.totalMaintenance), Number(form.amount)) > 0 ? "text-destructive" : "text-success"}`}
-                          >
-                            ₹{computeDue(Number(form.totalMaintenance), Number(form.amount)).toLocaleString("en-IN")}
-                          </span>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label>{t("date")} *</Label>
-                          <Input
-                            type="date"
-                            value={form.date}
-                            onChange={(e) => setForm({ ...form, date: e.target.value })}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>{t("due_date")}</Label>
-                          <Input
-                            type="date"
-                            value={form.dueDate}
-                            onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label>{t("payment_mode")}</Label>
-                          <Select value={form.paymentMode} onValueChange={(v) => setForm({ ...form, paymentMode: v })}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="cash">{t("cash")}</SelectItem>
-                              <SelectItem value="upi">{t("upi")}</SelectItem>
-                              <SelectItem value="bank_transfer">{t("bank_transfer")}</SelectItem>
-                              <SelectItem value="cheque">{t("cheque")}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                      </div>
-                      <Button onClick={handleSave} className="w-full mt-2">
-                        {editingId ? t("update") : t("record_payment")}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button onClick={()=>{setAddParentForm({residentId:"", year:String(fyForDate(new Date())), totalMaintenance:String(storedDefault)}); setAddParentOpen(true);}} size="sm" className="h-8 px-2.5 text-xs shrink-0">
+                  <Plus className="h-3.5 w-3.5 mr-1"/> {t("add")}
+                </Button>
               </>
             )}
           </div>
         }
       />
 
-      {/* Due Payment Dialog */}
-      <Dialog open={duePaymentDialog} onOpenChange={setDuePaymentDialog}>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <StatCard title={t("total_collected")} value={`₹${totalCollected.toLocaleString("en-IN")}`} icon={IndianRupee} variant="success"/>
+        <StatCard title={t("pending_dues")} value={`₹${totalPending.toLocaleString("en-IN")}`} icon={AlertTriangle} variant="warning"/>
+        <StatCard title={t("paid")} value={String(paidCount)} icon={CheckCircle2} variant="primary"/>
+        <StatCard title={t("overdue")} value={String(overdueCount)} icon={Clock} variant="destructive"/>
+      </div>
+
+      {/* Filters */}
+      <SectionCard className="py-3 md:py-3">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
+            <Input className="pl-10" placeholder={t("search_residents")} value={search} onChange={(e)=>setSearch(e.target.value)}/>
+          </div>
+          <div className="flex gap-2">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-32"><Filter className="h-4 w-4 mr-1"/><SelectValue/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("all_status")}</SelectItem>
+                <SelectItem value="paid">{t("paid")}</SelectItem>
+                <SelectItem value="partial">{t("partial")}</SelectItem>
+                <SelectItem value="pending">{t("pending")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="w-full sm:w-32"><SelectValue/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("all_months")}</SelectItem>
+                {MONTHS.map((m) => (<SelectItem key={m} value={m}>{m}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {filterMonth !== "all" && (
+          <p className="text-xs text-muted-foreground mt-2">Showing payment records (sub-entries) across all residents.</p>
+        )}
+      </SectionCard>
+
+      {/* Mobile view */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <p className="text-center text-muted-foreground py-8">{t("loading")}</p>
+        ) : isFilterActive && filterMonth !== "all" ? (
+          filteredChildren.length === 0
+            ? <SectionCard className="p-8 text-center text-muted-foreground">{t("no_records_found")}</SectionCard>
+            : filteredChildren.map(renderChildCardMobile)
+        ) : (
+          filteredParents.length === 0
+            ? <SectionCard className="p-8 text-center text-muted-foreground">{t("no_records_found")}</SectionCard>
+            : filteredParents.map(renderParentRowMobile)
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <SectionCard className="hidden md:block overflow-x-auto">
+        {isFilterActive && filterMonth !== "all" ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("resident")}</TableHead>
+                <TableHead>{t("house")}</TableHead>
+                <TableHead>{t("date")}</TableHead>
+                <TableHead>{t("paid")}</TableHead>
+                <TableHead>{t("mode")}</TableHead>
+                {!readOnly && <TableHead className="text-right">{t("actions")}</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredChildren.length === 0 ? (
+                <TableRow><TableCell colSpan={readOnly?5:6} className="text-center py-8 text-muted-foreground">{t("no_records_found")}</TableCell></TableRow>
+              ) : filteredChildren.map((c:any)=>(
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">{(c.residents as any)?.name}</TableCell>
+                  <TableCell>{(c.residents as any)?.house_no}</TableCell>
+                  <TableCell>{c.paid_date}</TableCell>
+                  <TableCell className="text-success font-medium">₹{Number(c.amount).toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="capitalize">{(c.payment_mode||"-").replace(/_/g," ")}</TableCell>
+                  {!readOnly && (
+                    <TableCell className="text-right space-x-1">
+                      <Button variant="ghost" size="icon" onClick={()=>handleDownloadChildReceipt(c)}><FileDown className="h-4 w-4 text-primary"/></Button>
+                      <Button variant="ghost" size="icon" onClick={()=>toggleVisibility(c.id, c.is_visible)}>{c.is_visible ? <Eye className="h-4 w-4 text-success"/> : <EyeOff className="h-4 w-4 text-muted-foreground"/>}</Button>
+                      <Button variant="ghost" size="icon" onClick={()=>{setEditChild(c); setEditChildForm({amount:String(c.amount), date:c.paid_date||"", paymentMode:c.payment_mode||"upi"});}}><Edit2 className="h-4 w-4"/></Button>
+                      <Button variant="ghost" size="icon" onClick={()=>handleDelete(c.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8"></TableHead>
+                <TableHead>{t("resident")}</TableHead>
+                <TableHead>{t("house")}</TableHead>
+                <TableHead>FY</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>{t("paid")}</TableHead>
+                <TableHead>{t("due")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                {!readOnly && <TableHead className="text-right">{t("actions")}</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={readOnly?8:9} className="text-center py-8 text-muted-foreground">{t("loading")}</TableCell></TableRow>
+              ) : filteredParents.length === 0 ? (
+                <TableRow><TableCell colSpan={readOnly?8:9} className="text-center py-8 text-muted-foreground">{t("no_records_found")}</TableCell></TableRow>
+              ) : filteredParents.map((p:any)=>{
+                const kids = groups.childrenByParent[p.id] || [];
+                const isOpen = !!expanded[p.id];
+                const paidSoFar = Number(p.total_maintenance) - Number(p.due_amount);
+                return (
+                  <>
+                    <TableRow key={p.id} className="cursor-pointer hover:bg-muted/30" onClick={()=>setExpanded(s=>({...s,[p.id]:!s[p.id]}))}>
+                      <TableCell>{isOpen ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}</TableCell>
+                      <TableCell className="font-medium">{(p.residents as any)?.name}</TableCell>
+                      <TableCell>{(p.residents as any)?.house_no}</TableCell>
+                      <TableCell>FY {p.year}-{String((p.year+1)%100).padStart(2,"0")}</TableCell>
+                      <TableCell>₹{Number(p.total_maintenance).toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-success font-medium">₹{paidSoFar.toLocaleString("en-IN")}</TableCell>
+                      <TableCell className={Number(p.due_amount)>0?"text-destructive font-medium":""}>₹{Number(p.due_amount).toLocaleString("en-IN")}</TableCell>
+                      <TableCell><Badge variant={statusBadge[p.status]||"outline"}>{t(p.status)}</Badge></TableCell>
+                      {!readOnly && (
+                        <TableCell className="text-right space-x-1" onClick={(e)=>e.stopPropagation()}>
+                          {Number(p.due_amount) > 0 && (
+                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={()=>openDuePayment(p)}><BanknoteIcon className="h-4 w-4 text-orange-500"/></Button>
+                            </TooltipTrigger><TooltipContent>{t("pay_due")}</TooltipContent></Tooltip></TooltipProvider>
+                          )}
+                          <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={()=>handleDownloadParentStatement(p)}><FileDown className="h-4 w-4 text-primary"/></Button>
+                          </TooltipTrigger><TooltipContent>FY Statement PDF</TooltipContent></Tooltip></TooltipProvider>
+                          {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance));}}><Edit2 className="h-4 w-4"/></Button>}
+                          {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>handleDelete(p.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                    {isOpen && kids.map((k:any)=>(
+                      <TableRow key={k.id} className="bg-muted/30">
+                        <TableCell></TableCell>
+                        <TableCell colSpan={2} className="text-xs text-muted-foreground pl-8">↳ Payment</TableCell>
+                        <TableCell className="text-xs">{k.paid_date}</TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="text-success text-sm">₹{Number(k.amount).toLocaleString("en-IN")}</TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="text-xs capitalize">{(k.payment_mode||"-").replace(/_/g," ")}</TableCell>
+                        {!readOnly && (
+                          <TableCell className="text-right space-x-1">
+                            <Button variant="ghost" size="icon" onClick={()=>handleDownloadChildReceipt(k)}><FileDown className="h-4 w-4 text-primary"/></Button>
+                            <Button variant="ghost" size="icon" onClick={()=>toggleVisibility(k.id, k.is_visible)}>{k.is_visible ? <Eye className="h-4 w-4 text-success"/> : <EyeOff className="h-4 w-4 text-muted-foreground"/>}</Button>
+                            <Button variant="ghost" size="icon" onClick={()=>{setEditChild(k); setEditChildForm({amount:String(k.amount), date:k.paid_date||"", paymentMode:k.payment_mode||"upi"});}}><Edit2 className="h-4 w-4"/></Button>
+                            {isAdmin && <Button variant="ghost" size="icon" onClick={()=>setHistoryRecordId(k.id)}><History className="h-4 w-4 text-muted-foreground"/></Button>}
+                            <Button variant="ghost" size="icon" onClick={()=>handleDelete(k.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                    {isOpen && kids.length === 0 && (
+                      <TableRow className="bg-muted/30"><TableCell></TableCell><TableCell colSpan={readOnly?7:8} className="text-xs text-muted-foreground pl-8">No payments yet.</TableCell></TableRow>
+                    )}
+                  </>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </SectionCard>
+
+      {/* Add parent dialog */}
+      <Dialog open={addParentOpen} onOpenChange={setAddParentOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="font-display">New Annual Entry</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>{t("resident")} *</Label>
+              <Select value={addParentForm.residentId} onValueChange={(v)=>setAddParentForm({...addParentForm, residentId:v})}>
+                <SelectTrigger><SelectValue placeholder={t("select_resident")}/></SelectTrigger>
+                <SelectContent>{eligibleResidents.map((r:any)=>(<SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2"><Label>FY Start Year *</Label><Input type="number" value={addParentForm.year} onChange={(e)=>setAddParentForm({...addParentForm, year:e.target.value})}/></div>
+              <div className="grid gap-2"><Label>{t("total_maintenance")} (₹) *</Label><Input type="number" value={addParentForm.totalMaintenance} onChange={(e)=>setAddParentForm({...addParentForm, totalMaintenance:e.target.value})}/></div>
+            </div>
+            <Button onClick={handleAddParent} className="w-full">Create</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit parent total */}
+      <Dialog open={!!editParent} onOpenChange={(v)=>{if(!v)setEditParent(null);}}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-display">{t("pay_due")}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {duePaymentEntry && (
-              <div className="p-3 rounded-lg bg-muted text-sm">
-                <p>
-                  <span className="text-muted-foreground">{t("resident")}:</span>{" "}
-                  {(duePaymentEntry.residents as any)?.name}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">{t("due")}:</span>{" "}
-                  <span className="font-bold text-destructive">
-                    ₹{Number(duePaymentEntry.due_amount).toLocaleString("en-IN")}
-                  </span>
-                </p>
-              </div>
-            )}
-            <div className="grid gap-2">
-              <Label>{t("amount")} (₹) *</Label>
-              <Input
-                type="number"
-                value={duePaymentForm.amount}
-                onChange={(e) => setDuePaymentForm({ ...duePaymentForm, amount: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t("date")} *</Label>
-              <Input
-                type="date"
-                value={duePaymentForm.date}
-                onChange={(e) => setDuePaymentForm({ ...duePaymentForm, date: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t("payment_mode")}</Label>
-              <Select
-                value={duePaymentForm.paymentMode}
-                onValueChange={(v) => setDuePaymentForm({ ...duePaymentForm, paymentMode: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+          <DialogHeader><DialogTitle className="font-display">Edit FY Total</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2"><Label>{t("total_maintenance")} (₹) *</Label><Input type="number" value={editParentTotal} onChange={(e)=>setEditParentTotal(e.target.value)}/></div>
+            <Button onClick={handleEditParent} className="w-full">{t("update")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit child payment */}
+      <Dialog open={!!editChild} onOpenChange={(v)=>{if(!v)setEditChild(null);}}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-display">Edit Payment</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2"><Label>{t("paid")} (₹) *</Label><Input type="number" value={editChildForm.amount} onChange={(e)=>setEditChildForm({...editChildForm, amount:e.target.value})}/></div>
+            <div className="grid gap-2"><Label>{t("date")} *</Label><Input type="date" value={editChildForm.date} onChange={(e)=>setEditChildForm({...editChildForm, date:e.target.value})}/></div>
+            <div className="grid gap-2"><Label>{t("payment_mode")}</Label>
+              <Select value={editChildForm.paymentMode} onValueChange={(v)=>setEditChildForm({...editChildForm, paymentMode:v})}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">{t("cash")}</SelectItem>
                   <SelectItem value="upi">{t("upi")}</SelectItem>
@@ -673,306 +720,58 @@ const Maintenance = () => {
                 </SelectContent>
               </Select>
             </div>
-
-            <Button onClick={handleDuePayment} className="w-full gradient-warm text-primary-foreground">
-              {t("pay_due")}
-            </Button>
+            <Button onClick={handleEditChild} className="w-full">{t("update")}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Pay due dialog */}
+      <Dialog open={duePaymentDialog} onOpenChange={setDuePaymentDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-display">{t("pay_due")}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            {duePaymentParent && (
+              <div className="p-3 rounded-lg bg-muted text-sm">
+                <p><span className="text-muted-foreground">{t("resident")}:</span> {(duePaymentParent.residents as any)?.name}</p>
+                <p><span className="text-muted-foreground">{t("due")}:</span> <span className="font-bold text-destructive">₹{Number(duePaymentParent.due_amount).toLocaleString("en-IN")}</span></p>
+              </div>
+            )}
+            <div className="grid gap-2"><Label>{t("amount")} (₹) *</Label><Input type="number" value={duePaymentForm.amount} onChange={(e)=>setDuePaymentForm({...duePaymentForm, amount:e.target.value})}/></div>
+            <div className="grid gap-2"><Label>{t("date")} *</Label><Input type="date" value={duePaymentForm.date} onChange={(e)=>setDuePaymentForm({...duePaymentForm, date:e.target.value})}/></div>
+            <div className="grid gap-2"><Label>{t("payment_mode")}</Label>
+              <Select value={duePaymentForm.paymentMode} onValueChange={(v)=>setDuePaymentForm({...duePaymentForm, paymentMode:v})}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">{t("cash")}</SelectItem>
+                  <SelectItem value="upi">{t("upi")}</SelectItem>
+                  <SelectItem value="bank_transfer">{t("bank_transfer")}</SelectItem>
+                  <SelectItem value="cheque">{t("cheque")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleDuePayment} className="w-full gradient-warm text-primary-foreground">{t("pay_due")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Default amount dialog */}
       <Dialog open={defaultAmountDialog} onOpenChange={setDefaultAmountDialog}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-display">{t("set_default_amount")}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogHeader><DialogTitle className="font-display">{t("set_default_amount")}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label>{t("total_maintenance")} (₹)</Label>
-              <Input type="number" value={defaultAmount} onChange={(e) => setDefaultAmount(e.target.value)} />
+              <Input type="number" value={defaultAmount} onChange={(e)=>setDefaultAmount(e.target.value)}/>
               <p className="text-xs text-muted-foreground">{t("default_amount_note")}</p>
             </div>
-            <Button onClick={handleUpdateDefaultAmount} className="w-full gradient-warm text-primary-foreground">
-              {t("update")}
-            </Button>
+            <Button onClick={handleUpdateDefaultAmount} className="w-full gradient-warm text-primary-foreground">{t("update")}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <StatCard
-          title={t("total_collected")}
-          value={`₹${totalCollected.toLocaleString("en-IN")}`}
-          icon={IndianRupee}
-          variant="success"
-        />
-        <StatCard
-          title={t("pending_dues")}
-          value={`₹${totalPending.toLocaleString("en-IN")}`}
-          icon={AlertTriangle}
-          variant="warning"
-        />
-        <StatCard
-          title={t("paid")}
-          value={String(filtered.filter((c: any) => c.status === "paid").length)}
-          icon={CheckCircle2}
-          variant="primary"
-        />
-        <StatCard
-          title={t("overdue")}
-          value={String(
-            filtered.filter((c: any) => getEffectiveStatus(c) === "overdue" || c.status === "pending").length,
-          )}
-          icon={Clock}
-          variant="destructive"
-        />
-      </div>
-
-      <SectionCard className="py-3 md:py-3">
-        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-10"
-              placeholder={t("search_residents")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full sm:w-32">
-                <Filter className="h-4 w-4 mr-1" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("all_status")}</SelectItem>
-                <SelectItem value="paid">{t("paid")}</SelectItem>
-                <SelectItem value="partial">{t("partial")}</SelectItem>
-                <SelectItem value="pending">{t("pending")}</SelectItem>
-                <SelectItem value="overdue">{t("overdue")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger className="w-full sm:w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("all_months")}</SelectItem>
-                {MONTHS.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </SectionCard>
-
-      {/* Mobile card view */}
-      <div className="md:hidden space-y-3">
-        {isLoading ? (
-          <p className="text-center text-muted-foreground py-8">{t("loading")}</p>
-        ) : filtered.length === 0 ? (
-          <SectionCard className="p-8 text-center text-muted-foreground">{t("no_records_found")}</SectionCard>
-        ) : (
-          filtered.map((c: any) => {
-            const effectiveStatus = getEffectiveStatus(c);
-            return (
-              <SectionCard key={c.id} className="py-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-sm">{(c.residents as any)?.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(c.residents as any)?.house_no} • {c.paid_date || "-"}
-                    </p>
-                  </div>
-                  <Badge variant={statusBadge[effectiveStatus] || "outline"} className="text-xs">
-                    {t(effectiveStatus)}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total</p>
-                    <p className="font-medium">₹{Number(c.total_maintenance || 0).toLocaleString("en-IN")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t("paid")}</p>
-                    <p className="font-medium text-success">₹{Number(c.amount).toLocaleString("en-IN")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t("due")}</p>
-                    <p className={`font-medium ${Number(c.due_amount) > 0 ? "text-destructive" : ""}`}>
-                      ₹{Number(c.due_amount).toLocaleString("en-IN")}
-                    </p>
-                  </div>
-                </div>
-                {c.due_date && (
-                  <div className="text-xs text-muted-foreground">
-                    {t("due_date")}: {c.due_date}
-                  </div>
-                )}
-                <div className="text-xs text-muted-foreground capitalize">
-                  {c.payment_mode?.replace("_", " ") || "-"}
-                </div>
-                {!readOnly && (
-                  <div className="flex gap-1 pt-1 border-t flex-wrap">
-                    {Number(c.due_amount) > 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => openDuePayment(c)}>
-                              <BanknoteIcon className="h-3.5 w-3.5 text-orange-500" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t("pay_due")}</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                    {isAdmin && (
-                      <Button variant="ghost" size="sm" onClick={() => setHistoryRecordId(c.id)}>
-                        <History className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={() => handleDownloadReceipt(c)}>
-                      <FileDown className="h-3.5 w-3.5 text-primary" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => toggleVisibility(c.id, c.is_visible)}>
-                      {c.is_visible ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                )}
-              </SectionCard>
-            );
-          })
-        )}
-      </div>
-
-      {/* Desktop table view */}
-      <SectionCard className="hidden md:block overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("resident")}</TableHead>
-              <TableHead>{t("house")}</TableHead>
-              <TableHead>{t("date")}</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>{t("paid")}</TableHead>
-              <TableHead>{t("due")}</TableHead>
-              <TableHead>{t("due_date")}</TableHead>
-              <TableHead>{t("mode")}</TableHead>
-              <TableHead>{t("status")}</TableHead>
-              {!readOnly && <TableHead className="text-right">{t("actions")}</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={readOnly ? 9 : 10} className="text-center py-8 text-muted-foreground">
-                  {t("loading")}
-                </TableCell>
-              </TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={readOnly ? 9 : 10} className="text-center py-8 text-muted-foreground">
-                  {t("no_records_found")}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((c: any) => {
-                const effectiveStatus = getEffectiveStatus(c);
-                return (
-                  <TableRow key={c.id} className="animate-fade-in">
-                    <TableCell className="font-medium">{(c.residents as any)?.name}</TableCell>
-                    <TableCell>{(c.residents as any)?.house_no}</TableCell>
-                    <TableCell>{c.paid_date || "-"}</TableCell>
-                    <TableCell className="font-medium">
-                      ₹{Number(c.total_maintenance || 0).toLocaleString("en-IN")}
-                    </TableCell>
-                    <TableCell className="text-success font-medium">
-                      ₹{Number(c.amount).toLocaleString("en-IN")}
-                    </TableCell>
-                    <TableCell className={Number(c.due_amount) > 0 ? "text-destructive font-medium" : ""}>
-                      ₹{Number(c.due_amount).toLocaleString("en-IN")}
-                    </TableCell>
-                    <TableCell>{c.due_date || "-"}</TableCell>
-                    <TableCell className="capitalize">{c.payment_mode?.replace("_", " ") || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusBadge[effectiveStatus] || "outline"}>{t(effectiveStatus)}</Badge>
-                    </TableCell>
-                    {!readOnly && (
-                      <TableCell className="text-right space-x-1">
-                        {Number(c.due_amount) > 0 && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => openDuePayment(c)}>
-                                  <BanknoteIcon className="h-4 w-4 text-orange-500" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{t("pay_due")}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        {isAdmin && (
-                          <Button variant="ghost" size="icon" onClick={() => setHistoryRecordId(c.id)}>
-                            <History className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => handleDownloadReceipt(c)}>
-                          <FileDown className="h-4 w-4 text-primary" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => toggleVisibility(c.id, c.is_visible)}>
-                          {c.is_visible ? (
-                            <Eye className="h-4 w-4 text-success" />
-                          ) : (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </SectionCard>
-      <AuditHistoryDialog
-        open={!!historyRecordId}
-        onClose={() => setHistoryRecordId(null)}
-        tableName="maintenance_collections"
-        recordId={historyRecordId || ""}
-      />
-      <BulkMaintenanceDialog
-        open={bulkOpen}
-        onOpenChange={setBulkOpen}
-        residents={eligibleResidents}
-        defaultAmount={storedDefault}
-      />
-      <BulkDeleteMaintenanceDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen} collections={filtered} />
-      <MaintenanceConflictDialog
-        open={!!conflict}
-        onOpenChange={(v) => {
-          if (!v) onConflictIgnore();
-        }}
-        reason={conflict}
-        onIgnore={onConflictIgnore}
-        onContinue={onConflictContinue}
-      />
+      <AuditHistoryDialog open={!!historyRecordId} onClose={()=>setHistoryRecordId(null)} tableName="maintenance_collections" recordId={historyRecordId || ""}/>
+      <BulkMaintenanceDialog open={bulkOpen} onOpenChange={setBulkOpen} residents={eligibleResidents} defaultAmount={storedDefault}/>
+      <BulkDeleteMaintenanceDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen} collections={groups.parents}/>
     </div>
   );
 };
