@@ -383,6 +383,7 @@ export type Database = {
           is_visible: boolean
           month: string
           paid_date: string | null
+          parent_id: string | null
           payment_mode: string | null
           receipt_no: string | null
           resident_id: string
@@ -401,6 +402,7 @@ export type Database = {
           is_visible?: boolean
           month: string
           paid_date?: string | null
+          parent_id?: string | null
           payment_mode?: string | null
           receipt_no?: string | null
           resident_id: string
@@ -419,6 +421,7 @@ export type Database = {
           is_visible?: boolean
           month?: string
           paid_date?: string | null
+          parent_id?: string | null
           payment_mode?: string | null
           receipt_no?: string | null
           resident_id?: string
@@ -428,6 +431,13 @@ export type Database = {
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "maintenance_collections_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_collections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "maintenance_collections_resident_id_fkey"
             columns: ["resident_id"]
@@ -984,6 +994,10 @@ export type Database = {
       is_mobile_locked: { Args: { _mobile: string }; Returns: boolean }
       is_supervisor: { Args: { _user_id: string }; Returns: boolean }
       purge_old_deleted_records: { Args: never; Returns: undefined }
+      recompute_maintenance_parent: {
+        Args: { _parent_id: string }
+        Returns: undefined
+      }
       record_login_attempt: {
         Args: { _mobile: string; _success: boolean }
         Returns: undefined

@@ -248,3 +248,123 @@ export const downloadReceipt = (data: ReceiptData) => {
   const safeName = data.residentName.replace(/\s+/g, '_');
   doc.save(`receipt_${safeName}_FY${data.year}${suffix}.pdf`);
 };
+
+interface StatementChild {
+  date: string;
+  amountPaid: number;
+  dueAfter: number;
+  paymentMode?: string;
+}
+
+interface StatementData {
+  societyName: string;
+  residentName: string;
+  houseNo: string;
+  laneNo: string;
+  year: number;
+  totalMaintenance: number;
+  totalPaid: number;
+  totalDue: number;
+  children: StatementChild[];
+}
+
+export const downloadStatement = (data: StatementData) => {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 14;
+  const society = ensureSocietyName(data.societyName);
+  const fy = formatFY(data.year);
+
+  // Header band
+  doc.setFillColor(...TEAL);
+  doc.rect(0, 0, pageW, 26, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text(society, pageW / 2, 12, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Annual Maintenance Statement  •  FY ${fy}`, pageW / 2, 19, { align: 'center' });
+
+  // Resident block
+  let y = 36;
+  doc.setTextColor(...INK);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(data.residentName, margin, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  doc.text(`House ${data.houseNo}${data.laneNo ? `  •  Lane ${data.laneNo}` : ''}`, margin, y + 5);
+
+  // Summary chips (right side)
+  const sumX = pageW - margin - 70;
+  doc.setFillColor(...SOFT);
+  doc.roundedRect(sumX, y - 5, 70, 18, 2, 2, 'F');
+  doc.setTextColor(...INK);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text(`Total: INR ${data.totalMaintenance.toLocaleString('en-IN')}`, sumX + 3, y);
+  doc.setTextColor(0, 120, 60);
+  doc.text(`Paid: INR ${data.totalPaid.toLocaleString('en-IN')}`, sumX + 3, y + 5);
+  doc.setTextColor(180, 40, 40);
+  doc.text(`Due: INR ${data.totalDue.toLocaleString('en-IN')}`, sumX + 3, y + 10);
+
+  // Table header
+  y += 18;
+  doc.setFillColor(...TEAL);
+  doc.rect(margin, y, pageW - margin * 2, 8, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('Date', margin + 3, y + 5.5);
+  doc.text('Mode', margin + 50, y + 5.5);
+  doc.text('Amount Paid', margin + 95, y + 5.5);
+  doc.text('Balance Due', margin + 140, y + 5.5);
+  y += 8;
+
+  doc.setTextColor(...INK);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+
+  if (data.children.length === 0) {
+    y += 8;
+    doc.setTextColor(...MUTED);
+    doc.text('No payments recorded yet.', pageW / 2, y, { align: 'center' });
+  } else {
+    data.children.forEach((c, i) => {
+      if (i % 2 === 1) {
+        doc.setFillColor(248, 250, 251);
+        doc.rect(margin, y, pageW - margin * 2, 7, 'F');
+      }
+      doc.text(c.date || '-', margin + 3, y + 5);
+      doc.text((c.paymentMode || '-').replace(/_/g, ' '), margin + 50, y + 5);
+      doc.text(`INR ${c.amountPaid.toLocaleString('en-IN')}`, margin + 95, y + 5);
+      doc.text(`INR ${c.dueAfter.toLocaleString('en-IN')}`, margin + 140, y + 5);
+      y += 7;
+    });
+  }
+
+  // Totals row
+  y += 4;
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.4);
+  doc.line(margin, y, pageW - margin, y);
+  y += 6;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Totals', margin + 3, y);
+  doc.text(`INR ${data.totalPaid.toLocaleString('en-IN')}`, margin + 95, y);
+  doc.text(`INR ${data.totalDue.toLocaleString('en-IN')}`, margin + 140, y);
+
+  // Footer
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...MUTED);
+  doc.setFontSize(7.5);
+  doc.text('This is a computer-generated statement and does not require a signature.', pageW / 2, 285, { align: 'center' });
+  doc.setFillColor(...TEAL);
+  doc.rect(0, 294, pageW, 3, 'F');
+
+  const safeName = data.residentName.replace(/\s+/g, '_');
+  doc.save(`statement_${safeName}_FY${data.year}.pdf`);
+};
+
