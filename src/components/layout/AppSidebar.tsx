@@ -21,7 +21,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { usePermissionRows } from '@/hooks/usePageAccess';
 
 interface AppSidebarProps {
   mobileOpen: boolean;
@@ -31,17 +30,10 @@ interface AppSidebarProps {
 const AppSidebar = ({ mobileOpen, setMobileOpen }: AppSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor, userRole } = useAuth();
+  const { isAdmin, isCoordinator, isMasterAdmin, isResident, isSupervisor } = useAuth();
   const { t } = useLanguage();
   const { unreadCount } = useUnreadNotices();
-  const { rows } = usePermissionRows();
-  const canSee = (page: string) => {
-    if (isMasterAdmin) return true;
-    const role = userRole || (isSupervisor ? 'supervisor' : isCoordinator ? 'coordinator' : 'resident');
-    const row = rows.find(r => r.role === role && r.page_key === page);
-    if (row) return row.can_read;
-    return true;
-  };
+  const canSee = (_page: string) => true;
 
   const navItems: any[] = [];
 

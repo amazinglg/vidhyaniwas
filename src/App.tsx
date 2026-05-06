@@ -22,7 +22,7 @@ import MyComplaints from "@/pages/MyComplaints";
 import PendingSignups from "@/pages/PendingSignups";
 import SocietyManagement from "@/pages/SocietyManagement";
 import DeletedHistory from "@/pages/DeletedHistory";
-import { usePageAccess, type PageKey } from '@/hooks/usePageAccess';
+
 
 const queryClient = new QueryClient();
 
@@ -83,12 +83,7 @@ const MasterAdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const PagePermissionRoute = ({ page, children }: { page: PageKey; children: React.ReactNode }) => {
-  const { canRead, loading } = usePageAccess(page);
-  if (loading) return <SplashScreen />;
-  if (!canRead) return <Navigate to="/my-profile" replace />;
-  return <>{children}</>;
-};
+
 
 const ResidentOrAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, isResident, loading } = useAuth();
@@ -121,17 +116,17 @@ const App = () => (
                   <AppLayout>
                     <Routes>
                       <Route path="/" element={<DefaultRedirect />} />
-                      <Route path="/residents" element={<PagePermissionRoute page="residents"><Residents /></PagePermissionRoute>} />
-                      <Route path="/maintenance" element={<PagePermissionRoute page="maintenance"><Maintenance /></PagePermissionRoute>} />
-                      <Route path="/expenses" element={<PagePermissionRoute page="expenses"><Expenses /></PagePermissionRoute>} />
-                      <Route path="/notices" element={<PagePermissionRoute page="notices"><Notices /></PagePermissionRoute>} />
-                      <Route path="/complaints" element={<PagePermissionRoute page="complaints"><Complaints /></PagePermissionRoute>} />
+                      <Route path="/residents" element={<Residents />} />
+                      <Route path="/maintenance" element={<Maintenance />} />
+                      <Route path="/expenses" element={<Expenses />} />
+                      <Route path="/notices" element={<Notices />} />
+                      <Route path="/complaints" element={<AdminOrSupervisorRoute><Complaints /></AdminOrSupervisorRoute>} />
                       <Route path="/settings" element={<MasterAdminRoute><SocietySettings /></MasterAdminRoute>} />
                       <Route path="/deleted-history" element={<MasterAdminRoute><DeletedHistory /></MasterAdminRoute>} />
                       <Route path="/my-profile" element={<MyProfile />} />
                       <Route path="/my-complaints" element={<MyComplaints />} />
                       <Route path="/pending-signups" element={<AdminRoute><PendingSignups /></AdminRoute>} />
-                      <Route path="/society-management" element={<PagePermissionRoute page="society_management"><SocietyManagement /></PagePermissionRoute>} />
+                      <Route path="/society-management" element={<SocietyManagement />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>
