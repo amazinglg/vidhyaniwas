@@ -111,16 +111,22 @@ const PendingSignups = () => {
                     <TableHead>{t('mobile')}</TableHead>
                     <TableHead>{t('house_no')}</TableHead>
                     <TableHead>{t('lane_no')}</TableHead>
+                    <TableHead>{t('signup_as') || 'Signing up as'}</TableHead>
                     <TableHead className="text-right">{t('actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pendingSignups.map((p: any) => (
+                  {pendingSignups.map((p: any) => {
+                    const rt = (p.resident_type || 'owner') as string;
+                    const rtLabel = rt === 'owner' ? (t('house_owner') || 'House Owner') : rt === 'member' ? (t('family_member') || 'Family Member') : rt === 'tenant' ? (t('tenant') || 'Tenant') : rt;
+                    const rtVariant: any = rt === 'owner' ? 'default' : rt === 'tenant' ? 'destructive' : 'secondary';
+                    return (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.full_name || '-'}</TableCell>
                       <TableCell>{p.mobile || '-'}</TableCell>
                       <TableCell>{p.house_no || '-'}</TableCell>
                       <TableCell>{p.lane_no || '-'}</TableCell>
+                      <TableCell><Badge variant={rtVariant} className="capitalize">{rtLabel}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button size="sm" variant="default" onClick={() => handleApprove(p.user_id)}>
@@ -132,7 +138,7 @@ const PendingSignups = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );})}
                 </TableBody>
               </Table>
             )}
