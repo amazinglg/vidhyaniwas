@@ -683,7 +683,8 @@ const Maintenance = () => {
                           <TooltipProvider><Tooltip><TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" onClick={()=>handleDownloadParentStatement(p)}><FileDown className="h-4 w-4 text-primary"/></Button>
                           </TooltipTrigger><TooltipContent>FY Statement PDF</TooltipContent></Tooltip></TooltipProvider>
-                          {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance));}}><Edit2 className="h-4 w-4"/></Button>}
+                          {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance)); setEditParentResidentId(p.resident_id); setEditParentYear(String(p.year));}}><Edit2 className="h-4 w-4"/></Button>}
+                          {isAdmin && <Button variant="ghost" size="icon" onClick={()=>setHistoryRecordId(p.id)}><History className="h-4 w-4 text-muted-foreground"/></Button>}
                           {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>handleDelete(p.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>}
                         </TableCell>
                       )}
