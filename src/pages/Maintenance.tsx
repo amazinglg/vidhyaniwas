@@ -554,7 +554,15 @@ const Maintenance = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
             <Input className="pl-10" placeholder={t("search_residents")} value={search} onChange={(e)=>setSearch(e.target.value)}/>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="w-full sm:w-28"><CalendarRange className="h-4 w-4 mr-1"/><SelectValue/></SelectTrigger>
+              <SelectContent>
+                {availableYears.map((y) => (
+                  <SelectItem key={y} value={String(y)}>FY {y}-{String((y+1)%100).padStart(2,"0")}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-full sm:w-32"><Filter className="h-4 w-4 mr-1"/><SelectValue/></SelectTrigger>
               <SelectContent>
