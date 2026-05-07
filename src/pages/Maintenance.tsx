@@ -20,6 +20,8 @@ import {
   Layers,
   ChevronDown,
   ChevronRight,
+  CalendarRange,
+  UserCog,
 } from "lucide-react";
 import BulkMaintenanceDialog from "@/components/BulkMaintenanceDialog";
 import BulkDeleteMaintenanceDialog from "@/components/BulkDeleteMaintenanceDialog";
@@ -101,6 +103,7 @@ const Maintenance = () => {
     if (f && ["paid","pending","partial","overdue"].includes(f)) setFilterStatus(f);
   }, [searchParams]);
   const [filterMonth, setFilterMonth] = useState("all");
+  const [filterYear, setFilterYear] = useState<string>(String(fyForDate(new Date())));
 
   const [storedDefault, setStoredDefault] = useState(getStoredDefault);
   const [defaultAmountDialog, setDefaultAmountDialog] = useState(false);
@@ -110,9 +113,11 @@ const Maintenance = () => {
   const [addParentOpen, setAddParentOpen] = useState(false);
   const [addParentForm, setAddParentForm] = useState({ residentId: "", year: String(fyForDate(new Date())), totalMaintenance: String(storedDefault) });
 
-  // Edit parent total
+  // Edit parent (master admin can also reassign resident)
   const [editParent, setEditParent] = useState<any>(null);
   const [editParentTotal, setEditParentTotal] = useState("");
+  const [editParentResidentId, setEditParentResidentId] = useState("");
+  const [editParentYear, setEditParentYear] = useState("");
 
   // Edit child payment
   const [editChild, setEditChild] = useState<any>(null);
@@ -143,26 +148,34 @@ const Maintenance = () => {
     return { parents, childrenByParent };
   }, [collections, supervisorResidentIds]);
 
+  const availableYears = useMemo(() => {
+    const set = new Set<number>();
+    for (const p of groups.parents) if (p.year) set.add(Number(p.year));
+    set.add(fyForDate(new Date()));
+    return Array.from(set).sort((a,b)=>b-a);
+  }, [groups]);
+
   const isFilterActive = filterStatus !== "all" || filterMonth !== "all" || search.trim() !== "";
 
-  // Filtered parent list (default view)
+  // Filtered parent list (default view) — filtered by year too
   const filteredParents = useMemo(() => {
     return groups.parents.filter((p: any) => {
       const name = (p.residents as any)?.name || "";
       const houseNo = (p.residents as any)?.house_no || "";
       const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || houseNo.toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === "all" || p.status === filterStatus;
-      return matchSearch && matchStatus;
+      const matchYear = String(p.year) === filterYear;
+      return matchSearch && matchStatus && matchYear;
     });
-  }, [groups, search, filterStatus]);
+  }, [groups, search, filterStatus, filterYear]);
 
-  // Flat children list (when month/status filter is active)
+  // Flat children list (when month/status filter is active) — restricted to selected FY's parents
   const filteredChildren = useMemo(() => {
     const allChildren: any[] = [];
     for (const p of groups.parents) {
+      if (String(p.year) !== filterYear) continue;
       const kids = groups.childrenByParent[p.id] || [];
       for (const k of kids) {
-        // attach resident info from parent
         allChildren.push({ ...k, residents: p.residents, _parent: p });
       }
     }
@@ -174,7 +187,7 @@ const Maintenance = () => {
       const matchMonth = filterMonth === "all" || c.month === filterMonth;
       return matchSearch && matchStatus && matchMonth;
     }).sort((a,b)=>(b.paid_date||"").localeCompare(a.paid_date||""));
-  }, [groups, search, filterStatus, filterMonth]);
+  }, [groups, search, filterStatus, filterMonth, filterYear]);
 
   const totalCollected = groups.parents.reduce((s, p:any) => {
     const kids = groups.childrenByParent[p.id] || [];
@@ -220,9 +233,29 @@ const Maintenance = () => {
     if (!editParent) return;
     const newTotal = Number(editParentTotal);
     if (!newTotal || newTotal < 0) { toast.error(t("please_fill_required")); return; }
-    // Update parent total; trigger will recompute due based on existing children
-    const { error } = await supabase.from("maintenance_collections").update({ total_maintenance: newTotal }).eq("id", editParent.id);
+    const newResidentId = editParentResidentId || editParent.resident_id;
+    const newYear = Number(editParentYear) || editParent.year;
+
+    // If resident or year changed, ensure no duplicate target parent
+    if (newResidentId !== editParent.resident_id || newYear !== editParent.year) {
+      const dup = groups.parents.find(p => p.id !== editParent.id && p.resident_id === newResidentId && Number(p.year) === newYear);
+      if (dup) { toast.error("Annual entry already exists for selected resident & FY"); return; }
+    }
+
+    const { error } = await supabase.from("maintenance_collections").update({
+      total_maintenance: newTotal,
+      resident_id: newResidentId,
+      year: newYear,
+    }).eq("id", editParent.id);
     if (error) { toast.error(error.message); return; }
+
+    // Cascade resident_id/year to all children — keeps drop-down membership consistent
+    if (newResidentId !== editParent.resident_id || newYear !== editParent.year) {
+      await supabase.from("maintenance_collections")
+        .update({ resident_id: newResidentId })
+        .eq("parent_id", editParent.id);
+    }
+
     queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
     setEditParent(null);
     toast.success(t("amount_updated") || "Updated");
@@ -313,20 +346,27 @@ const Maintenance = () => {
     toast.success(t("amount_updated"));
   };
 
-  // CSV: per-row export — when filtered children visible, export children; else export all children
+  // CSV: per-row export — child rows must reflect PARENT FY totals, not stale per-row snapshots
   const downloadCSV = () => {
-    const rowsSrc = isFilterActive ? filteredChildren : (groups.parents.flatMap(p=>(groups.childrenByParent[p.id]||[]).map(k=>({...k, residents:p.residents}))));
+    const rowsSrc: any[] = isFilterActive
+      ? filteredChildren
+      : groups.parents
+          .filter((p:any)=> String(p.year) === filterYear)
+          .flatMap((p:any) => (groups.childrenByParent[p.id]||[]).map((k:any)=>({...k, residents:p.residents, _parent:p})));
     const headers = [t("resident"), t("house"), t("date"), "Total", t("paid"), t("due"), t("mode"), t("status")];
-    const rows = rowsSrc.map((c: any) => [
-      (c.residents as any)?.name || "",
-      (c.residents as any)?.house_no || "",
-      c.paid_date || "",
-      c.total_maintenance,
-      c.amount,
-      c.due_amount,
-      c.payment_mode || "",
-      c.status,
-    ]);
+    const rows = rowsSrc.map((c: any) => {
+      const parent = c._parent || groups.parents.find((p:any)=>p.id===c.parent_id) || c;
+      return [
+        (c.residents as any)?.name || "",
+        (c.residents as any)?.house_no || "",
+        c.paid_date || "",
+        Number(parent.total_maintenance || 0),
+        Number(c.amount || 0),
+        Number(parent.due_amount || 0),
+        c.payment_mode || "",
+        parent.status || c.status,
+      ];
+    });
     const csv = [headers, ...rows]
       .map((r) => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
@@ -409,7 +449,8 @@ const Maintenance = () => {
               <Button variant="ghost" size="sm" onClick={()=>openDuePayment(p)}><BanknoteIcon className="h-3.5 w-3.5 text-orange-500 mr-1"/>{t("pay_due")}</Button>
             )}
             <Button variant="ghost" size="sm" onClick={()=>handleDownloadParentStatement(p)}><FileDown className="h-3.5 w-3.5 text-primary"/></Button>
-            {isMasterAdmin && <Button variant="ghost" size="sm" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance));}}><Edit2 className="h-3.5 w-3.5"/></Button>}
+            {isMasterAdmin && <Button variant="ghost" size="sm" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance)); setEditParentResidentId(p.resident_id); setEditParentYear(String(p.year));}}><Edit2 className="h-3.5 w-3.5"/></Button>}
+            {isAdmin && <Button variant="ghost" size="sm" onClick={()=>setHistoryRecordId(p.id)}><History className="h-3.5 w-3.5 text-muted-foreground"/></Button>}
             {isMasterAdmin && <Button variant="ghost" size="sm" onClick={()=>handleDelete(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive"/></Button>}
           </div>
         )}
@@ -514,7 +555,15 @@ const Maintenance = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
             <Input className="pl-10" placeholder={t("search_residents")} value={search} onChange={(e)=>setSearch(e.target.value)}/>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="w-full sm:w-28"><CalendarRange className="h-4 w-4 mr-1"/><SelectValue/></SelectTrigger>
+              <SelectContent>
+                {availableYears.map((y) => (
+                  <SelectItem key={y} value={String(y)}>FY {y}-{String((y+1)%100).padStart(2,"0")}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-full sm:w-32"><Filter className="h-4 w-4 mr-1"/><SelectValue/></SelectTrigger>
               <SelectContent>
@@ -634,7 +683,8 @@ const Maintenance = () => {
                           <TooltipProvider><Tooltip><TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" onClick={()=>handleDownloadParentStatement(p)}><FileDown className="h-4 w-4 text-primary"/></Button>
                           </TooltipTrigger><TooltipContent>FY Statement PDF</TooltipContent></Tooltip></TooltipProvider>
-                          {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance));}}><Edit2 className="h-4 w-4"/></Button>}
+                          {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance)); setEditParentResidentId(p.resident_id); setEditParentYear(String(p.year));}}><Edit2 className="h-4 w-4"/></Button>}
+                          {isAdmin && <Button variant="ghost" size="icon" onClick={()=>setHistoryRecordId(p.id)}><History className="h-4 w-4 text-muted-foreground"/></Button>}
                           {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>handleDelete(p.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>}
                         </TableCell>
                       )}
@@ -691,12 +741,23 @@ const Maintenance = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit parent total */}
+      {/* Edit parent (master admin: reassign resident, change FY year, edit total) */}
       <Dialog open={!!editParent} onOpenChange={(v)=>{if(!v)setEditParent(null);}}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-display">Edit FY Total</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="font-display">Edit Annual Entry</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid gap-2"><Label>{t("total_maintenance")} (₹) *</Label><Input type="number" value={editParentTotal} onChange={(e)=>setEditParentTotal(e.target.value)}/></div>
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1"><UserCog className="h-3.5 w-3.5"/> {t("resident")} *</Label>
+              <Select value={editParentResidentId} onValueChange={setEditParentResidentId}>
+                <SelectTrigger><SelectValue placeholder={t("select_resident")}/></SelectTrigger>
+                <SelectContent>{eligibleResidents.map((r:any)=>(<SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>))}</SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Changing resident moves all sub-entries to the new resident.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2"><Label>FY Start Year *</Label><Input type="number" value={editParentYear} onChange={(e)=>setEditParentYear(e.target.value)}/></div>
+              <div className="grid gap-2"><Label>{t("total_maintenance")} (₹) *</Label><Input type="number" value={editParentTotal} onChange={(e)=>setEditParentTotal(e.target.value)}/></div>
+            </div>
             <Button onClick={handleEditParent} className="w-full">{t("update")}</Button>
           </div>
         </DialogContent>

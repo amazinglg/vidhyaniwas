@@ -645,6 +645,7 @@ export type Database = {
           lane_no: string | null
           mobile: string | null
           resident_id: string | null
+          resident_type: string | null
           updated_at: string
           user_id: string
         }
@@ -661,6 +662,7 @@ export type Database = {
           lane_no?: string | null
           mobile?: string | null
           resident_id?: string | null
+          resident_type?: string | null
           updated_at?: string
           user_id: string
         }
@@ -677,6 +679,7 @@ export type Database = {
           lane_no?: string | null
           mobile?: string | null
           resident_id?: string | null
+          resident_type?: string | null
           updated_at?: string
           user_id?: string
         }
