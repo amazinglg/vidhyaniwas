@@ -233,9 +233,29 @@ const Maintenance = () => {
     if (!editParent) return;
     const newTotal = Number(editParentTotal);
     if (!newTotal || newTotal < 0) { toast.error(t("please_fill_required")); return; }
-    // Update parent total; trigger will recompute due based on existing children
-    const { error } = await supabase.from("maintenance_collections").update({ total_maintenance: newTotal }).eq("id", editParent.id);
+    const newResidentId = editParentResidentId || editParent.resident_id;
+    const newYear = Number(editParentYear) || editParent.year;
+
+    // If resident or year changed, ensure no duplicate target parent
+    if (newResidentId !== editParent.resident_id || newYear !== editParent.year) {
+      const dup = groups.parents.find(p => p.id !== editParent.id && p.resident_id === newResidentId && Number(p.year) === newYear);
+      if (dup) { toast.error("Annual entry already exists for selected resident & FY"); return; }
+    }
+
+    const { error } = await supabase.from("maintenance_collections").update({
+      total_maintenance: newTotal,
+      resident_id: newResidentId,
+      year: newYear,
+    }).eq("id", editParent.id);
     if (error) { toast.error(error.message); return; }
+
+    // Cascade resident_id/year to all children — keeps drop-down membership consistent
+    if (newResidentId !== editParent.resident_id || newYear !== editParent.year) {
+      await supabase.from("maintenance_collections")
+        .update({ resident_id: newResidentId })
+        .eq("parent_id", editParent.id);
+    }
+
     queryClient.invalidateQueries({ queryKey: ["maintenance_collections"] });
     setEditParent(null);
     toast.success(t("amount_updated") || "Updated");
