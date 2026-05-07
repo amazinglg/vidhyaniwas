@@ -741,12 +741,23 @@ const Maintenance = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit parent total */}
+      {/* Edit parent (master admin: reassign resident, change FY year, edit total) */}
       <Dialog open={!!editParent} onOpenChange={(v)=>{if(!v)setEditParent(null);}}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-display">Edit FY Total</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="font-display">Edit Annual Entry</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid gap-2"><Label>{t("total_maintenance")} (₹) *</Label><Input type="number" value={editParentTotal} onChange={(e)=>setEditParentTotal(e.target.value)}/></div>
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1"><UserCog className="h-3.5 w-3.5"/> {t("resident")} *</Label>
+              <Select value={editParentResidentId} onValueChange={setEditParentResidentId}>
+                <SelectTrigger><SelectValue placeholder={t("select_resident")}/></SelectTrigger>
+                <SelectContent>{eligibleResidents.map((r:any)=>(<SelectItem key={r.id} value={r.id}>{r.name} ({r.house_no})</SelectItem>))}</SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Changing resident moves all sub-entries to the new resident.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2"><Label>FY Start Year *</Label><Input type="number" value={editParentYear} onChange={(e)=>setEditParentYear(e.target.value)}/></div>
+              <div className="grid gap-2"><Label>{t("total_maintenance")} (₹) *</Label><Input type="number" value={editParentTotal} onChange={(e)=>setEditParentTotal(e.target.value)}/></div>
+            </div>
             <Button onClick={handleEditParent} className="w-full">{t("update")}</Button>
           </div>
         </DialogContent>
