@@ -103,6 +103,7 @@ const Maintenance = () => {
     if (f && ["paid","pending","partial","overdue"].includes(f)) setFilterStatus(f);
   }, [searchParams]);
   const [filterMonth, setFilterMonth] = useState("all");
+  const [filterYear, setFilterYear] = useState<string>(String(fyForDate(new Date())));
 
   const [storedDefault, setStoredDefault] = useState(getStoredDefault);
   const [defaultAmountDialog, setDefaultAmountDialog] = useState(false);
@@ -112,9 +113,11 @@ const Maintenance = () => {
   const [addParentOpen, setAddParentOpen] = useState(false);
   const [addParentForm, setAddParentForm] = useState({ residentId: "", year: String(fyForDate(new Date())), totalMaintenance: String(storedDefault) });
 
-  // Edit parent total
+  // Edit parent (master admin can also reassign resident)
   const [editParent, setEditParent] = useState<any>(null);
   const [editParentTotal, setEditParentTotal] = useState("");
+  const [editParentResidentId, setEditParentResidentId] = useState("");
+  const [editParentYear, setEditParentYear] = useState("");
 
   // Edit child payment
   const [editChild, setEditChild] = useState<any>(null);
