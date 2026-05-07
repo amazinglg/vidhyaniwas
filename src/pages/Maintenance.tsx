@@ -346,20 +346,27 @@ const Maintenance = () => {
     toast.success(t("amount_updated"));
   };
 
-  // CSV: per-row export — when filtered children visible, export children; else export all children
+  // CSV: per-row export — child rows must reflect PARENT FY totals, not stale per-row snapshots
   const downloadCSV = () => {
-    const rowsSrc = isFilterActive ? filteredChildren : (groups.parents.flatMap(p=>(groups.childrenByParent[p.id]||[]).map(k=>({...k, residents:p.residents}))));
+    const rowsSrc: any[] = isFilterActive
+      ? filteredChildren
+      : groups.parents
+          .filter((p:any)=> String(p.year) === filterYear)
+          .flatMap((p:any) => (groups.childrenByParent[p.id]||[]).map((k:any)=>({...k, residents:p.residents, _parent:p})));
     const headers = [t("resident"), t("house"), t("date"), "Total", t("paid"), t("due"), t("mode"), t("status")];
-    const rows = rowsSrc.map((c: any) => [
-      (c.residents as any)?.name || "",
-      (c.residents as any)?.house_no || "",
-      c.paid_date || "",
-      c.total_maintenance,
-      c.amount,
-      c.due_amount,
-      c.payment_mode || "",
-      c.status,
-    ]);
+    const rows = rowsSrc.map((c: any) => {
+      const parent = c._parent || groups.parents.find((p:any)=>p.id===c.parent_id) || c;
+      return [
+        (c.residents as any)?.name || "",
+        (c.residents as any)?.house_no || "",
+        c.paid_date || "",
+        Number(parent.total_maintenance || 0),
+        Number(c.amount || 0),
+        Number(parent.due_amount || 0),
+        c.payment_mode || "",
+        parent.status || c.status,
+      ];
+    });
     const csv = [headers, ...rows]
       .map((r) => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
