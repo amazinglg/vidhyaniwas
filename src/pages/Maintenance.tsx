@@ -148,26 +148,34 @@ const Maintenance = () => {
     return { parents, childrenByParent };
   }, [collections, supervisorResidentIds]);
 
+  const availableYears = useMemo(() => {
+    const set = new Set<number>();
+    for (const p of groups.parents) if (p.year) set.add(Number(p.year));
+    set.add(fyForDate(new Date()));
+    return Array.from(set).sort((a,b)=>b-a);
+  }, [groups]);
+
   const isFilterActive = filterStatus !== "all" || filterMonth !== "all" || search.trim() !== "";
 
-  // Filtered parent list (default view)
+  // Filtered parent list (default view) — filtered by year too
   const filteredParents = useMemo(() => {
     return groups.parents.filter((p: any) => {
       const name = (p.residents as any)?.name || "";
       const houseNo = (p.residents as any)?.house_no || "";
       const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || houseNo.toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === "all" || p.status === filterStatus;
-      return matchSearch && matchStatus;
+      const matchYear = String(p.year) === filterYear;
+      return matchSearch && matchStatus && matchYear;
     });
-  }, [groups, search, filterStatus]);
+  }, [groups, search, filterStatus, filterYear]);
 
-  // Flat children list (when month/status filter is active)
+  // Flat children list (when month/status filter is active) — restricted to selected FY's parents
   const filteredChildren = useMemo(() => {
     const allChildren: any[] = [];
     for (const p of groups.parents) {
+      if (String(p.year) !== filterYear) continue;
       const kids = groups.childrenByParent[p.id] || [];
       for (const k of kids) {
-        // attach resident info from parent
         allChildren.push({ ...k, residents: p.residents, _parent: p });
       }
     }
@@ -179,7 +187,7 @@ const Maintenance = () => {
       const matchMonth = filterMonth === "all" || c.month === filterMonth;
       return matchSearch && matchStatus && matchMonth;
     }).sort((a,b)=>(b.paid_date||"").localeCompare(a.paid_date||""));
-  }, [groups, search, filterStatus, filterMonth]);
+  }, [groups, search, filterStatus, filterMonth, filterYear]);
 
   const totalCollected = groups.parents.reduce((s, p:any) => {
     const kids = groups.childrenByParent[p.id] || [];
