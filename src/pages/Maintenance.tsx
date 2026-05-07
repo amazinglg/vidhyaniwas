@@ -449,7 +449,8 @@ const Maintenance = () => {
               <Button variant="ghost" size="sm" onClick={()=>openDuePayment(p)}><BanknoteIcon className="h-3.5 w-3.5 text-orange-500 mr-1"/>{t("pay_due")}</Button>
             )}
             <Button variant="ghost" size="sm" onClick={()=>handleDownloadParentStatement(p)}><FileDown className="h-3.5 w-3.5 text-primary"/></Button>
-            {isMasterAdmin && <Button variant="ghost" size="sm" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance));}}><Edit2 className="h-3.5 w-3.5"/></Button>}
+            {isMasterAdmin && <Button variant="ghost" size="sm" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance)); setEditParentResidentId(p.resident_id); setEditParentYear(String(p.year));}}><Edit2 className="h-3.5 w-3.5"/></Button>}
+            {isAdmin && <Button variant="ghost" size="sm" onClick={()=>setHistoryRecordId(p.id)}><History className="h-3.5 w-3.5 text-muted-foreground"/></Button>}
             {isMasterAdmin && <Button variant="ghost" size="sm" onClick={()=>handleDelete(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive"/></Button>}
           </div>
         )}
