@@ -20,6 +20,8 @@ import {
   Layers,
   ChevronDown,
   ChevronRight,
+  CalendarRange,
+  UserCog,
 } from "lucide-react";
 import BulkMaintenanceDialog from "@/components/BulkMaintenanceDialog";
 import BulkDeleteMaintenanceDialog from "@/components/BulkDeleteMaintenanceDialog";
