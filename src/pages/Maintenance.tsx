@@ -736,7 +736,7 @@ const Maintenance = () => {
               <div className="grid gap-2"><Label>FY Start Year *</Label><Input type="number" value={addParentForm.year} onChange={(e)=>setAddParentForm({...addParentForm, year:e.target.value})}/></div>
               <div className="grid gap-2"><Label>{t("total_maintenance")} (₹) *</Label><Input type="number" value={addParentForm.totalMaintenance} onChange={(e)=>setAddParentForm({...addParentForm, totalMaintenance:e.target.value})}/></div>
             </div>
-            <Button onClick={handleAddParent} className="w-full">Create</Button>
+            <Button onClick={handleAddParent} className="w-full">{t("create")}</Button>
           </div>
         </DialogContent>
       </Dialog>
