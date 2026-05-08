@@ -513,7 +513,7 @@ const SocietySettings = () => {
                               {Object.entries(ROLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                             </SelectContent>
                           </Select>
-                          {!matchedUser && <Badge variant="outline" className="text-xs whitespace-nowrap">Not signed up</Badge>}
+                          {!matchedUser && <Badge variant="outline" className="text-xs whitespace-nowrap">{t('not_signed_up')}</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
