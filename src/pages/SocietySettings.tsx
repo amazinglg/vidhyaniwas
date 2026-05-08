@@ -398,7 +398,7 @@ const SocietySettings = () => {
                       <Rocket className="h-6 w-6" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold font-display">Release Updates</h3>
+                      <h3 className="text-lg font-bold font-display">{t('release_updates')}</h3>
                       <p className="text-sm text-muted-foreground max-w-xl mt-1">
                         Force every installed PWA and browser session to immediately reload and reinstall the latest published version. Use this only after publishing new changes.
                       </p>
