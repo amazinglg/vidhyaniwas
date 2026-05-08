@@ -555,17 +555,17 @@ const SocietySettings = () => {
         <TabsContent value="helpers" className="mt-6 space-y-4">
           <div className="flex justify-between items-center gap-3 flex-wrap">
             <p className="text-sm text-muted-foreground">Helpers are not residents. They don't have login or maintenance dues.</p>
-            <Button onClick={openAddHelper} className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 mr-2" />Add Helper</Button>
+            <Button onClick={openAddHelper} className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 mr-2" />{t('add_helper')}</Button>
           </div>
           <SectionCard className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Mobile</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('name')}</TableHead>
+                  <TableHead>{t('role')}</TableHead>
+                  <TableHead>{t('mobile')}</TableHead>
+                  <TableHead>{t('notes')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
