@@ -439,7 +439,7 @@ const Maintenance = () => {
           <Badge variant={statusBadge[p.status] || "outline"} className="text-xs">{t(p.status)}</Badge>
         </div>
         <div className="grid grid-cols-3 gap-2 text-sm">
-          <div><p className="text-xs text-muted-foreground">Total</p><p className="font-medium">₹{Number(p.total_maintenance).toLocaleString("en-IN")}</p></div>
+          <div><p className="text-xs text-muted-foreground">{t("total")}</p><p className="font-medium">₹{Number(p.total_maintenance).toLocaleString("en-IN")}</p></div>
           <div><p className="text-xs text-muted-foreground">{t("paid")}</p><p className="font-medium text-success">₹{(Number(p.total_maintenance) - Number(p.due_amount)).toLocaleString("en-IN")}</p></div>
           <div><p className="text-xs text-muted-foreground">{t("due")}</p><p className={`font-medium ${Number(p.due_amount) > 0 ? "text-destructive" : ""}`}>₹{Number(p.due_amount).toLocaleString("en-IN")}</p></div>
         </div>
