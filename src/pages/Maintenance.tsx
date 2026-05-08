@@ -555,9 +555,9 @@ const Maintenance = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
             <Input className="pl-10" placeholder={t("search_residents")} value={search} onChange={(e)=>setSearch(e.target.value)}/>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-nowrap">
             <Select value={filterYear} onValueChange={setFilterYear}>
-              <SelectTrigger className="w-full sm:w-28"><CalendarRange className="h-4 w-4 mr-1"/><SelectValue/></SelectTrigger>
+              <SelectTrigger className="flex-1 sm:w-28 min-w-0"><CalendarRange className="h-4 w-4 mr-1 shrink-0"/><SelectValue/></SelectTrigger>
               <SelectContent>
                 {availableYears.map((y) => (
                   <SelectItem key={y} value={String(y)}>FY {y}-{String((y+1)%100).padStart(2,"0")}</SelectItem>
@@ -565,7 +565,7 @@ const Maintenance = () => {
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full sm:w-32"><Filter className="h-4 w-4 mr-1"/><SelectValue/></SelectTrigger>
+              <SelectTrigger className="flex-1 sm:w-32 min-w-0"><Filter className="h-4 w-4 mr-1 shrink-0"/><SelectValue/></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("all_status")}</SelectItem>
                 <SelectItem value="paid">{t("paid")}</SelectItem>
@@ -574,7 +574,7 @@ const Maintenance = () => {
               </SelectContent>
             </Select>
             <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger className="w-full sm:w-32"><SelectValue/></SelectTrigger>
+              <SelectTrigger className="flex-1 sm:w-32 min-w-0"><SelectValue/></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("all_months")}</SelectItem>
                 {MONTHS.map((m) => (<SelectItem key={m} value={m}>{m}</SelectItem>))}
