@@ -343,7 +343,7 @@ const SocietySettings = () => {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('society_info')}</span><span className="sm:hidden">Society</span></TabsTrigger>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('manage_users')}</span><span className="sm:hidden">Users</span></TabsTrigger>
-          <TabsTrigger value="helpers"><HardHat className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">Helpers</span><span className="sm:hidden">Helpers</span></TabsTrigger>
+          <TabsTrigger value="helpers"><HardHat className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('helpers')}</span><span className="sm:hidden">{t('helpers')}</span></TabsTrigger>
           <TabsTrigger value="permissions"><SlidersHorizontal className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('permissions')}</span><span className="sm:hidden">Perms</span></TabsTrigger>
         </TabsList>
 
@@ -398,7 +398,7 @@ const SocietySettings = () => {
                       <Rocket className="h-6 w-6" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold font-display">Release Updates</h3>
+                      <h3 className="text-lg font-bold font-display">{t('release_updates')}</h3>
                       <p className="text-sm text-muted-foreground max-w-xl mt-1">
                         Force every installed PWA and browser session to immediately reload and reinstall the latest published version. Use this only after publishing new changes.
                       </p>
@@ -428,7 +428,7 @@ const SocietySettings = () => {
                       <History className="h-6 w-6" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold font-display">Deleted History</h3>
+                      <h3 className="text-lg font-bold font-display">{t('deleted_history')}</h3>
                       <p className="text-sm text-muted-foreground max-w-xl mt-1">
                         View and restore deleted maintenance and expense entries. Items older than 30 days are auto-purged.
                       </p>
@@ -513,12 +513,12 @@ const SocietySettings = () => {
                               {Object.entries(ROLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                             </SelectContent>
                           </Select>
-                          {!matchedUser && <Badge variant="outline" className="text-xs whitespace-nowrap">Not signed up</Badge>}
+                          {!matchedUser && <Badge variant="outline" className="text-xs whitespace-nowrap">{t('not_signed_up')}</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1 flex-wrap">
-                          {matchedUser?.is_blocked && <Badge variant="destructive" className="text-xs">Blocked</Badge>}
+                          {matchedUser?.is_blocked && <Badge variant="destructive" className="text-xs">{t('blocked')}</Badge>}
                           <Button variant="ghost" size="icon" onClick={() => openEditResident(r)}><Edit2 className="h-4 w-4" /></Button>
                           {matchedUser && (
                             <Button variant="outline" size="sm" onClick={() => handleForceResetPassword(matchedUser.user_id)} className="text-destructive border-destructive/30">
@@ -532,7 +532,7 @@ const SocietySettings = () => {
                               onClick={() => handleToggleBlock(matchedUser, currentRole)}
                               className={matchedUser.is_blocked ? 'border-success/40 text-success' : 'border-destructive/40 text-destructive'}
                             >
-                              {matchedUser.is_blocked ? <><ShieldCheck className="h-3 w-3 mr-1" />Unblock</> : <><Ban className="h-3 w-3 mr-1" />Block</>}
+                              {matchedUser.is_blocked ? <><ShieldCheck className="h-3 w-3 mr-1" />{t('unblock')}</> : <><Ban className="h-3 w-3 mr-1" />{t('block')}</>}
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(r, matchedUser, currentRole)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -555,17 +555,17 @@ const SocietySettings = () => {
         <TabsContent value="helpers" className="mt-6 space-y-4">
           <div className="flex justify-between items-center gap-3 flex-wrap">
             <p className="text-sm text-muted-foreground">Helpers are not residents. They don't have login or maintenance dues.</p>
-            <Button onClick={openAddHelper} className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 mr-2" />Add Helper</Button>
+            <Button onClick={openAddHelper} className="gradient-warm text-primary-foreground"><Plus className="h-4 w-4 mr-2" />{t('add_helper')}</Button>
           </div>
           <SectionCard className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Mobile</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('name')}</TableHead>
+                  <TableHead>{t('role')}</TableHead>
+                  <TableHead>{t('mobile')}</TableHead>
+                  <TableHead>{t('notes')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

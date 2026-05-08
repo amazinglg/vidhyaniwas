@@ -439,7 +439,7 @@ const Maintenance = () => {
           <Badge variant={statusBadge[p.status] || "outline"} className="text-xs">{t(p.status)}</Badge>
         </div>
         <div className="grid grid-cols-3 gap-2 text-sm">
-          <div><p className="text-xs text-muted-foreground">Total</p><p className="font-medium">₹{Number(p.total_maintenance).toLocaleString("en-IN")}</p></div>
+          <div><p className="text-xs text-muted-foreground">{t("total")}</p><p className="font-medium">₹{Number(p.total_maintenance).toLocaleString("en-IN")}</p></div>
           <div><p className="text-xs text-muted-foreground">{t("paid")}</p><p className="font-medium text-success">₹{(Number(p.total_maintenance) - Number(p.due_amount)).toLocaleString("en-IN")}</p></div>
           <div><p className="text-xs text-muted-foreground">{t("due")}</p><p className={`font-medium ${Number(p.due_amount) > 0 ? "text-destructive" : ""}`}>₹{Number(p.due_amount).toLocaleString("en-IN")}</p></div>
         </div>
@@ -646,7 +646,7 @@ const Maintenance = () => {
                 <TableHead>{t("resident")}</TableHead>
                 <TableHead>{t("house")}</TableHead>
                 <TableHead>FY</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead>{t("total")}</TableHead>
                 <TableHead>{t("paid")}</TableHead>
                 <TableHead>{t("due")}</TableHead>
                 <TableHead>{t("status")}</TableHead>
@@ -682,7 +682,7 @@ const Maintenance = () => {
                           )}
                           <TooltipProvider><Tooltip><TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" onClick={()=>handleDownloadParentStatement(p)}><FileDown className="h-4 w-4 text-primary"/></Button>
-                          </TooltipTrigger><TooltipContent>FY Statement PDF</TooltipContent></Tooltip></TooltipProvider>
+                          </TooltipTrigger><TooltipContent>{t("fy_statement_pdf")}</TooltipContent></Tooltip></TooltipProvider>
                           {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>{setEditParent(p); setEditParentTotal(String(p.total_maintenance)); setEditParentResidentId(p.resident_id); setEditParentYear(String(p.year));}}><Edit2 className="h-4 w-4"/></Button>}
                           {isAdmin && <Button variant="ghost" size="icon" onClick={()=>setHistoryRecordId(p.id)}><History className="h-4 w-4 text-muted-foreground"/></Button>}
                           {isMasterAdmin && <Button variant="ghost" size="icon" onClick={()=>handleDelete(p.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>}
@@ -723,7 +723,7 @@ const Maintenance = () => {
       {/* Add parent dialog */}
       <Dialog open={addParentOpen} onOpenChange={setAddParentOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="font-display">New Annual Entry</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{t("new_annual_entry")}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label>{t("resident")} *</Label>
@@ -736,7 +736,7 @@ const Maintenance = () => {
               <div className="grid gap-2"><Label>FY Start Year *</Label><Input type="number" value={addParentForm.year} onChange={(e)=>setAddParentForm({...addParentForm, year:e.target.value})}/></div>
               <div className="grid gap-2"><Label>{t("total_maintenance")} (₹) *</Label><Input type="number" value={addParentForm.totalMaintenance} onChange={(e)=>setAddParentForm({...addParentForm, totalMaintenance:e.target.value})}/></div>
             </div>
-            <Button onClick={handleAddParent} className="w-full">Create</Button>
+            <Button onClick={handleAddParent} className="w-full">{t("create")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -744,7 +744,7 @@ const Maintenance = () => {
       {/* Edit parent (master admin: reassign resident, change FY year, edit total) */}
       <Dialog open={!!editParent} onOpenChange={(v)=>{if(!v)setEditParent(null);}}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Edit Annual Entry</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{t("edit_annual_entry")}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label className="flex items-center gap-1"><UserCog className="h-3.5 w-3.5"/> {t("resident")} *</Label>
@@ -766,7 +766,7 @@ const Maintenance = () => {
       {/* Edit child payment */}
       <Dialog open={!!editChild} onOpenChange={(v)=>{if(!v)setEditChild(null);}}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-display">Edit Payment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{t("edit_payment")}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2"><Label>{t("paid")} (₹) *</Label><Input type="number" value={editChildForm.amount} onChange={(e)=>setEditChildForm({...editChildForm, amount:e.target.value})}/></div>
             <div className="grid gap-2"><Label>{t("date")} *</Label><Input type="date" value={editChildForm.date} onChange={(e)=>setEditChildForm({...editChildForm, date:e.target.value})}/></div>

@@ -383,6 +383,21 @@ const translations: Record<string, Record<Lang, string>> = {
   // Complaints extra
   'photos_optional': { en: 'Photos (optional)', hi: 'फ़ोटो (वैकल्पिक)' },
   'general': { en: 'General', hi: 'सामान्य' },
+
+  // Settings tabs / helpers / dialogs
+  'helpers': { en: 'Helpers', hi: 'सहायक' },
+  'add_helper': { en: 'Add Helper', hi: 'सहायक जोड़ें' },
+  'helper': { en: 'Helper', hi: 'सहायक' },
+  'user_type': { en: 'User Type', hi: 'उपयोगकर्ता प्रकार' },
+  'blocked': { en: 'Blocked', hi: 'अवरुद्ध' },
+  'block': { en: 'Block', hi: 'अवरुद्ध करें' },
+  'unblock': { en: 'Unblock', hi: 'अनवरुद्ध करें' },
+  'deleted_history': { en: 'Deleted History', hi: 'हटाने का इतिहास' },
+  'new_annual_entry': { en: 'New Annual Entry', hi: 'नई वार्षिक प्रविष्टि' },
+  'edit_annual_entry': { en: 'Edit Annual Entry', hi: 'वार्षिक प्रविष्टि संपादित करें' },
+  'edit_payment': { en: 'Edit Payment', hi: 'भुगतान संपादित करें' },
+  'fy_statement_pdf': { en: 'FY Statement PDF', hi: 'वित्तीय वर्ष विवरण PDF' },
+  'create': { en: 'Create', hi: 'बनाएं' },
 };
 
 interface LanguageContextType {
