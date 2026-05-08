@@ -428,7 +428,7 @@ const SocietySettings = () => {
                       <History className="h-6 w-6" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold font-display">Deleted History</h3>
+                      <h3 className="text-lg font-bold font-display">{t('deleted_history')}</h3>
                       <p className="text-sm text-muted-foreground max-w-xl mt-1">
                         View and restore deleted maintenance and expense entries. Items older than 30 days are auto-purged.
                       </p>
