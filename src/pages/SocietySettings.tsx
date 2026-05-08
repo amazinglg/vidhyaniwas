@@ -532,7 +532,7 @@ const SocietySettings = () => {
                               onClick={() => handleToggleBlock(matchedUser, currentRole)}
                               className={matchedUser.is_blocked ? 'border-success/40 text-success' : 'border-destructive/40 text-destructive'}
                             >
-                              {matchedUser.is_blocked ? <><ShieldCheck className="h-3 w-3 mr-1" />Unblock</> : <><Ban className="h-3 w-3 mr-1" />Block</>}
+                              {matchedUser.is_blocked ? <><ShieldCheck className="h-3 w-3 mr-1" />{t('unblock')}</> : <><Ban className="h-3 w-3 mr-1" />{t('block')}</>}
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(r, matchedUser, currentRole)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
