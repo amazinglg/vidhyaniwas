@@ -646,7 +646,7 @@ const Maintenance = () => {
                 <TableHead>{t("resident")}</TableHead>
                 <TableHead>{t("house")}</TableHead>
                 <TableHead>FY</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead>{t("total")}</TableHead>
                 <TableHead>{t("paid")}</TableHead>
                 <TableHead>{t("due")}</TableHead>
                 <TableHead>{t("status")}</TableHead>
