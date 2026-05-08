@@ -723,7 +723,7 @@ const Maintenance = () => {
       {/* Add parent dialog */}
       <Dialog open={addParentOpen} onOpenChange={setAddParentOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="font-display">New Annual Entry</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{t("new_annual_entry")}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label>{t("resident")} *</Label>
