@@ -518,7 +518,7 @@ const SocietySettings = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1 flex-wrap">
-                          {matchedUser?.is_blocked && <Badge variant="destructive" className="text-xs">Blocked</Badge>}
+                          {matchedUser?.is_blocked && <Badge variant="destructive" className="text-xs">{t('blocked')}</Badge>}
                           <Button variant="ghost" size="icon" onClick={() => openEditResident(r)}><Edit2 className="h-4 w-4" /></Button>
                           {matchedUser && (
                             <Button variant="outline" size="sm" onClick={() => handleForceResetPassword(matchedUser.user_id)} className="text-destructive border-destructive/30">
