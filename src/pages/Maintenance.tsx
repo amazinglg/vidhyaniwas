@@ -766,7 +766,7 @@ const Maintenance = () => {
       {/* Edit child payment */}
       <Dialog open={!!editChild} onOpenChange={(v)=>{if(!v)setEditChild(null);}}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-display">Edit Payment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{t("edit_payment")}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2"><Label>{t("paid")} (₹) *</Label><Input type="number" value={editChildForm.amount} onChange={(e)=>setEditChildForm({...editChildForm, amount:e.target.value})}/></div>
             <div className="grid gap-2"><Label>{t("date")} *</Label><Input type="date" value={editChildForm.date} onChange={(e)=>setEditChildForm({...editChildForm, date:e.target.value})}/></div>
