@@ -744,7 +744,7 @@ const Maintenance = () => {
       {/* Edit parent (master admin: reassign resident, change FY year, edit total) */}
       <Dialog open={!!editParent} onOpenChange={(v)=>{if(!v)setEditParent(null);}}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Edit Annual Entry</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">{t("edit_annual_entry")}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label className="flex items-center gap-1"><UserCog className="h-3.5 w-3.5"/> {t("resident")} *</Label>
