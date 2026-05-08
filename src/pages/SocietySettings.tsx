@@ -343,7 +343,7 @@ const SocietySettings = () => {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="society"><Building2 className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('society_info')}</span><span className="sm:hidden">Society</span></TabsTrigger>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('manage_users')}</span><span className="sm:hidden">Users</span></TabsTrigger>
-          <TabsTrigger value="helpers"><HardHat className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">Helpers</span><span className="sm:hidden">Helpers</span></TabsTrigger>
+          <TabsTrigger value="helpers"><HardHat className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('helpers')}</span><span className="sm:hidden">{t('helpers')}</span></TabsTrigger>
           <TabsTrigger value="permissions"><SlidersHorizontal className="h-4 w-4 mr-1.5" /><span className="hidden sm:inline">{t('permissions')}</span><span className="sm:hidden">Perms</span></TabsTrigger>
         </TabsList>
 
