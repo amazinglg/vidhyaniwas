@@ -189,13 +189,14 @@ const Maintenance = () => {
     }).sort((a,b)=>(b.paid_date||"").localeCompare(a.paid_date||""));
   }, [groups, search, filterStatus, filterMonth, filterYear]);
 
-  const totalCollected = groups.parents.reduce((s, p:any) => {
+  const yearParents = useMemo(() => groups.parents.filter((p:any)=> String(p.year) === filterYear), [groups, filterYear]);
+  const totalCollected = yearParents.reduce((s, p:any) => {
     const kids = groups.childrenByParent[p.id] || [];
     return s + kids.reduce((ss:number, k:any)=> ss + Number(k.amount||0), 0);
   }, 0);
-  const totalPending = groups.parents.reduce((s, p:any)=> s + Number(p.due_amount||0), 0);
-  const paidCount = groups.parents.filter(p=>p.status==="paid").length;
-  const overdueCount = groups.parents.filter(p=> Number(p.due_amount||0) > 0).length;
+  const totalPending = yearParents.reduce((s, p:any)=> s + Number(p.due_amount||0), 0);
+  const paidCount = yearParents.filter(p=>p.status==="paid").length;
+  const overdueCount = yearParents.filter(p=> Number(p.due_amount||0) > 0).length;
 
   const eligibleResidents = useMemo(
     () => residents.filter((r: any) => !supervisorResidentIds.includes(r.id)),
@@ -508,34 +509,44 @@ const Maintenance = () => {
         title={t("maintenance_fund")}
         subtitle={t("track_maintenance")}
         action={
-          <div className="flex gap-1.5 flex-nowrap items-center justify-start sm:justify-end w-full overflow-x-auto">
-            {isAdmin && (
-              <Button variant="outline" size="sm" onClick={downloadCSV} className="h-8 px-2.5 text-xs shrink-0">
-                <Download className="h-3.5 w-3.5 mr-1"/> CSV
-              </Button>
-            )}
-            {!readOnly && (
-              <>
-                {isMasterAdmin && (
-                  <Button variant="outline" size="sm" onClick={()=>{setDefaultAmount(String(storedDefault)); setDefaultAmountDialog(true);}} className="h-8 px-2.5 text-xs shrink-0">
-                    <Settings2 className="h-3.5 w-3.5 mr-1"/> {t("amount")}
-                  </Button>
-                )}
-                {canBulk && (
-                  <>
-                    <Button variant="outline" size="sm" onClick={()=>setBulkOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
-                      <Layers className="h-3.5 w-3.5 mr-1"/> Bulk
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={()=>setBulkDeleteOpen(true)} className="h-8 px-2.5 text-xs shrink-0 text-destructive hover:text-destructive">
-                      <Trash2 className="h-3.5 w-3.5 mr-1"/> Del
-                    </Button>
-                  </>
-                )}
-                <Button onClick={()=>{setAddParentForm({residentId:"", year:String(fyForDate(new Date())), totalMaintenance:String(storedDefault)}); setAddParentOpen(true);}} size="sm" className="h-8 px-2.5 text-xs shrink-0">
-                  <Plus className="h-3.5 w-3.5 mr-1"/> {t("add")}
+          <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+            <div className="flex gap-1.5 flex-nowrap items-center justify-start sm:justify-end w-full overflow-x-auto">
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={downloadCSV} className="h-8 px-2.5 text-xs shrink-0">
+                  <Download className="h-3.5 w-3.5 mr-1"/> CSV
                 </Button>
-              </>
-            )}
+              )}
+              {!readOnly && (
+                <>
+                  {isMasterAdmin && (
+                    <Button variant="outline" size="sm" onClick={()=>{setDefaultAmount(String(storedDefault)); setDefaultAmountDialog(true);}} className="h-8 px-2.5 text-xs shrink-0">
+                      <Settings2 className="h-3.5 w-3.5 mr-1"/> {t("amount")}
+                    </Button>
+                  )}
+                  {canBulk && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={()=>setBulkOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
+                        <Layers className="h-3.5 w-3.5 mr-1"/> Bulk
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={()=>setBulkDeleteOpen(true)} className="h-8 px-2.5 text-xs shrink-0 text-destructive hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5 mr-1"/> Del
+                      </Button>
+                    </>
+                  )}
+                  <Button onClick={()=>{setAddParentForm({residentId:"", year:String(fyForDate(new Date())), totalMaintenance:String(storedDefault)}); setAddParentOpen(true);}} size="sm" className="h-8 px-2.5 text-xs shrink-0">
+                    <Plus className="h-3.5 w-3.5 mr-1"/> {t("add")}
+                  </Button>
+                </>
+              )}
+            </div>
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="h-8 w-[140px] text-xs"><CalendarRange className="h-3.5 w-3.5 mr-1"/><SelectValue/></SelectTrigger>
+              <SelectContent>
+                {availableYears.map((y) => (
+                  <SelectItem key={y} value={String(y)}>FY {y}-{String((y+1)%100).padStart(2,"0")}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         }
       />
@@ -556,31 +567,23 @@ const Maintenance = () => {
             <Input className="pl-10 h-9" placeholder={t("search_residents")} value={search} onChange={(e)=>setSearch(e.target.value)}/>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Select value={filterYear} onValueChange={setFilterYear}>
-              <SelectTrigger className="h-9 w-full"><CalendarRange className="h-4 w-4 mr-1 shrink-0"/><SelectValue/></SelectTrigger>
-              <SelectContent>
-                {availableYears.map((y) => (
-                  <SelectItem key={y} value={String(y)}>FY {y}-{String((y+1)%100).padStart(2,"0")}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger className="h-9 w-full"><SelectValue/></SelectTrigger>
+              <SelectTrigger className="h-9 w-full text-xs"><SelectValue/></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("all_months")}</SelectItem>
                 {MONTHS.map((m) => (<SelectItem key={m} value={m}>{m}</SelectItem>))}
               </SelectContent>
             </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 w-full text-xs"><Filter className="h-4 w-4 mr-1 shrink-0"/><SelectValue/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("all_status")}</SelectItem>
+                <SelectItem value="paid">{t("paid")}</SelectItem>
+                <SelectItem value="partial">{t("partial")}</SelectItem>
+                <SelectItem value="pending">{t("pending")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-9 w-full"><Filter className="h-4 w-4 mr-1 shrink-0"/><SelectValue/></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("all_status")}</SelectItem>
-              <SelectItem value="paid">{t("paid")}</SelectItem>
-              <SelectItem value="partial">{t("partial")}</SelectItem>
-              <SelectItem value="pending">{t("pending")}</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         {filterMonth !== "all" && (
           <p className="text-xs text-muted-foreground mt-2">Showing payment records (sub-entries) across all residents.</p>
