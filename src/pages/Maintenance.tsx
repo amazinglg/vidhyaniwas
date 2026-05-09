@@ -509,34 +509,44 @@ const Maintenance = () => {
         title={t("maintenance_fund")}
         subtitle={t("track_maintenance")}
         action={
-          <div className="flex gap-1.5 flex-nowrap items-center justify-start sm:justify-end w-full overflow-x-auto">
-            {isAdmin && (
-              <Button variant="outline" size="sm" onClick={downloadCSV} className="h-8 px-2.5 text-xs shrink-0">
-                <Download className="h-3.5 w-3.5 mr-1"/> CSV
-              </Button>
-            )}
-            {!readOnly && (
-              <>
-                {isMasterAdmin && (
-                  <Button variant="outline" size="sm" onClick={()=>{setDefaultAmount(String(storedDefault)); setDefaultAmountDialog(true);}} className="h-8 px-2.5 text-xs shrink-0">
-                    <Settings2 className="h-3.5 w-3.5 mr-1"/> {t("amount")}
-                  </Button>
-                )}
-                {canBulk && (
-                  <>
-                    <Button variant="outline" size="sm" onClick={()=>setBulkOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
-                      <Layers className="h-3.5 w-3.5 mr-1"/> Bulk
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={()=>setBulkDeleteOpen(true)} className="h-8 px-2.5 text-xs shrink-0 text-destructive hover:text-destructive">
-                      <Trash2 className="h-3.5 w-3.5 mr-1"/> Del
-                    </Button>
-                  </>
-                )}
-                <Button onClick={()=>{setAddParentForm({residentId:"", year:String(fyForDate(new Date())), totalMaintenance:String(storedDefault)}); setAddParentOpen(true);}} size="sm" className="h-8 px-2.5 text-xs shrink-0">
-                  <Plus className="h-3.5 w-3.5 mr-1"/> {t("add")}
+          <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+            <div className="flex gap-1.5 flex-nowrap items-center justify-start sm:justify-end w-full overflow-x-auto">
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={downloadCSV} className="h-8 px-2.5 text-xs shrink-0">
+                  <Download className="h-3.5 w-3.5 mr-1"/> CSV
                 </Button>
-              </>
-            )}
+              )}
+              {!readOnly && (
+                <>
+                  {isMasterAdmin && (
+                    <Button variant="outline" size="sm" onClick={()=>{setDefaultAmount(String(storedDefault)); setDefaultAmountDialog(true);}} className="h-8 px-2.5 text-xs shrink-0">
+                      <Settings2 className="h-3.5 w-3.5 mr-1"/> {t("amount")}
+                    </Button>
+                  )}
+                  {canBulk && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={()=>setBulkOpen(true)} className="h-8 px-2.5 text-xs shrink-0">
+                        <Layers className="h-3.5 w-3.5 mr-1"/> Bulk
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={()=>setBulkDeleteOpen(true)} className="h-8 px-2.5 text-xs shrink-0 text-destructive hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5 mr-1"/> Del
+                      </Button>
+                    </>
+                  )}
+                  <Button onClick={()=>{setAddParentForm({residentId:"", year:String(fyForDate(new Date())), totalMaintenance:String(storedDefault)}); setAddParentOpen(true);}} size="sm" className="h-8 px-2.5 text-xs shrink-0">
+                    <Plus className="h-3.5 w-3.5 mr-1"/> {t("add")}
+                  </Button>
+                </>
+              )}
+            </div>
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="h-8 w-[140px] text-xs"><CalendarRange className="h-3.5 w-3.5 mr-1"/><SelectValue/></SelectTrigger>
+              <SelectContent>
+                {availableYears.map((y) => (
+                  <SelectItem key={y} value={String(y)}>FY {y}-{String((y+1)%100).padStart(2,"0")}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         }
       />
