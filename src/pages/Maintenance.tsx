@@ -567,31 +567,23 @@ const Maintenance = () => {
             <Input className="pl-10 h-9" placeholder={t("search_residents")} value={search} onChange={(e)=>setSearch(e.target.value)}/>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Select value={filterYear} onValueChange={setFilterYear}>
-              <SelectTrigger className="h-9 w-full"><CalendarRange className="h-4 w-4 mr-1 shrink-0"/><SelectValue/></SelectTrigger>
-              <SelectContent>
-                {availableYears.map((y) => (
-                  <SelectItem key={y} value={String(y)}>FY {y}-{String((y+1)%100).padStart(2,"0")}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger className="h-9 w-full"><SelectValue/></SelectTrigger>
+              <SelectTrigger className="h-9 w-full text-xs"><SelectValue/></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("all_months")}</SelectItem>
                 {MONTHS.map((m) => (<SelectItem key={m} value={m}>{m}</SelectItem>))}
               </SelectContent>
             </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 w-full text-xs"><Filter className="h-4 w-4 mr-1 shrink-0"/><SelectValue/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("all_status")}</SelectItem>
+                <SelectItem value="paid">{t("paid")}</SelectItem>
+                <SelectItem value="partial">{t("partial")}</SelectItem>
+                <SelectItem value="pending">{t("pending")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-9 w-full"><Filter className="h-4 w-4 mr-1 shrink-0"/><SelectValue/></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("all_status")}</SelectItem>
-              <SelectItem value="paid">{t("paid")}</SelectItem>
-              <SelectItem value="partial">{t("partial")}</SelectItem>
-              <SelectItem value="pending">{t("pending")}</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         {filterMonth !== "all" && (
           <p className="text-xs text-muted-foreground mt-2">Showing payment records (sub-entries) across all residents.</p>
