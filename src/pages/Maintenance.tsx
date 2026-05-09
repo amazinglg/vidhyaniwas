@@ -189,13 +189,14 @@ const Maintenance = () => {
     }).sort((a,b)=>(b.paid_date||"").localeCompare(a.paid_date||""));
   }, [groups, search, filterStatus, filterMonth, filterYear]);
 
-  const totalCollected = groups.parents.reduce((s, p:any) => {
+  const yearParents = useMemo(() => groups.parents.filter((p:any)=> String(p.year) === filterYear), [groups, filterYear]);
+  const totalCollected = yearParents.reduce((s, p:any) => {
     const kids = groups.childrenByParent[p.id] || [];
     return s + kids.reduce((ss:number, k:any)=> ss + Number(k.amount||0), 0);
   }, 0);
-  const totalPending = groups.parents.reduce((s, p:any)=> s + Number(p.due_amount||0), 0);
-  const paidCount = groups.parents.filter(p=>p.status==="paid").length;
-  const overdueCount = groups.parents.filter(p=> Number(p.due_amount||0) > 0).length;
+  const totalPending = yearParents.reduce((s, p:any)=> s + Number(p.due_amount||0), 0);
+  const paidCount = yearParents.filter(p=>p.status==="paid").length;
+  const overdueCount = yearParents.filter(p=> Number(p.due_amount||0) > 0).length;
 
   const eligibleResidents = useMemo(
     () => residents.filter((r: any) => !supervisorResidentIds.includes(r.id)),
