@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, IndianRupee, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, BarChart3, PieChart as PieIcon, LayoutDashboard, Wallet, CalendarRange } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -67,24 +67,53 @@ const Dashboard = () => {
     enabled: !isAdmin && !!residentId,
   });
 
-  const yearCollections = useMemo(() => collections.filter((c: any) => c.year === Number(selectedYear)), [collections, selectedYear]);
+  // Fetch supervisor resident IDs to exclude (matches Maintenance page logic)
+  const [supervisorResidentIds, setSupervisorResidentIds] = useState<string[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data: roles } = await supabase.from('user_roles').select('user_id').eq('role', 'supervisor');
+      const userIds = (roles || []).map((r: any) => r.user_id);
+      if (!userIds.length) { setSupervisorResidentIds([]); return; }
+      const { data: profs } = await supabase.from('profiles' as any).select('resident_id, user_id').in('user_id', userIds);
+      setSupervisorResidentIds(((profs || []) as any[]).map((p: any) => p.resident_id).filter(Boolean));
+    })();
+  }, []);
+
+  // Group parents + children, excluding supervisor residents — mirrors Maintenance page
+  const groups = useMemo(() => {
+    const parents: any[] = [];
+    const childrenByParent: Record<string, any[]> = {};
+    for (const c of collections as any[]) {
+      if (supervisorResidentIds.includes(c.resident_id)) continue;
+      if (c.parent_id) (childrenByParent[c.parent_id] ||= []).push(c);
+      else parents.push(c);
+    }
+    return { parents, childrenByParent };
+  }, [collections, supervisorResidentIds]);
+
+  const yearParents = useMemo(() => groups.parents.filter((p: any) => Number(p.year) === Number(selectedYear)), [groups, selectedYear]);
   const yearExpenses = useMemo(() => expenses.filter((e: any) => e.date?.startsWith(selectedYear)), [expenses, selectedYear]);
 
-  const totalCollected = yearCollections.reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
-  const totalDue = yearCollections.reduce((s: number, c: any) => s + Number(c.due_amount || 0), 0);
+  const totalCollected = yearParents.reduce((s: number, p: any) => {
+    const kids = groups.childrenByParent[p.id] || [];
+    return s + kids.reduce((ss: number, k: any) => ss + Number(k.amount || 0), 0);
+  }, 0);
+  const totalDue = yearParents.reduce((s: number, p: any) => s + Number(p.due_amount || 0), 0);
   const totalExpensesAmt = yearExpenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
-  const paidCount = yearCollections.filter((c: any) => c.status === 'paid').length;
-  const overdueCount = yearCollections.filter((c: any) => c.status === 'overdue' || c.status === 'pending').length;
+  const paidCount = yearParents.filter((p: any) => p.status === 'paid').length;
+  const overdueCount = yearParents.filter((p: any) => Number(p.due_amount || 0) > 0).length;
 
   const monthlyData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // Sum actual payments (children) by paid_date month, restricted to selected FY parents
+    const allChildren = yearParents.flatMap((p: any) => groups.childrenByParent[p.id] || []);
     return months.map((m, i) => {
       const mStr = String(i + 1).padStart(2, '0');
-      const income = yearCollections.filter((c: any) => c.paid_date?.startsWith(`${selectedYear}-${mStr}`)).reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
+      const income = allChildren.filter((c: any) => c.paid_date?.startsWith(`${selectedYear}-${mStr}`) || c.paid_date?.startsWith(`${Number(selectedYear) + 1}-${mStr}`)).reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
       const expense = yearExpenses.filter((e: any) => e.date?.startsWith(`${selectedYear}-${mStr}`)).reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
       return { month: m, income, expense };
     });
-  }, [yearCollections, yearExpenses, selectedYear]);
+  }, [yearParents, groups, yearExpenses, selectedYear]);
 
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = {};
