@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, IndianRupee, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Clock, BarChart3, PieChart as PieIcon, LayoutDashboard, Wallet, CalendarRange } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
