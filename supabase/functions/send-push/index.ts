@@ -114,6 +114,31 @@ Deno.serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // Authorization: only admins/supervisors may broadcast freely.
+    // Non-admins may ONLY target audience.kind === 'admins'
+    // (used by residents to notify admins about their own complaints).
+    const { data: callerRoles } = await admin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userData.user.id);
+    const adminRoles = new Set([
+      'master_admin',
+      'president',
+      'vice_president',
+      'treasury_head',
+      'secretary',
+      'supervisor',
+    ]);
+    const callerIsAdmin = (callerRoles || []).some((r: { role: string }) =>
+      adminRoles.has(r.role),
+    );
+    if (!callerIsAdmin && body.audience.kind !== 'admins') {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: insufficient role for this audience' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     let targetUserIds: string[] = [];
     if (body.audience.kind === 'users') {
       targetUserIds = body.audience.userIds.filter(Boolean);
